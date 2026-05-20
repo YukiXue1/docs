@@ -2058,7 +2058,7 @@ mcp-server-tronlink/
 
 ## Tool Contract & Side Effects
 
-**Input/output schemas and error contract.** Each tool's input/output schema and the structured error envelope are defined by the underlying framework — see [TronLink MCP Core](tronlink-mcp-core.md). Results follow a standardized success/error shape; errors carry a machine-checkable `code` and a `retryable` flag, so an agent can branch on failure instead of parsing prose.
+**Input/output schemas and error contract.** Each tool's input/output schema and the structured error envelope are defined by the underlying framework — see [TronLink MCP Core](tronlink-mcp-core.md#error-codes) for the SSOT error code table (`code` / `retryable` / `hint` / triggered_by). Every response carries `meta.schemaVersion`; field meanings are stable within a major version. Agents should branch on `error.code` and `error.retryable`, never on the human-readable `message`.
 
 **Side-effect classification.** Classify before calling; never auto-retry a write whose outcome is uncertain.
 
@@ -2083,6 +2083,45 @@ mcp-server-tronlink/
 | Pre-checks | All transactions validate before execution |
 | Git safety | Config files in `.gitignore` prevent accidental commits |
 | Default network | Nile testnet with safe defaults |
+
+### Security Boundaries
+
+| Boundary | Guarantee | Agent / operator obligation |
+|---|---|---|
+| **Prompt injection** | Tool inputs are consumed verbatim as call arguments. The server never concatenates tool inputs into a prompt re-sent to an LLM. Strings retrieved from chain or third-party APIs (account memos, contract revert reasons, transaction notes) **may contain attacker-controlled text** — treat them as untrusted. | Do not let the agent auto-route Remote Write tools off prose returned from a read. Always require structured fields (`txId`, `code`, `retryable`) for branching. |
+| **Outbound host allowlist (SSRF)** | The server only originates HTTPS to the four configured endpoints: `TL_TRONGRID_URL` (TronGrid), `TL_MULTISIG_BASE_URL`, `TL_GASFREE_BASE_URL`, and SunSwap routers via TronWeb. Tools never accept user-supplied URLs that get fetched verbatim. | Pin these env vars to known hosts in production; do not let LLM input populate any `*_BASE_URL`. |
+| **API key handling (token passthrough)** | `TL_TRONGRID_API_KEY`, `TL_MULTISIG_SECRET_KEY`, `TL_GASFREE_API_SECRET` are read from env at startup and used only on the outbound leg. They are **not** returned in any tool response, error `details`, or Knowledge Store record. The server does not accept Authorization headers from MCP clients and forward them upstream. | Audit env capture in your MCP host config (some hosts log env); store secrets in the host's secret manager, not in `.mcp.json` committed to git. |
+| **Browser JS execution** | `tl_evaluate` runs arbitrary JavaScript in the controlled Playwright browser context. This is a **High-risk / Destructive** primitive — it can read DOM, click invisible elements, exfiltrate state, and bypass UI HITL. | Disable `tl_evaluate` from the MCP host's tool allowlist for any agent that does not strictly require it. Never expose it to a remote/multi-user MCP deployment. |
+| **HITL bypass** | Direct-API tools (`tl_chain_send`, `tl_chain_swap_v3`, etc.) sign with the local encrypted `agent-wallet` and broadcast **without** a TronLink browser approval. The `agent-wallet` password is the only barrier. | Hold `AGENT_WALLET_PASSWORD` outside the agent's reach. For production, prefer `mcp-tronlink-signer` (browser approval) over Direct-API for any tool that moves funds. |
+| **Confused deputy** | Tools operate under the local `agent-wallet` identity, not the calling user's identity. There is no per-call authorization scope. | One MCP session = one wallet identity; do not multiplex multiple end users through the same server. |
+| **Transport** | stdio transport; the server does not bind a network listener. | Do not wrap this server behind a public HTTP transport without re-introducing auth and rate limiting. |
+
+### Wallet Secret Storage
+
+The Direct-API path signs with a local encrypted wallet managed by `@bankofai/agent-wallet`. Two paths exist for unlocking it; pick deliberately.
+
+**Path A — Manual (recommended for production).** Create the wallet out-of-band, set `AGENT_WALLET_PASSWORD` via the MCP host's secret manager, and start the server. The password lives only in process memory; nothing is written by this server.
+
+**Path B — Auto-create (convenience for local dev).** If no wallet exists at startup and the agent calls `tl_wallet_create`, the server:
+
+1. Generates a random password.
+2. Writes it in plaintext to `~/.agent-wallet/runtime_secrets.json` so a restart can reuse the wallet.
+3. Creates an encrypted `main` wallet at `~/.agent-wallet/` (override with `AGENT_WALLET_DIR`).
+
+| Aspect | Behavior |
+|---|---|
+| **File** | `~/.agent-wallet/runtime_secrets.json` (plaintext JSON containing the password) |
+| **Recommended permissions** | `chmod 600` — the file is created under the user's `$HOME`, but no umask hardening is enforced. Verify after first run. |
+| **Git safety** | `~/.agent-wallet/` is outside any repo by default. If you point `AGENT_WALLET_DIR` inside a repo, add it to `.gitignore` explicitly. |
+| **Knowledge Store redaction** | The Knowledge Store auto-redacts `password`, `mnemonic`, `private_key`, `seed` fields in tool inputs / outputs. It does **not** read or sanitize `runtime_secrets.json`. The file is independent of the Knowledge Store. |
+| **Logs / stderr** | The auto-generated password is not logged. The file path may appear in startup output. |
+| **Backups** | Backing up `~/.agent-wallet/` without also protecting `runtime_secrets.json` defeats encryption-at-rest. Either back up both encrypted, or back up the encrypted wallet and re-set the password by hand on restore. |
+
+**Production guidance.**
+
+- Prefer Path A. Source `AGENT_WALLET_PASSWORD` from the host's secret manager (Claude Desktop env, vault, etc.).
+- If you must use Path B (e.g., ephemeral CI), set `AGENT_WALLET_DIR` to a tmpfs path that is destroyed at job end.
+- For any tool that moves real funds, prefer `mcp-tronlink-signer` (browser approval, no on-disk password) over Direct-API.
 
 ---
 
@@ -2140,7 +2179,7 @@ npm install && npm run build
 - **52 pre-defined tool handlers** with Zod-validated schemas
 - Built-in Knowledge Store for cross-session learning and step replay
 - Flow Recipe system for codifying multi-step workflows
-- Standardized response format with 25+ error codes
+- Standardized response format with a documented error-code table (`code` / `retryable` / `hint`)
 - Dual-mode support: Playwright (UI automation) + Direct API (on-chain)
 
 ---
@@ -2512,15 +2551,50 @@ All tools return a consistent structure:
 {
   ok: false,
   error: {
-    code: "TL_CLICK_FAILED",       // One of 25+ error codes
+    code: "TL_CLICK_FAILED",       // stable code — see table below
     message: "Element not found",
+    retryable: false,              // explicit hint for agents
+    hint: "Re-snapshot the page and retry with a fresh a11yRef.",
     details: { /* optional */ }
   },
-  meta: { timestamp, sessionId, durationMs }
+  meta: { timestamp, sessionId, durationMs, schemaVersion: "1.0" }
 }
 ```
 
-**25+ Error Codes:** `TL_BUILD_FAILED`, `TL_SESSION_ALREADY_RUNNING`, `TL_NO_ACTIVE_SESSION`, `TL_LAUNCH_FAILED`, `TL_INVALID_INPUT`, `TL_NAVIGATION_FAILED`, `TL_TARGET_NOT_FOUND`, `TL_CLICK_FAILED`, `TL_TYPE_FAILED`, `TL_WAIT_TIMEOUT`, `TL_SCREENSHOT_FAILED`, `TL_CAPABILITY_NOT_AVAILABLE`, `TL_CHAIN_QUERY_FAILED`, `TL_CHAIN_SEND_FAILED`, `TL_CHAIN_SWAP_FAILED`, `TL_GASFREE_QUERY_FAILED`, `TL_GASFREE_SEND_FAILED`, `TL_MULTISIG_QUERY_FAILED`, `TL_MULTISIG_SUBMIT_FAILED`, `TL_MULTISIG_WS_FAILED`, `TL_INTERNAL_ERROR`, etc.
+### Error Codes
+
+This is the single source of truth (SSOT) for error codes returned by every tool in this framework. Downstream servers (`mcp-server-tronlink`, `mcp-tronlink-signer`) inherit these codes and may extend them. `retryable` reflects framework-level safety; an agent **must** still apply the side-effect classification of the calling tool — never auto-retry a Remote Write whose outcome is unknown, regardless of `retryable`.
+
+| Code | Retryable | Hint | Typical trigger |
+|------|:---:|------|-----------------|
+| `TL_BUILD_FAILED` | false | Inspect build logs; fix source/config before retrying. | `tl_launch` with `BuildCapability` enabled |
+| `TL_SESSION_ALREADY_RUNNING` | false | Call `tl_cleanup` before launching a new session. | `tl_launch` while a session is active |
+| `TL_NO_ACTIVE_SESSION` | false | Call `tl_launch` first. | Any session-bound tool without a session |
+| `TL_LAUNCH_FAILED` | true | Transient browser/extension boot failure; retry once. | `tl_launch` |
+| `TL_INVALID_INPUT` | false | Fix the arguments; do not retry with the same payload. | Zod schema validation |
+| `TL_NAVIGATION_FAILED` | true | Page may still be transitioning; wait for the target screen and retry. | `tl_navigate`, `tl_switch_to_tab` |
+| `TL_TARGET_NOT_FOUND` | false | Refresh refs via `tl_accessibility_snapshot` and retry with a fresh ref. | `tl_click`, `tl_type`, `tl_wait_for` |
+| `TL_CLICK_FAILED` | true | Element may have re-rendered; refresh refs and retry once. | `tl_click` |
+| `TL_TYPE_FAILED` | true | Same as click — refresh refs and retry once. | `tl_type` |
+| `TL_WAIT_TIMEOUT` | true | Increase the timeout or wait on a different selector. | `tl_wait_for`, `tl_wait_for_notification` |
+| `TL_SCREENSHOT_FAILED` | true | Transient; retry. | `tl_screenshot`, `tl_describe_screen` |
+| `TL_CAPABILITY_NOT_AVAILABLE` | false | The session was launched without this capability; reconfigure and relaunch. | Any tool that requires an optional capability |
+| `TL_CHAIN_QUERY_FAILED` | true | TronGrid transient or rate-limited; back off and retry. | `tl_chain_get_*` |
+| `TL_CHAIN_SEND_FAILED` | false | Do **not** auto-retry. Verify on-chain state with `tl_chain_get_tx` before re-issuing. | `tl_chain_send`, `tl_chain_stake`, `tl_chain_resource` |
+| `TL_CHAIN_SWAP_FAILED` | false | Same as send — confirm the previous tx did not land before retrying. | `tl_chain_swap`, `tl_chain_swap_v3` |
+| `TL_GASFREE_QUERY_FAILED` | true | Transient; retry. | `tl_gasfree_get_account`, `tl_gasfree_get_transactions` |
+| `TL_GASFREE_SEND_FAILED` | false | Do **not** auto-retry; query the GasFree service for the latest status. | `tl_gasfree_send` |
+| `TL_MULTISIG_QUERY_FAILED` | true | Transient; retry. | `tl_multisig_query_auth`, `tl_multisig_list_tx` |
+| `TL_MULTISIG_SUBMIT_FAILED` | false | Do **not** auto-retry; the request may already have been accepted. | `tl_multisig_submit_tx` |
+| `TL_MULTISIG_WS_FAILED` | true | Reconnect the WebSocket. | `tl_multisig_connect_ws` |
+| `TL_INTERNAL_ERROR` | true | Generic framework failure; retry once and escalate with logs. | Any tool |
+
+Custom codes added by downstream servers must follow these rules:
+
+- Never reuse a code listed above with a different meaning.
+- `retryable` is required for every new code.
+- Meaning is stable within a major version.
+- New codes are documented in the consuming server's docs, not silently introduced.
 
 ---
 
@@ -3178,17 +3252,20 @@ claude mcp add -s user tronlink-signer -- node /path/to/packages/mcp-tronlink-si
 
 ## MCP Tools
 
-| Tool | Description | Parameters |
-| ---- | ----------- | ---------- |
-| `connect_wallet` | Connect TronLink wallet | `network?` |
-| `send_trx` | Send TRX to an address | `to`, `amount`, `network?` |
-| `send_trc20` | Send TRC20 tokens | `contractAddress`, `to`, `amount`, `decimals?`, `network?` |
-| `sign_message` | Sign a message | `message`, `network?` |
-| `sign_typed_data` | Sign EIP-712 typed data | `typedData`, `network?` |
-| `sign_transaction` | Sign a raw transaction (optionally broadcast) | `transaction`, `broadcast?`, `network?` |
-| `get_balance` | Get TRX balance | `address`, `network?` |
+| Tool | Description | Parameters | Side effect | Auto-retry safe? |
+| ---- | ----------- | ---------- | --- | :---: |
+| `connect_wallet` | Connect TronLink wallet | `network?` | Local Write (caches session) | Yes — user re-approves if needed |
+| `send_trx` | Send TRX to an address | `to`, `amount`, `network?` | **Remote Write** | **No** — verify on-chain before re-issuing |
+| `send_trc20` | Send TRC20 tokens | `contractAddress`, `to`, `amount`, `decimals?`, `network?` | **Remote Write** | **No** — same as `send_trx` |
+| `sign_message` | Sign a message | `message`, `network?` | Local Write (signs only; no broadcast) | Yes — re-prompts the user |
+| `sign_typed_data` | Sign EIP-712 typed data | `typedData`, `network?` | Local Write (signs only) | Yes — re-prompts the user |
+| `sign_transaction` (`broadcast=false`) | Sign a raw transaction | `transaction`, `broadcast=false`, `network?` | Local Write | Yes — re-prompts the user |
+| `sign_transaction` (`broadcast=true`) | Sign + broadcast | `transaction`, `broadcast=true`, `network?` | **Remote Write** | **No** — verify on-chain before re-issuing |
+| `get_balance` | Get TRX balance | `address`, `network?` | Network Read | Yes |
 
 All tools support an optional `network` parameter (`mainnet` / `nile` / `shasta`), defaulting to `mainnet`.
+
+**Human-in-the-loop.** Every tool that signs (`send_trx`, `send_trc20`, `sign_message`, `sign_typed_data`, `sign_transaction`) opens the TronLink approval page in the browser. The AI agent **cannot** sign without the user clicking Approve. Treat Remote Write tools as requiring confirmation in production.
 
 ## MCP Resources
 
@@ -3224,6 +3301,35 @@ All signing tools support MCP cancellation. If the AI client cancels a pending t
 ## Transaction Confirmation
 
 When `sign_transaction` is called with `broadcast: true`, the server automatically polls for on-chain confirmation after broadcast and returns the execution status (`success` or `pending`). If the transaction fails on-chain (e.g., `OUT_OF_ENERGY`, Solidity revert), the error is returned to the AI agent with a decoded reason.
+
+## Errors
+
+The server returns errors in the standard MCP shape. Each error carries a stable `code` and a `retryable` hint so an agent can branch without parsing prose. Framework-level codes follow the SSOT table in [TronLink MCP Core — Error Codes](tronlink-mcp-core.md#error-codes). Server-specific conditions are:
+
+| Condition | Retryable | When |
+| --- | :---: | --- |
+| `USER_REJECTED` | No | User clicked Reject on the TronLink approval page. |
+| `TIMEOUT` | Yes | No approval within the request timeout (default 5 min). Re-issuing re-opens the prompt; do **not** auto-retry a broadcast that may already be in flight. |
+| `BROWSER_DISCONNECTED` | Yes (signing only) | Approval page was closed or lost heartbeat. Reconnect by re-issuing the call. Never re-issue a broadcast that may have already landed. |
+| `NETWORK_ERROR` | Yes | A TronGrid / RPC request failed. Transient. |
+| `BROADCAST_FAILED` | No | Signing succeeded but submission was rejected by the node. Inspect the message; **do not** auto-retry — the signature may already have been accepted by another node. |
+| `ON_CHAIN_FAILED` | No | Broadcast OK but on-chain execution failed (`OUT_OF_ENERGY`, Solidity revert, `FAILED`). The transaction is final; address the root cause and submit a new tx. |
+| `INVALID_INPUT` | No | The tool input failed validation. Fix the payload. |
+| `CANCELLED` | No | The MCP client cancelled the call (e.g., user pressed Ctrl+C). |
+
+**Retry policy.** Read calls (`get_balance`) and pre-sign failures (`USER_REJECTED`, `INVALID_INPUT`, `CANCELLED`) are agent-safe to re-issue with corrected input. For any sign + broadcast path, treat the outcome as unknown the moment the request leaves the server — confirm with `get_balance` or an explorer lookup before re-issuing.
+
+## Security Boundaries
+
+| Boundary | Guarantee | Agent / operator obligation |
+|---|---|---|
+| **Prompt injection** | Tool inputs are consumed verbatim as call arguments; the server does not re-prompt an LLM with them. The TronLink approval page renders parsed transaction fields, not the agent's free-text. | Treat any on-chain string returned (memos, revert reasons) as untrusted; branch on `txId` / `status` / `code`, not on prose. |
+| **Local HTTP listener** | The local approval server **binds to `127.0.0.1` only** (port `TRON_HTTP_PORT`, default 3386, auto-increments on conflict). It never accepts off-host connections. Each server session has a unique ID; old browser tabs from previous sessions are invalidated automatically. | Do not port-forward 3386 over a network. Do not run two copies of this server with the same `TRON_HTTP_PORT` on a shared box. |
+| **Outbound host allowlist (SSRF)** | The signer only talks to TronGrid endpoints listed in [Networks](#environment-variables) and to the local browser. Tools do not accept user-supplied URLs that get fetched. | Pin `TRON_NETWORK` and (optionally) `TRON_API_KEY` to known values in production. |
+| **API key handling (token passthrough)** | `TRON_API_KEY` is read from env at startup and used only on the outbound leg to TronGrid. It is **not** returned in any tool response, error `details`, or MCP resource. The server does not accept Authorization headers from MCP clients and forward them upstream. | Store the key in the MCP host's secret manager, not in plain `mcpServers` config committed to git. |
+| **HITL is mandatory for signing** | Every signing tool (`send_trx`, `send_trc20`, `sign_message`, `sign_typed_data`, `sign_transaction`) opens the TronLink approval page. **There is no programmatic bypass.** Private keys never leave TronLink. | Operators do not need to enforce HITL — it is structural. Do not attempt to harden by removing the browser layer. |
+| **Browser tab hijacking** | The approval page authenticates each request against the server session ID and ignores stale tabs. Heartbeat detection closes the session on browser disconnect. | If the same user runs multiple agents, ensure each spawns its own signer instance; cross-instance request mixing is prevented by session ID, but UI confusion is not. |
+| **Confused deputy** | The signer acts under the connected TronLink account; there is no per-call authorization scope from the MCP client. | One signer instance = one TronLink account; do not multiplex multiple end users through the same instance. |
 
 ## Environment Variables
 
@@ -3817,28 +3923,32 @@ Read commands return the queried data (balances, resources, etc.) under the same
 
 ## Exit Codes
 
-| Exit code | Meaning |
-| --------- | ------- |
-| `0` | Success — query returned, or transaction signed/broadcast |
-| non-zero | Failure — invalid input, user rejection, signing timeout, or broadcast/on-chain failure |
+The CLI exits with one of these stable codes so an automation script can branch on failure class without parsing prose. In `--json` mode the same classification appears in the output as well.
 
-In `--json` mode the failure reason is also included in the output.
+| Exit code | Class | Meaning | Retryable |
+| :---: | --- | --- | :---: |
+| `0` | Success | Query returned, or transaction signed and broadcast | n/a |
+| `1` | Invalid input | Validation failed before any wallet interaction (see [Input Validation](#input-validation)) | No — fix the input |
+| `2` | User rejected | User clicked Reject on the TronLink approval page | No — user declined |
+| `3` | Signing timeout | No approval within `--timeout <ms>` (default 5 min) | Yes — but **not** for a broadcast that may already be in flight |
+| `4` | On-chain failure | Broadcast succeeded but execution failed (`OUT_OF_ENERGY`, `REVERT`, `FAILED`) | No — the tx is final; address the root cause |
+| `5` | Network error | TronGrid / RPC request failed (transient) | Yes — transient; for write commands, confirm the previous tx didn't land first |
+
+> **Retry policy.** Read commands (any `balance` / `resource` / `--constant trigger`) are always safe to retry. For write/signing commands (transfer, stake, delegate, vote, writeable trigger), do **not** auto-retry after a submitted-but-uncertain result — re-issuing re-opens the signing prompt and may double-submit. Re-issue only after confirming the previous tx did not land (via explorer or `balance`).
 
 ## Errors
 
-Errors surface as a human-readable message and, in `--json` mode, in the output. The conditions the CLI reports:
+The error class an agent should branch on is given by the exit code above. The table below maps the conditions the CLI surfaces (in stderr and in `--json` output) to that class:
 
-| Condition | When | Retryable |
-| --- | --- | --- |
-| Invalid input | Validation fails before any wallet interaction (see [Input Validation](#input-validation)) | No — fix the input |
-| User rejected | The user clicks Reject on the TronLink approval page | No — the user declined |
-| Signing timeout | No approval within the timeout (default 5 min; `--timeout <ms>`) | Yes — re-issue the command |
-| `OUT_OF_ENERGY` | The account lacks Energy to execute the contract | No — obtain Energy first, then retry |
-| `REVERT` | The contract call reverted on-chain | No — the call itself failed |
-| `FAILED` | The transaction failed on-chain for another reason | Depends — inspect the reason |
-| Network error | A TronGrid / RPC request failed | Yes — transient |
-
-> **Retry policy:** read commands are always safe to retry. Write/signing commands must **not** be retried automatically after a submitted-but-uncertain result — re-issuing re-opens a signing prompt and may double-submit. Retry only after confirming the previous transaction did not land.
+| Condition | Exit code |
+| --- | :---: |
+| Argument parse / type / range failure | `1` |
+| User clicks Reject in TronLink | `2` |
+| `--timeout` elapsed without an approval | `3` |
+| `OUT_OF_ENERGY` returned by the node | `4` |
+| `REVERT` (Solidity revert) | `4` |
+| `FAILED` (other on-chain failure) | `4` |
+| TronGrid / RPC unreachable, 5xx, timeout | `5` |
 
 ## Safety & Side Effects
 
