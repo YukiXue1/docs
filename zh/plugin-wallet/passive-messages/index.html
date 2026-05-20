@@ -71,7 +71,7 @@
 &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;
-</code></pre> <p>下面分别对每个监听器进行详细说明，含返回值与截图。</p> <hr> <h3 id=tronlinktip-6963>检测 TronLink（TIP-6963）</h3> <p>事件标识：<code>TIP6963:announceProvider</code></p> <h4 id=_1>简介</h4> <p>TronLink 通过 TIP-6963 协议对外公告自己的 provider 对象。监听 <code>TIP6963:announceProvider</code> 并派发 <code>TIP6963:requestProvider</code>，即可安全地发现钱包，无需污染全局命名空间或轮询 <code>window.tron</code>。announce 事件返回的 provider 即为 <code>window.tron</code>。</p> <p>完整的 TIP-6963 规范请参考 <a href=../active-requests/#tronlinkprovider-tip-6963>主动请求 TronLink 插件功能</a>。</p> <h4 id=_2>技术规范</h4> <h5 id=_3>代码示例</h5> <pre><code class=language-javascript>let tron;
+</code></pre> <p>下面分别对每个监听器进行详细说明，含返回值与截图。</p> <hr> <h2 id=tronlinktip-6963>检测 TronLink（TIP-6963）</h2> <p>事件标识：<code>TIP6963:announceProvider</code></p> <h3 id=_1>简介</h3> <p>TronLink 通过 TIP-6963 协议对外公告自己的 provider 对象。监听 <code>TIP6963:announceProvider</code> 并派发 <code>TIP6963:requestProvider</code>，即可安全地发现钱包，无需污染全局命名空间或轮询 <code>window.tron</code>。announce 事件返回的 provider 即为 <code>window.tron</code>。</p> <p>完整的 TIP-6963 规范请参考 <a href=../active-requests/#tronlinkprovider-tip-6963>主动请求 TronLink 插件功能</a>。</p> <h3 id=_2>技术规范</h3> <h4 id=_3>代码示例</h4> <pre><code class=language-javascript>let tron;
 window.addEventListener('TIP6963:announceProvider', (e) =&gt; {
   if (e.detail.info &amp;&amp; e.detail.info.name === 'TronLink') {
     tron = e.detail.provider; // === window.tron
@@ -80,54 +80,54 @@ window.addEventListener('TIP6963:announceProvider', (e) =&gt; {
 });
 // 让已加载的钱包重新公告自己
 window.dispatchEvent(new Event('TIP6963:requestProvider'));
-</code></pre> <p>如果派发请求后 <code>tron</code> 仍为 undefined，则说明用户未安装 TronLink，可提示用户进行安装。</p> <h3 id=_4>账户改变消息</h3> <p>消息标识： <code>accountsChanged</code></p> <h4 id=_5>简介</h4> <p>以下情况会产生此消息</p> <ol> <li> <p>用户登录</p> </li> <li> <p>用户切换账号</p> </li> <li> <p>用户锁定钱包</p> </li> <li> <p>钱包超时自动锁定</p> </li> </ol> <h4 id=_6>技术规范</h4> <h5 id=_7>代码示例</h5> <pre><code class=language-typescript>window.tron.on('accountsChanged', (accountArray) =&gt; {
+</code></pre> <p>如果派发请求后 <code>tron</code> 仍为 undefined，则说明用户未安装 TronLink，可提示用户进行安装。</p> <h2 id=_4>账户改变消息</h2> <p>消息标识： <code>accountsChanged</code></p> <h3 id=_5>简介</h3> <p>以下情况会产生此消息</p> <ol> <li> <p>用户登录</p> </li> <li> <p>用户切换账号</p> </li> <li> <p>用户锁定钱包</p> </li> <li> <p>钱包超时自动锁定</p> </li> </ol> <h3 id=_6>技术规范</h3> <h4 id=_7>代码示例</h4> <pre><code class=language-typescript>window.tron.on('accountsChanged', (accountArray) =&gt; {
   // handler logic
   console.log('got accountsChanged event', accountArray)
 })
-</code></pre> <h5 id=_8>返回值</h5> <pre><code class=language-typescript>['your_current_account_address']
-</code></pre> <h6 id=_9>返回值示例</h6> <ol> <li>用户登录时，消息体内容为</li> </ol> <pre><code class=language-json>['TZ5XixnRyraxJJy996Q1sip85PHWuj4793'] // 当前的账号
-</code></pre> <ol> <li>用户切换账号时，消息体内容为</li> </ol> <pre><code class=language-json>['TRKb2nAnCBfwxnLxgoKJro6VbyA6QmsuXq'] // 新选择的账号地址
-</code></pre> <ol> <li>用户锁定和钱包超时自动锁定时，消息体内容为</li> </ol> <pre><code class=language-json>[]
-</code></pre> <blockquote> <p><strong>旧版用法（不推荐）：</strong> <a href=#setaccount>setAccount（3.x）</a></p> </blockquote> <h3 id=_10>网络改变消息</h3> <p>消息标识： <code>chainChanged</code></p> <h4 id=_11>简介</h4> <p>开发者可以监听此消息来获取网络的改变 以下情况会产生此消息</p> <ol> <li>用户改变网络的时候</li> </ol> <h4 id=_12>技术规范</h4> <h5 id=_13>代码示例</h5> <pre><code class=language-typescript>window.tron.on('chainChanged', ({chainId}) =&gt; {
+</code></pre> <h4 id=_8>返回值</h4> <pre><code class=language-typescript>['your_current_account_address']
+</code></pre> <h5 id=_9>返回值示例</h5> <ol> <li>用户登录时，消息体内容为</li> </ol> <pre><code class=language-javascript>['TZ5XixnRyraxJJy996Q1sip85PHWuj4793'] // 当前的账号
+</code></pre> <ol> <li>用户切换账号时，消息体内容为</li> </ol> <pre><code class=language-javascript>['TRKb2nAnCBfwxnLxgoKJro6VbyA6QmsuXq'] // 新选择的账号地址
+</code></pre> <ol> <li>用户锁定和钱包超时自动锁定时，消息体内容为</li> </ol> <pre><code class=language-javascript>[]
+</code></pre> <blockquote> <p><strong>旧版用法（不推荐）：</strong> <a href=#setaccount>setAccount（3.x）</a></p> </blockquote> <h2 id=_10>网络改变消息</h2> <p>消息标识： <code>chainChanged</code></p> <h3 id=_11>简介</h3> <p>开发者可以监听此消息来获取网络的改变 以下情况会产生此消息</p> <ol> <li>用户改变网络的时候</li> </ol> <h3 id=_12>技术规范</h3> <h4 id=_13>代码示例</h4> <pre><code class=language-typescript>window.tron.on('chainChanged', ({chainId}) =&gt; {
   // handler logic
   console.log('got chainChanged event', chainId)
 })
-</code></pre> <h5 id=_14>返回值</h5> <pre><code class=language-json>{
+</code></pre> <h4 id=_14>返回值</h4> <pre><code class=language-typescript>{
   chainId: string;
 }
-</code></pre> <ul> <li>目前只支持如下chainId：</li> <li>mainnet(主网): <code>0x2b6653dc</code></li> <li>shasta(shasta测试网): <code>0x94a9059e</code></li> <li>nile(nile测试网): <code>0xcd8690dc</code></li> <li>chainId的值大小写敏感。</li> </ul> <blockquote> <p><strong>旧版用法（不推荐）：</strong> <a href=#setnode>setNode（3.x）</a> 或 <a href=#tabreply>tabReply（3.x）</a></p> </blockquote> <h3 id=tronlink_1>TronLink可以提供服务的消息</h3> <p>消息标识： <code>connect</code></p> <h4 id=_15>简介</h4> <p>如果 TronLink 及 <code>window.tron</code> 对象可用，此事件会在 provider 初始化完成后被派发一次（包含 <code>disconnect</code> 之后重新连接的场景）。</p> <p><strong>时序注意</strong>：该事件在插件 init 完成后约 100ms 派发。如果 DApp 的监听器在插件 init 之后才注册（例如页面加载较慢、通过 TIP-6963 <code>requestProvider</code> 才拿到 provider），则可能错过 <code>connect</code> 事件。此时直接把"provider 存在"视作已连接，并结合 <code>tron.tronWeb?.ready</code> 判断当前状态即可。</p> <h4 id=_16>技术规范</h4> <h5 id=_17>代码示例</h5> <pre><code class=language-typescript>window.tron.on('connect', ({chainId}) =&gt; {
+</code></pre> <ul> <li>目前只支持如下chainId：</li> <li>mainnet(主网): <code>0x2b6653dc</code></li> <li>shasta(shasta测试网): <code>0x94a9059e</code></li> <li>nile(nile测试网): <code>0xcd8690dc</code></li> <li>chainId的值大小写敏感。</li> </ul> <blockquote> <p><strong>旧版用法（不推荐）：</strong> <a href=#setnode>setNode（3.x）</a> 或 <a href=#tabreply>tabReply（3.x）</a></p> </blockquote> <h2 id=tronlink_1>TronLink可以提供服务的消息</h2> <p>消息标识： <code>connect</code></p> <h3 id=_15>简介</h3> <p>如果 TronLink 及 <code>window.tron</code> 对象可用，此事件会在 provider 初始化完成后被派发一次（包含 <code>disconnect</code> 之后重新连接的场景）。</p> <p><strong>时序注意</strong>：该事件在插件 init 完成后约 100ms 派发。如果 DApp 的监听器在插件 init 之后才注册（例如页面加载较慢、通过 TIP-6963 <code>requestProvider</code> 才拿到 provider），则可能错过 <code>connect</code> 事件。此时直接把"provider 存在"视作已连接，并结合 <code>tron.tronWeb?.ready</code> 判断当前状态即可。</p> <h3 id=_16>技术规范</h3> <h4 id=_17>代码示例</h4> <pre><code class=language-typescript>window.tron.on('connect', ({chainId}) =&gt; {
   // handler logic
   console.log('got connect event', chainId)
 })
-</code></pre> <blockquote> <p><strong>旧版用法（不推荐）：</strong> <a href=#connectweb>connectWeb（postMessage）</a> 或 <a href=#acceptweb>acceptWeb（postMessage）</a></p> </blockquote> <h3 id=_18>断开连接网站消息</h3> <p>消息标识： <code>disconnect</code></p> <h4 id=_19>简介</h4> <p>TIP-1193 规范规定：当 provider 与所有链断开连接时，应派发 <code>disconnect</code> 事件并携带 <code>ProviderRpcError</code> 对象。</p> <p><strong>当前 TronLink 行为</strong>：TronLink 目前 <strong>不会</strong> 在 provider 上派发 <code>disconnect</code>。当用户断开网站（或钱包被锁定）时，会通过 <code>accountsChanged</code> 派发空数组 <code>[]</code> 来表示——在 TronLink 实现 <code>disconnect</code> 之前，请以此作为断连信号。</p> <h4 id=_20>技术规范</h4> <h5 id=_21>代码示例</h5> <pre><code class=language-typescript>// 规范保留事件——注册监听器无害，但当前不会被触发。
+</code></pre> <blockquote> <p><strong>旧版用法（不推荐）：</strong> <a href=#connectweb>connectWeb（postMessage）</a> 或 <a href=#acceptweb>acceptWeb（postMessage）</a></p> </blockquote> <h2 id=_18>断开连接网站消息</h2> <p>消息标识： <code>disconnect</code></p> <h3 id=_19>简介</h3> <p>TIP-1193 规范规定：当 provider 与所有链断开连接时，应派发 <code>disconnect</code> 事件并携带 <code>ProviderRpcError</code> 对象。</p> <p><strong>当前 TronLink 行为</strong>：TronLink 目前 <strong>不会</strong> 在 provider 上派发 <code>disconnect</code>。当用户断开网站（或钱包被锁定）时，会通过 <code>accountsChanged</code> 派发空数组 <code>[]</code> 来表示——在 TronLink 实现 <code>disconnect</code> 之前，请以此作为断连信号。</p> <h3 id=_20>技术规范</h3> <h4 id=_21>代码示例</h4> <pre><code class=language-typescript>// 规范保留事件——注册监听器无害，但当前不会被触发。
 window.tron.on('disconnect', (providerRpcError) =&gt; {
   console.error(providerRpcError); // { code: 4900, message: 'Disconnected' }
 })
-</code></pre> <blockquote> <p><strong>旧版用法（不推荐）：</strong> <a href=#disconnectweb>disconnectWeb（postMessage）</a> 或 <a href=#rejectweb>rejectWeb（postMessage）</a></p> </blockquote> <h3 id=_22>历史遗留问题</h3> <p>以下消息通过 <code>window.postMessage</code> 派发，DApp 接收到的内容是一个 <code>MessageEvent</code>，事件结构可参考 <a href=https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent>MessageEvent 的 MDN 文档</a>。</p> <p>以下四个消息为了兼容 3.x 保留，并在未来版本将会被废弃：</p> <ol> <li> <p>用户拒绝连接消息<code>rejectWeb</code></p> </li> <li> <p>用户断连网站消息<code>disconnectWeb</code></p> </li> <li> <p>用户确定连接消息<code>acceptWeb</code></p> </li> <li> <p>用户主动连接网站消息<code>connectWeb</code></p> </li> </ol> <h4 id=rejectweb>用户拒绝连接消息 rejectWeb</h4> <p>消息标识： <code>rejectWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>dapp请求连接，用户在弹窗中拒绝连接后</li> </ol> <p><img alt=image src=../../../images/zh_plugin-wallet_rejectWeb.png></p> <p>开发者可以监听此消息来获取用户拒绝连接消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
+</code></pre> <blockquote> <p><strong>旧版用法（不推荐）：</strong> <a href=#disconnectweb>disconnectWeb（postMessage）</a> 或 <a href=#rejectweb>rejectWeb（postMessage）</a></p> </blockquote> <h2 id=_22>历史遗留问题</h2> <p>以下消息通过 <code>window.postMessage</code> 派发，DApp 接收到的内容是一个 <code>MessageEvent</code>，事件结构可参考 <a href=https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent>MessageEvent 的 MDN 文档</a>。</p> <p>以下四个消息为了兼容 3.x 保留，并在未来版本将会被废弃：</p> <ol> <li> <p>用户拒绝连接消息<code>rejectWeb</code></p> </li> <li> <p>用户断连网站消息<code>disconnectWeb</code></p> </li> <li> <p>用户确定连接消息<code>acceptWeb</code></p> </li> <li> <p>用户主动连接网站消息<code>connectWeb</code></p> </li> </ol> <h3 id=rejectweb>用户拒绝连接消息 rejectWeb</h3> <p>消息标识： <code>rejectWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>dapp请求连接，用户在弹窗中拒绝连接后</li> </ol> <p><img alt=image src=../../../images/zh_plugin-wallet_rejectWeb.png></p> <p>开发者可以监听此消息来获取用户拒绝连接消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
   if (e.data.message &amp;&amp; e.data.message.action == &quot;rejectWeb&quot;) {
       // handler logic
       console.log('got rejectWeb event', e.data)
   }
 })
-</code></pre> <h4 id=disconnectweb>用户断连网站消息 disconnectWeb</h4> <p>消息标识： <code>disconnectWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>用户主动断开连接</li> </ol> <p><img alt=image src=../../../images/zh_plugin-wallet_disconnectWeb.png></p> <p>开发者可以监听此消息来获取用户主动断连消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
+</code></pre> <h3 id=disconnectweb>用户断连网站消息 disconnectWeb</h3> <p>消息标识： <code>disconnectWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>用户主动断开连接</li> </ol> <p><img alt=image src=../../../images/zh_plugin-wallet_disconnectWeb.png></p> <p>开发者可以监听此消息来获取用户主动断连消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
   if (e.data.message &amp;&amp; e.data.message.action == &quot;disconnectWeb&quot;) {
       // handler logic
       console.log('got disconnectWeb event', e.data)
   }
 })
-</code></pre> <h4 id=acceptweb>用户确定连接消息 acceptWeb</h4> <p>消息标识： <code>acceptWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>用户确定连接消息</li> </ol> <p><img alt=image src=../../../images/zh_plugin-wallet_acceptWeb.png></p> <p>开发者可以监听此消息来获取用户确定连接消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
+</code></pre> <h3 id=acceptweb>用户确定连接消息 acceptWeb</h3> <p>消息标识： <code>acceptWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>用户确定连接消息</li> </ol> <p><img alt=image src=../../../images/zh_plugin-wallet_acceptWeb.png></p> <p>开发者可以监听此消息来获取用户确定连接消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
   if (e.data.message &amp;&amp; e.data.message.action == &quot;acceptWeb&quot;) {
       // handler logic
       console.log('got acceptWeb event', e.data)
   }
 })
-</code></pre> <h4 id=connectweb>用户主动连接网站消息 connectWeb</h4> <p>消息标识： <code>connectWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>用户主动连接网站时</li> </ol> <p><img alt=image src=../../../images/zh_plugin-wallet_connectWeb.png></p> <p>开发者可以监听此消息来获取用户主动连接网站消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
+</code></pre> <h3 id=connectweb>用户主动连接网站消息 connectWeb</h3> <p>消息标识： <code>connectWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>用户主动连接网站时</li> </ol> <p><img alt=image src=../../../images/zh_plugin-wallet_connectWeb.png></p> <p>开发者可以监听此消息来获取用户主动连接网站消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
   if (e.data.message &amp;&amp; e.data.message.action == &quot;connectWeb&quot;) {
       // handler logic
       console.log('got connectWeb event', e.data)
   }
 })
-</code></pre> <hr> <h3 id=3x>已废弃的 3.x 事件（主链 / 侧链）</h3> <p>以下事件是 TronLink 3.x 通过原始 <code>window.postMessage</code> 用于检测当前网络与账户的方式。它们已被 <code>window.tron</code> 上的 <code>accountsChanged</code> / <code>chainChanged</code> 取代，仅供存量代码参考 — 新接入请勿使用。</p> <h4 id=tabreply>网络初始化（<code>tabReply</code>）</h4> <p>页面加载后 TronLink 完成初始化时触发一次。检查 <code>e.data.message.data.data.node.chain</code>：值为 <code>'_'</code> 表示主链，其他值表示对应侧链标识。</p> <pre><code class=language-javascript>window.addEventListener('message', function (e) {
+</code></pre> <hr> <h2 id=3x>已废弃的 3.x 事件（主链 / 侧链）</h2> <p>以下事件是 TronLink 3.x 通过原始 <code>window.postMessage</code> 用于检测当前网络与账户的方式。它们已被 <code>window.tron</code> 上的 <code>accountsChanged</code> / <code>chainChanged</code> 取代，仅供存量代码参考 — 新接入请勿使用。</p> <h3 id=tabreply>网络初始化（<code>tabReply</code>）</h3> <p>页面加载后 TronLink 完成初始化时触发一次。检查 <code>e.data.message.data.data.node.chain</code>：值为 <code>'_'</code> 表示主链，其他值表示对应侧链标识。</p> <pre><code class=language-javascript>window.addEventListener('message', function (e) {
   if (e.data.message &amp;&amp; e.data.message.action == &quot;tabReply&quot;) {
     if (e.data.message.data.data.node.chain == '_') {
       console.log(&quot;tronLink 当前选择主链&quot;);
@@ -136,12 +136,12 @@ window.tron.on('disconnect', (providerRpcError) =&gt; {
     }
   }
 });
-</code></pre> <h4 id=setaccount>账户切换（<code>setAccount</code>）</h4> <p>用户切换当前账户时触发。</p> <pre><code class=language-javascript>window.addEventListener('message', function (e) {
+</code></pre> <h3 id=setaccount>账户切换（<code>setAccount</code>）</h3> <p>用户切换当前账户时触发。</p> <pre><code class=language-javascript>window.addEventListener('message', function (e) {
   if (e.data.message &amp;&amp; e.data.message.action == &quot;setAccount&quot;) {
     console.log(&quot;当前地址：&quot;, e.data.message.data.address);
   }
 });
-</code></pre> <h4 id=setnode>网络切换（<code>setNode</code>）</h4> <p>用户切换网络时触发。<code>chain == '_'</code> 的判断方式与 <code>tabReply</code> 相同。</p> <pre><code class=language-javascript>window.addEventListener('message', function (e) {
+</code></pre> <h3 id=setnode>网络切换（<code>setNode</code>）</h3> <p>用户切换网络时触发。<code>chain == '_'</code> 的判断方式与 <code>tabReply</code> 相同。</p> <pre><code class=language-javascript>window.addEventListener('message', function (e) {
   if (e.data.message &amp;&amp; e.data.message.action == &quot;setNode&quot;) {
     if (e.data.message.data.node.chain == '_') {
       console.log(&quot;tronLink 当前选择主链&quot;);
