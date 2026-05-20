@@ -103,25 +103,25 @@ window.dispatchEvent(new Event('TIP6963:requestProvider'));
 window.tron.on('disconnect', (providerRpcError) =&gt; {
   console.error(providerRpcError); // { code: 4900, message: 'Disconnected' }
 })
-</code></pre> <blockquote> <p><strong>旧版用法（不推荐）：</strong> <a href=#disconnectweb>disconnectWeb（postMessage）</a> 或 <a href=#rejectweb>rejectWeb（postMessage）</a></p> </blockquote> <h2 id=_22>历史遗留问题</h2> <p>以下消息通过 <code>window.postMessage</code> 派发，DApp 接收到的内容是一个 <code>MessageEvent</code>，事件结构可参考 <a href=https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent>MessageEvent 的 MDN 文档</a>。</p> <p>以下四个消息为了兼容 3.x 保留，并在未来版本将会被废弃：</p> <ol> <li> <p>用户拒绝连接消息<code>rejectWeb</code></p> </li> <li> <p>用户断连网站消息<code>disconnectWeb</code></p> </li> <li> <p>用户确定连接消息<code>acceptWeb</code></p> </li> <li> <p>用户主动连接网站消息<code>connectWeb</code></p> </li> </ol> <h3 id=rejectweb>用户拒绝连接消息 rejectWeb</h3> <p>消息标识： <code>rejectWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>dapp请求连接，用户在弹窗中拒绝连接后</li> </ol> <p><img alt=image src=../../../images/zh_plugin-wallet_rejectWeb.png></p> <p>开发者可以监听此消息来获取用户拒绝连接消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
+</code></pre> <blockquote> <p><strong>旧版用法（不推荐）：</strong> <a href=#disconnectweb>disconnectWeb（postMessage）</a> 或 <a href=#rejectweb>rejectWeb（postMessage）</a></p> </blockquote> <h2 id=_22>历史遗留问题</h2> <p>以下消息通过 <code>window.postMessage</code> 派发，DApp 接收到的内容是一个 <code>MessageEvent</code>，事件结构可参考 <a href=https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent>MessageEvent 的 MDN 文档</a>。</p> <p>以下四个消息为了兼容 3.x 保留，并在未来版本将会被废弃：</p> <ol> <li> <p>用户拒绝连接消息<code>rejectWeb</code></p> </li> <li> <p>用户断连网站消息<code>disconnectWeb</code></p> </li> <li> <p>用户确定连接消息<code>acceptWeb</code></p> </li> <li> <p>用户主动连接网站消息<code>connectWeb</code></p> </li> </ol> <h3 id=rejectweb>用户拒绝连接消息 rejectWeb</h3> <p>消息标识： <code>rejectWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>dapp请求连接，用户在弹窗中拒绝连接后</li> </ol> <p><img alt='TronLink 连接弹窗，用户点击"拒绝"触发 rejectWeb 事件' src=../../../images/zh_plugin-wallet_rejectWeb.png></p> <p>开发者可以监听此消息来获取用户拒绝连接消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
   if (e.data.message &amp;&amp; e.data.message.action == &quot;rejectWeb&quot;) {
       // handler logic
       console.log('got rejectWeb event', e.data)
   }
 })
-</code></pre> <h3 id=disconnectweb>用户断连网站消息 disconnectWeb</h3> <p>消息标识： <code>disconnectWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>用户主动断开连接</li> </ol> <p><img alt=image src=../../../images/zh_plugin-wallet_disconnectWeb.png></p> <p>开发者可以监听此消息来获取用户主动断连消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
+</code></pre> <h3 id=disconnectweb>用户断连网站消息 disconnectWeb</h3> <p>消息标识： <code>disconnectWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>用户主动断开连接</li> </ol> <p><img alt='TronLink 已连接站点列表，用户对某 DApp 点击"断开"触发 disconnectWeb 事件' src=../../../images/zh_plugin-wallet_disconnectWeb.png></p> <p>开发者可以监听此消息来获取用户主动断连消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
   if (e.data.message &amp;&amp; e.data.message.action == &quot;disconnectWeb&quot;) {
       // handler logic
       console.log('got disconnectWeb event', e.data)
   }
 })
-</code></pre> <h3 id=acceptweb>用户确定连接消息 acceptWeb</h3> <p>消息标识： <code>acceptWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>用户确定连接消息</li> </ol> <p><img alt=image src=../../../images/zh_plugin-wallet_acceptWeb.png></p> <p>开发者可以监听此消息来获取用户确定连接消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
+</code></pre> <h3 id=acceptweb>用户确定连接消息 acceptWeb</h3> <p>消息标识： <code>acceptWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>用户确定连接消息</li> </ol> <p><img alt='TronLink 连接弹窗，用户点击"接受"触发 acceptWeb 事件' src=../../../images/zh_plugin-wallet_acceptWeb.png></p> <p>开发者可以监听此消息来获取用户确定连接消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
   if (e.data.message &amp;&amp; e.data.message.action == &quot;acceptWeb&quot;) {
       // handler logic
       console.log('got acceptWeb event', e.data)
   }
 })
-</code></pre> <h3 id=connectweb>用户主动连接网站消息 connectWeb</h3> <p>消息标识： <code>connectWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>用户主动连接网站时</li> </ol> <p><img alt=image src=../../../images/zh_plugin-wallet_connectWeb.png></p> <p>开发者可以监听此消息来获取用户主动连接网站消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
+</code></pre> <h3 id=connectweb>用户主动连接网站消息 connectWeb</h3> <p>消息标识： <code>connectWeb</code></p> <p>以下情况会产生此消息</p> <ol> <li>用户主动连接网站时</li> </ol> <p><img alt='TronLink 已连接站点列表，用户主动对某授权 DApp 点击"连接"触发 connectWeb 事件' src=../../../images/zh_plugin-wallet_connectWeb.png></p> <p>开发者可以监听此消息来获取用户主动连接网站消息</p> <pre><code class=language-typescript>window.addEventListener('message', function (e) {
   if (e.data.message &amp;&amp; e.data.message.action == &quot;connectWeb&quot;) {
       // handler logic
       console.log('got connectWeb event', e.data)

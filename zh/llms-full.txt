@@ -1,0 +1,4385 @@
+# TronLink 开发者文档 —— 全文
+
+> 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 /docs/llms.txt 的 Localized 段。
+
+- Generated: 2026-05-20T13:00:00Z
+- Commit: 3c5a22ffb734
+- Language: zh
+- Pages: 23
+- Token estimate: ~29,747 (chars / 4)
+---
+
+<!-- source: docs/introduction.zh.md | url: /docs/zh/introduction/ -->
+
+# 介绍
+
+波场是遵循“让互联网重新去中心化“这一价值理念，由众多区块链技术开发者设计开发的强大区块链生态系统。
+
+TronLink 钱包是链接波场 TRON 生态的去中心化钱包，使用多层加密算法本地存储私钥/助记词，确保用户数据安全；支持 TRX 以及 TRC-10、TRC-20、TRC-721 全部币种，服务全球波场 TRON 用户；提供安全的 DApp 浏览器，支持 Tron DApp 在浏览器中运行。
+
+---
+
+<!-- source: docs/hd-wallets.zh.md | url: /docs/zh/hd-wallets/ -->
+
+# HD 钱包
+### 什么是 HD 钱包
+
+HD 钱包是在 BIP32 中提出的为了避免管理一堆私钥的麻烦提出的分层推导方案。 钱包的生成是从单一个seed 产生一个树状结构存储多组 keypairs(私钥和公钥)，为了方便记忆，将 seed 用方便记忆和书写的单词表示，由12个单词组成，称为 mnemonic code(phrase)。
+
+### TronLink 钱包-HD 钱包
+
+TronLink 钱包支持 BIP32、BIP44 协议，并依据 BIP44 的分层路径方案，生成对应的 TRON 地址。
+
+---
+
+<!-- source: docs/dapp/getting-started.zh.md | url: /docs/zh/dapp/getting-started/ -->
+
+# 开始开发
+
+本文档以端到端方式带你完成 DApp 与 TronLink 钱包的对接 — 从检测钱包、请求授权，到签名并广播一笔交易。
+
+## 概述
+
+TronLink 是一款面向 TRON 网络的浏览器扩展钱包。DApp 只要集成 TronLink，便能与 TRON 网络进行通信 — TronLink 会向每个页面注入 `window.tron` 对象，对外暴露 `tronWeb` 实例、`request` 方法以及 `on` / `removeListener` 等事件订阅能力。
+
+## `window.tron` 对象
+
+```typescript
+interface TronProvider {
+  isTronLink: true;
+  request: (args: { method: string; params?: any }) => Promise<any>;       // 调用钱包能力（如 eth_requestAccounts）
+  tronWeb: TronWeb | false;                                                // 用户授权后与当前账户/网络绑定；授权前为 `false`
+  on(event: string, listener: (...args: any[]) => void): this;             // 订阅 provider 事件（accountsChanged / chainChanged / connect）
+  removeListener(event: string, listener: (...args: any[]) => void): this;
+}
+```
+
+用户完成授权后，`window.tron.tronWeb` 即可用于构建、签名与广播交易。
+
+## 检测 TronLink（TIP-6963）
+
+TIP-6963 是检测 TronLink（及其他 TRON 钱包）的推荐方式，避免污染全局命名空间。监听 `TIP6963:announceProvider` 事件，并派发 `TIP6963:requestProvider` 让已安装的钱包主动声明自己。
+
+```javascript
+let tronProvider;
+
+window.addEventListener("TIP6963:announceProvider", (e) => {
+  if (e.detail.info && e.detail.info.name === "TronLink") {
+    tronProvider = e.detail.provider; // === window.tron
+  }
+});
+
+window.dispatchEvent(new Event("TIP6963:requestProvider"));
+```
+
+如果派发请求后 `tronProvider` 仍为 undefined，则说明用户未安装 TronLink，可提示用户进行安装。
+
+## 请求授权
+
+通过 `eth_requestAccounts` 请求用户授权连接钱包。用户同意时 Promise resolve 为一个仅含当前选中地址的数组；失败时 Promise reject，错误对象形如 `{ code, message }`。
+
+```typescript
+try {
+  const accounts: string[] = await tronProvider.request({ method: "eth_requestAccounts" });
+  console.log("已连接：", accounts[0]);
+} catch (err) {
+  // err 结构：{ code: number, message: string }
+  console.warn("授权失败：", err);
+}
+```
+
+| code   | 说明 |
+| ------ | ---- |
+| 4001   | 用户拒绝请求 —— 点击**拒绝**、关闭弹窗，或请求不是来自当前活跃标签页 |
+| -32000 | 钱包处于锁定状态时，同一来源 20 秒内重复发起 `eth_requestAccounts`（频控） |
+| 4200   | 不支持的方法 |
+
+完整的 TIP-1102（`eth_requestAccounts`）规范请参考 [主动请求 TronLink 插件功能](../plugin-wallet/active-requests.md)；旧版 `tron_requestAccounts` 连接方式也在同一页内。
+
+## 获取 `tronWeb` 实例
+
+简化版 helper —— 如果用户已授权过当前 DApp，直接复用已有的 `tronWeb` 实例，否则发起授权请求。
+
+```javascript
+async function getTronWeb() {
+  if (!tronProvider) throw new Error("未检测到 TronLink");
+  if (tronProvider.tronWeb?.ready) {
+    return tronProvider.tronWeb;
+  }
+  await tronProvider.request({ method: "eth_requestAccounts" });
+  return tronProvider.tronWeb;
+}
+```
+
+`tronProvider.tronWeb` 通常在 `eth_requestAccounts` resolve 后即可使用。后续用户切换账号、锁屏、切换网络等情况，请在 provider 上监听 `accountsChanged` / `chainChanged` 事件，完整事件清单见 [被动接收 TronLink 插件的消息](../plugin-wallet/passive-messages.md)。
+
+获取 `tronWeb` 实例后，即可执行链上交互：TRX/TRC20 转账、多签交易、消息签名、合约调用等。完整的 `tronWeb` API 用法请参考 [TronWeb 文档](https://tronweb.network/docu/docs/intro)。
+
+## 端到端示例：签名并广播一笔 TRX 转账
+
+下面这个独立的 HTML 示例通过 TIP-6963 检测 TronLink、请求授权、构建一笔 TRX 转账、在 TronLink 弹窗中提示用户签名，然后将签名后的交易广播到链上。
+
+```html
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <title>TronLink Demo</title>
+  </head>
+  <body>
+    <button onclick="connect()">连接 TronLink</button>
+    <script>
+      let tronProvider;
+
+      window.addEventListener("TIP6963:announceProvider", (e) => {
+        if (e.detail.info && e.detail.info.name === "TronLink") {
+          tronProvider = e.detail.provider;
+        }
+      });
+      window.dispatchEvent(new Event("TIP6963:requestProvider"));
+
+      async function connect() {
+        if (!tronProvider) return alert("未检测到 TronLink！");
+        try {
+          const accounts = await tronProvider.request({
+            method: "eth_requestAccounts",
+          });
+          console.log("已连接：", accounts[0]);
+
+          const tronweb = tronProvider.tronWeb;
+          const from = tronweb.defaultAddress.base58;
+          const to = "TN9RRaXkCFtTXRso2GdTZxSxxwufzxLQPP"; // 请替换为真实的收款地址
+
+          // 构建一笔 10 SUN 的 TRX 转账（金额单位为 SUN：1 TRX = 1_000_000 SUN）
+          const tx = await tronweb.transactionBuilder.sendTrx(to, 10, from);
+
+          // 弹出 TronLink 确认窗口
+          const signedTx = await tronweb.trx.sign(tx);
+
+          // 广播到网络
+          const broadcastTx = await tronweb.trx.sendRawTransaction(signedTx);
+          console.log(broadcastTx);
+        } catch (error) {
+          // 用户拒绝时为 { code: 4001, message: "User rejected the request." }
+          console.error(error);
+        }
+      }
+    </script>
+  </body>
+</html>
+```
+
+## 相关文档
+
+- [主动请求 TronLink 插件功能](../plugin-wallet/active-requests.md) — 完整的请求/响应说明
+- [被动接收 TronLink 插件的消息](../plugin-wallet/passive-messages.md) — 账户 / 网络变化事件
+- [普通转账](transfer.md)、[多签转账](multi-sign-transfer.md)、[消息签名](message-signing.md)、[Stake 2.0](stake2.md)
+- [TronWeb 文档](https://tronweb.network/docu/docs/intro)
+
+---
+
+<!-- source: docs/ai-support/ai-llms.zh.md | url: /docs/zh/ai-support/ai-llms/ -->
+
+# AI 支持
+
+TronLink 为 AI 智能体与基于 LLM 的应用提供了完整的工具链：MCP 服务、智能体技能集、命令行工具，以及独立的签名 SDK。本页是入口——先看这里，再进入你需要的具体工具。
+
+## 机器可读资源
+
+供直接读取文档的 LLM / AI 智能体使用：
+
+- [llms.txt](/docs/llms.txt) —— 本文档的精选索引，遵循 [llmstxt.org](https://llmstxt.org/) 规范
+- [llms-full.txt](/docs/llms-full.txt) —— 所有英文页面的全文聚合，便于单次抓取
+
+## 工具
+
+- [MCP Server TronLink](mcp-server-tronlink.md) —— 提供链上、多签、GasFree 工具的 MCP 服务（Playwright + Direct API 两种模式）
+- [TronLink MCP Core](tronlink-mcp-core.md) —— MCP 服务背后的框架库：会话管理、能力接口、工具定义、流程配方（flow recipe）
+- [TronLink Skills](tronlink-skills.md) —— 覆盖钱包、代币、行情、兑换、资源、质押等命令的智能体技能集
+- [MCP TronLink Signer](mcp-tronlink-signer.md) —— 封装签名 SDK、用于签名与广播的轻量 MCP 服务
+- [TronLink Signer](tronlink-signer.md) —— 独立签名 SDK（`connect`、`sendTrx`、`sendTrc20`、`signMessage`、`signTypedData`）
+- [TronLink CLI](tronlink-cli.md) —— 用于查询、转账、质押、代理、投票的命令行工具
+
+## 如何选择
+
+- 构建能读写链上的自治智能体 → 从 [MCP Server TronLink](mcp-server-tronlink.md) 或 [Skills](tronlink-skills.md) 入手。
+- 把签名能力嵌入自己的服务 → 用 [Signer SDK](tronlink-signer.md) 或它的 [MCP 封装](mcp-tronlink-signer.md)。
+- 在终端里脚本化执行一次性操作 → 用 [CLI](tronlink-cli.md)。
+- 扩展或自建 MCP 服务 → 基于 [TronLink MCP Core](tronlink-mcp-core.md) 构建。
+
+---
+
+<!-- source: docs/mobile/asset-management.zh.md | url: /docs/zh/mobile/asset-management/ -->
+
+# 资产管理
+
+管理您的资产，并支持自定义通证
+
+
+## 自定义通证
+
+### **什么是自定义通证**
+
+自定义通证功能可以让用户将部分未在 TronScan 录入为通证的 TRC20、TRC721 资产，在 TronLink 钱包中手动添加为自定义通证，从而帮助用户查找和管理该通证资产。
+
+### **添加自定义通证**
+
+添加：首页-->我的全部资产-->添加自定义通证
+
+可能的限制：在 TronLink 钱包中添加为自定义通证后，部分合约可能会因为合约代码中缺少关键的 abi，如：transfer、approve 等，而导致相应的转账，授权等操作无法进行。TronLink 钱包会给出对应的提示。
+
+与 Tronscan 同步：如果此自定义通证在 Tronscan 录入后，TronLink 钱包会提示与 Tronscan 同步，选择同步后，此自定义通证信息同步为 Tronscan 对应通证信息。
+
+---
+
+<!-- source: docs/mobile/deeplink.zh.md | url: /docs/zh/mobile/deeplink/ -->
+
+# DeepLink
+
+DApp、H5 应用可以使用 DeepLink 方式拉起 TronLink App 进行打开钱包、登录、转账、签名交易、字符串签名、在钱包中打开 DApp 等操作。
+
+![移动端 DeepLink 概览](../images/zh_yi-dong-duan_deeplink_img_0.jpg)
+
+<style>
+img {
+  max-width: 100%!important;
+}
+</style>
+
+下文每个操作中，`tronlinkoutside://pull.activity?param={}` 的 `param` 参数都是 JSON 格式的协议数据。注意：JSON 字符串放入链接前需要进行 urlencode 编码。
+
+## 打开钱包
+
+使用 DeepLink 方式唤起钱包。可用版本：TronLink v4.10.0 起。
+
+```html
+<a href='tronlinkoutside://pull.activity?param={}'>Open Tronlink</a>
+```
+
+`param`（请求）：
+
+```json
+{
+  "action": "open",
+  "protocol": "TronLink",
+  "version": "1.0"
+}
+```
+
+## 打开 DApp
+
+使用 DeepLink 方式唤起钱包，并在 DApp 浏览器中打开 DApp。可用版本：TronLink v4.10.0 起。
+
+```html
+<a href='tronlinkoutside://pull.activity?param={}'>Open DApp</a>
+```
+
+`param`（请求），`url` 为目标 DApp：
+
+```json
+{
+  "url": "https://www.tronlink.org/",
+  "action": "open",
+  "protocol": "TronLink",
+  "version": "1.0"
+}
+```
+
+## 登录授权
+
+使用 DeepLink 方式唤起钱包，并在钱包中选择获取钱包地址。可用版本：TronLink v4.11.0 起。
+
+```html
+<a href='tronlinkoutside://pull.activity?param={}'>Login/Request Address</a>
+```
+
+`param`（请求）：
+
+```json
+{
+  "url": "https://justlend.org/#/home",
+  "callbackUrl": "https://your-backend.example.com/api/tron/v1/callback",
+  "dappIcon": "https://your-dapp.example.com/icon.png",
+  "dappName": "Test demo",
+  "protocol": "TronLink",
+  "version": "1.0",
+  "chainId": "0x2b6653dc",
+  "action": "login",
+  "actionId": "e5471a9c-b0f1-418b-8634-3de60d68a288"
+}
+```
+
+回调：
+
+```json
+{
+  "actionId": "e5471a9c-b0f1-418b-8634-3de60d68a288",
+  "address": "TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig",
+  "code": 0,
+  "id": 1780812177,
+  "message": "success"
+}
+```
+
+## 转账
+
+使用 DeepLink 方式唤起 TronLink，并发送转账数据，在钱包中转账并广播。可用版本：TronLink v4.11.0 起。
+
+```html
+<a href='tronlinkoutside://pull.activity?param={}'>Transfer</a>
+```
+
+`param`（请求）：
+
+```json
+{
+  "url": "https://justlend.org/#/home",
+  "callbackUrl": "https://your-backend.example.com/api/tron/v1/callback",
+  "dappIcon": "https://your-dapp.example.com/icon.png",
+  "dappName": "Test demo",
+  "protocol": "TronLink",
+  "version": "1.0",
+  "chainId": "0x2b6653dc",
+  "memo": "Reward",
+  "from": "TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig",
+  "to": "TXd9duqtcyyj4pBCKvXKNqmazxxDw5SdBa",
+  "loginAddress": "TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig",
+  "tokenId": "0",
+  "contract": "",
+  "amount": "20",
+  "action": "transfer",
+  "actionId": "408170fc-7919-4459-be5e-05a9d4b4065e"
+}
+```
+
+回调（`actionId` 与请求一致）：
+
+```json
+{
+  "actionId": "408170fc-7919-4459-be5e-05a9d4b4065e",
+  "code": 0,
+  "id": 1142367107,
+  "message": "success",
+  "transactionHash": "e8ffe9b92c771e66999732b810bf2493be389464191040d8666a26dc449fa5f0"
+}
+```
+
+## 交易签名
+
+可用版本：TronLink v4.11.0 起。
+
+```html
+<a href='tronlinkoutside://pull.activity?param={}'>Sign transaction</a>
+```
+
+`param`（请求）：
+
+```json
+{
+  "url": "https://justlend.org/#/home",
+  "callbackUrl": "https://your-backend.example.com/api/tron/v1/callback",
+  "dappIcon": "https://your-dapp.example.com/icon.png",
+  "dappName": "Test demo",
+  "protocol": "TronLink",
+  "version": "1.0",
+  "chainId": "0x2b6653dc",
+  "action": "sign",
+  "loginAddress": "TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig",
+  "method": "transfer(address,uint256)",
+  "signType": "signTransaction",
+  "data": "{\"visible\":false,\"txID\":\"dcfaf2c2d75d91994f9a23623e905eaa7d74bc804fa5821640111ada3441376a\",\"raw_data\":{\"contract\":[{\"parameter\":{\"value\":{\"data\":\"a9059cbb000000000000000000000000ed87a3ae2bf2ab8b95486a23f224487ad75c60200000000000000000000000000000000000000000000000000000000000000014\",\"owner_address\":\"41b42b84bad413dde093e27d01bb02ed9eede52c43\",\"contract_address\":\"41eca9bc828a3005b9a3b909f2cc5c2a54794de05f\"},\"type_url\":\"type.googleapis.com/protocol.TriggerSmartContract\"},\"type\":\"TriggerSmartContract\"}],\"ref_block_bytes\":\"84e1\",\"ref_block_hash\":\"1731d6450e11a03f\",\"expiration\":1670168865000,\"fee_limit\":100000000,\"timestamp\":1670168805340},\"raw_data_hex\":\"0a0284e122081731d6450e11a03f40e8d1c9eecd305aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541b42b84bad413dde093e27d01bb02ed9eede52c43121541eca9bc828a3005b9a3b909f2cc5c2a54794de05f2244a9059cbb000000000000000000000000ed87a3ae2bf2ab8b95486a23f224487ad75c6020000000000000000000000000000000000000000000000000000000000000001470dcffc5eecd30900180c2d72f\"}",
+  "actionId": "64fcdb39-2cfa-47f2-85bd-d7e8409809ed"
+}
+```
+
+回调（`actionId` 与请求一致）：
+
+```json
+{
+  "actionId": "64fcdb39-2cfa-47f2-85bd-d7e8409809ed",
+  "code": 0,
+  "id": -799302342,
+  "message": "success",
+  "successful": true,
+  "transactionHash": "2fc49e560f648e5ecb455955d8778267ec1f257436425f62393b632c9a7a55ad"
+}
+```
+
+## 消息签名
+
+可用版本：TronLink v4.11.0 起。
+
+```html
+<a href='tronlinkoutside://pull.activity?param={}'>Sign message</a>
+```
+
+`param`（请求）：
+
+```json
+{
+  "url": "https://justlend.org/#/home",
+  "callbackUrl": "https://your-backend.example.com/api/tron/v1/callback",
+  "dappIcon": "https://your-dapp.example.com/icon.png",
+  "dappName": "Test demo",
+  "protocol": "TronLink",
+  "version": "1.0",
+  "chainId": "0x2b6653dc",
+  "loginAddress": "TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig",
+  "signType": "signStr",
+  "message": "abc",
+  "action": "sign",
+  "actionId": "50554861-4861-41c4-adf3-abf36213f843"
+}
+```
+
+回调：
+
+```json
+{
+  "actionId": "50554861-4861-41c4-adf3-abf36213f843",
+  "code": 0,
+  "id": 2001871012,
+  "message": "success",
+  "signedData": "0xffcac5731d9f70a58e5126f44c34b9356ccb9bef53331e33ddab84bb829adc1b77df24362348f8d46e506b489b4af4496600799b173e708faf1b9db99da9d13c1b"
+}
+```
+
+## 回传消息码
+
+> 注意：转账请求中 `tokenId` 与 `contract` 互斥，两者同时传入会返回消息码 `10025`。
+
+| 消息码 | 消息 | 备注 |
+|:-------|:-------|:-------|
+| 0 | success |  |
+| 10001 | Incorrect JSON format |  |
+| 10002 | Missing Action |  |
+| 10003 | Unknown Action |  |
+| 10004 | Missing ActionId |  |
+| 10005 | Incorrect DApp URL format |  |
+| 10006 | Incorrect CallbackUrl format |  |
+| 10007 | Empty DApp name | v1.0 可以为空 |
+| 10008 | Version number not supported |  |
+| 10009 | Current network not supported |  |
+| 10010 | The URL is not supported to open TronLink |  |
+| 10011 | Unknown SignType |  |
+| 10012 | Incorrect Transaction format |  |
+| 10013 | Incorrect Method format |  |
+| 10014 | Incorrect Message format |  |
+| 10015 | Incorrect toAddress |  |
+| 10016 | No wallet created in TronLink |  |
+| 10017 | Incorrect fromAddress |  |
+| 10018 | Incorrect contractAddress |  |
+| 10019 | Incorrect chainId |  |
+| 10020 | Incorrect amount |  |
+| 10021 | The initiating address does not match the current wallet |  |
+| 10022 | Incorrect loginAddress |  |
+| 10023 | System contract not support |  |
+| 10024 | Incorrect tokenId |  |
+| 10025 | TokenId & Contract address should not exist together |  |
+| 300 | Transaction canceled |  |
+| 301 | Transaction executed in TronLink |  |
+| 302 | Broadcast failure - returned with incorrect info |  |
+| -1 | Unknown reason |  |
+
+---
+
+<!-- source: docs/mobile/dapp-support.zh.md | url: /docs/zh/mobile/dapp-support/ -->
+
+# DApp支持
+
+提供流畅的 DApp 浏览器，支持运行 TRON DApp。
+
+
+## 集成TronLink
+
+TronLink App 内置 DApp 浏览器，对于在其上运行的 TRON DApp，TronLink 会自动将 tronWeb 及 tronLink 对象注入到该 DApp。从而允许 DApp 与 TronLink App，以及TRON 网络交互。
+
+详情：参考[DApp章节](../../dapp/getting-started)
+
+## Dapp 浏览器
+
+### 基本功能
+
+DApp 浏览器支持运行 TRON DApp，并自动注入 tronWeb 及 tronLink 对象
+
+### 扩展
+
+在 DApp 浏览器中运行的 Tron DApp，会自动注入 iTron 对象，并提供 App 端定制化功能
+
+  * 切换屏幕方向
+
+```java
+        // url: DApp page url
+        // screenModel: "1" -> 竖屏；"2" -> 横屏
+        public void setScreenModel(String url, String screenModel)
+```
+
+---
+
+<!-- source: docs/plugin-wallet/active-requests.zh.md | url: /docs/zh/plugin-wallet/active-requests/ -->
+
+# 主动请求TronLink插件功能
+
+## 连接网站 TIP-1102
+
+### 简介
+TronLink 可用于管理钱包私钥，DApp 在进行一些需签名的操作前，需要连接 TronLink，并通过 TronLink 获取用户签名授权。此协议在于显式地告知用户 DApp 主动连接 TronLink 的行为，并获取用户的授权同意。
+此方法遵循以太坊 EIP-1102 协议。
+
+### 技术规范
+#### 代码示例
+```javascript
+try {
+  await window.tron.request({method: 'eth_requestAccounts'});
+} catch (e) {}
+```
+#### 返回值
+
+如果成功，返回一个数组，数组只有一个元素，为同意连接的当前 TronLink 账户。如：
+`['TMVQGm1qAQYVdetCeGRRkTWYYrLXuHK2HC']`。
+
+如果失败，则会返回错误码及报错信息。详见“错误码”部分。
+
+#### 错误码
+|  错误码   | 名称  | 描述 |
+|  ----  | ----  | ---- |
+| 4001  | 用户拒绝请求 | 用户通过点击“拒绝”按钮，或关闭弹窗，都会触发该错误码 |
+| -32002  | 处于其他流程中 | 当前 DApp 存在其他流程，无法执行当前请求 |
+| -32602  | 参数不合规 | 传入的参数不合规，或者传入了额外的参数 |
+| 4200  | 不支持此方法 | 不支持此方法 |
+
+### 交互流程
+触发 `eth_requestAccounts` 之后，如果 TronLink 处于锁屏状态，会弹出锁屏弹窗：
+
+![TronLink 解锁弹窗，输入钱包密码](../images/zh_plugin-wallet_lock-page.png)
+
+解锁后，或者 TronLink 已经提前解锁，会打开连接确认的弹窗：
+
+![TronLink 连接授权弹窗，显示请求方域名以及"确认"/"拒绝"按钮](../images/zh_plugin-wallet_request-accounts.png)
+
+> **旧版用法（不推荐）：** [兼容用法：tron_requestAccounts](#tron_requestaccounts)
+
+
+## 获取TronLink的provider TIP-6963
+
+### 简介
+当多个钱包同时存在，会出现对 `window.tron` 对象的抢占行为。为了保证 DApp 可以获取到特定钱包的 provider，所以实现 TIP-6963 规范。
+### 技术规范
+#### 代码示例
+```typescript
+interface TIP1193Provider {
+  request: (args: RequestArguments) => Promise<unknown>;
+  on(event: string, listener: (...args: any[]) => void): this;
+  removeListener(event: string, listener: (...args: any[]) => void): this;
+  tronWeb: TronWeb;
+  [key: `is${string}`]: boolean;
+}
+
+/**
+ * Represents the assets needed to display a wallet
+ */
+interface TIP6963ProviderInfo {
+  uuid: string;
+  name: string;
+  icon: string;
+  rdns: string;
+}
+
+interface TIP6963ProviderDetail {
+  info: TIP6963ProviderInfo;
+  provider: TIP1193Provider;
+}
+
+// Announce Event dispatched by a Wallet
+interface TIP6963AnnounceProviderEvent extends CustomEvent {
+  type: "TIP6963:announceProvider";
+  detail: TIP6963ProviderDetail;
+}
+
+// The DApp listens to announced providers
+window.addEventListener(
+  "TIP6963:announceProvider",
+  (event: TIP6963AnnounceProviderEvent) => {
+    
+    // Confirm if it is a Tronlink UUID
+    if (event.detail.info.rdns !== 'org.tronlink.www' || event.detail.info.name !== 'TronLink') {
+      console.error('it is NOT TronLink provider');
+      return;
+    }
+
+    // event.detail.provider === window.tron
+    const tronProvider = event.detail.provider;
+
+    tronProvider.on('accountsChanged', (accountArray) => {
+      console.log('tip-6963 accountsChanged', accountArray);
+    })
+  }
+);
+
+// The DApp dispatches a request event which will be heard by 
+// Wallets' code that had run earlier
+window.dispatchEvent(new Event("TIP6963:requestProvider"));
+```
+DApp 按照上述代码实现后，可以精准获取到 TronLink 提供的 provider。
+TronLink 的 rdns 是 `org.tronlink.www`，name 是 `TronLink`。
+
+## 普通转账 sendTrx
+
+> **前提条件：** 已通过 `eth_requestAccounts` 完成 DApp 连接授权（参见上方 [连接网站 TIP-1102](#tip-1102)）。
+
+### 简介
+DApp 需要用户发起一笔 TRX 转账。
+
+波场网络上发起转账需要 3 个步骤：
+
+1. 构造转账交易
+2. 对交易进行签名
+3. 对签名后的交易进行广播
+
+在这里，TronLink 介入的是第 2 步签名的部分，1、3 两步需要开发者使用 tronWeb 完成。
+### 技术规范
+#### 代码示例
+```typescript
+const tronweb = window.tron.tronWeb;
+const fromAddress = tronweb.defaultAddress.base58;
+const toAddress = "TDvSsdrNM5eeXNL3czpa6AxLDHZA9nwe9K";
+const tx = await tronweb.transactionBuilder.sendTrx(toAddress, 10, fromAddress); // 步骤1
+try {
+  const signedTx = await tronweb.trx.sign(tx); // 步骤2
+  await tronweb.trx.sendRawTransaction(signedTx); // 步骤3
+} catch (e) {}
+```
+
+当代码执行到 `await tronweb.trx.sign(tx);` 时，TronLink 钱包会提示弹窗，需要用户进行确认，如下图：
+
+![TronLink 交易审批弹窗，显示收款地址、TRX 金额以及"拒绝"/"签名"按钮](../images/zh_plugin-wallet_sign_trx.png)
+
+如果用户在弹窗中选择【拒绝】，则会抛出异常，开发者可捕获此异常进行业务处理。
+
+如果用户在弹窗中选择【签名】，DApp 可以拿到签名后的交易，继续进行广播。
+
+> **旧版用法（不推荐）：** [兼容用法：sendTrx（window.tronLink）](#sendtrxwindowtronlink)
+
+
+## 多签转账 multiSign
+
+> **前提条件：** 已通过 `eth_requestAccounts` 完成 DApp 连接授权（参见上方 [连接网站 TIP-1102](#tip-1102)）。
+
+### 简介
+此处可参考 [普通转账 sendTrx](#sendtrx)。
+
+### 技术规范
+#### 代码示例
+```typescript
+const tronweb = window.tron.tronWeb;
+const toAddress = "TDvSsdrNM5eeXNL3czpa6AxLDHZA9nwe9K";
+const activePermissionId = 2;
+const tx = await tronweb.transactionBuilder.sendTrx(
+    toAddress, 10, 
+    { permissionId: activePermissionId}
+); // 步骤1
+try {
+  const signedTx = await tronweb.trx.multiSign(tx, undefined, activePermissionId); // 步骤2
+  await tronweb.trx.sendRawTransaction(signedTx); // 步骤3
+} catch (e) {}
+```
+
+如果用户在弹窗中选择【拒绝】，则会抛出异常，开发者可捕获此异常进行业务处理。
+
+如果用户在弹窗中选择【签名】，DApp 可以拿到签名后的交易，继续进行广播。
+
+> **旧版用法（不推荐）：** [兼容用法：multiSign（window.tronLink）](#multisignwindowtronlink)
+
+
+## 消息签名 signMessageV2
+
+> **前提条件：** 已通过 `eth_requestAccounts` 完成 DApp 连接授权（参见上方 [连接网站 TIP-1102](#tip-1102)）。
+
+### 简介
+DApp 需要用户对一个 hex 消息签名，签名后消息转发给后端进行验签，以此判断用户合法登录。
+
+### 技术规范
+#### 代码示例
+```typescript
+const tronweb = window.tron.tronWeb;
+try {
+  const message = "0x01EF"; // any hex string
+  const signedString = await tronweb.trx.signMessageV2(message);
+} catch (e) {}
+```
+#### 参数
+`window.tron.tronWeb.trx.signMessageV2` 接收一个十六进制的字符串作为参数，该字符串表示当前待签名的内容。
+
+#### 返回值
+如果用户在弹窗中选择签名，DApp 可以得到签名后的十六进制字符串，比如：
+```
+0xaa302ca153b10dff25b5f00a7e2f603c5916b8f6d78cdaf2122e24cab56ad39a79f60ff3916dde9761baaadea439b567475dde183ee3f8530b4cc76082b29c341c
+```
+如果报错，则会返回如下信息：
+```typescript
+Uncaught (in promise) Invalid transaction provided
+```
+
+
+### 交互流程
+
+当代码执行到 `await tronweb.trx.signMessageV2(message);` 时，TronLink 钱包会提示弹窗，需要用户进行确认，如下图，其中消息内容会以 hex 的方式展示：
+
+![TronLink 消息签名审批弹窗，以 hex 形式展示待签消息以及"拒绝"/"签名"按钮](../images/zh_plugin-wallet_sign_message.png)
+
+如果用户在弹窗中选择【拒绝】，则会抛出异常，开发者可捕获此异常进行业务处理。
+
+> **旧版用法（不推荐）：** [兼容用法：signMessageV2（window.tronLink）](#signmessagev2windowtronlink)
+
+
+## 添加资产 wallet_watchAsset
+
+> **前提条件：** 已通过 `eth_requestAccounts` 完成 DApp 连接授权（参见上方 [连接网站 TIP-1102](#tip-1102)）。
+
+### 简介
+DApp 提供按钮给用户，直接将指定的 Token 添加到用户插件的资产展示列表中。
+
+
+### 技术规范
+#### 代码示例
+```typescript
+const res = await window.tron.request({
+  method: 'wallet_watchAsset',
+  params: {
+    type: 'trc20',
+    options: {
+        address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'
+    }
+  } as WatchAssetParams,
+});
+```
+
+#### 参数
+```typescript
+interface WatchAssetParams {
+  type: 'trc10' | 'trc20' | 'trc721';
+  options: {
+    address: string;
+    symbol?: string;
+    decimals?: number;
+    image?: string;
+  }
+}
+```
+* method: `wallet_watchAsset`，固定字符串
+* params: `WatchAssetParams`，具体参数如下
+  * type: 目前只支持 `trc10` / `trc20` / `trc721` 三种
+  * options:
+    * address: token 的合约地址 或者 token id，必传
+    * symbol: 占位（目前未使用），可选
+    * decimals: 占位（目前未使用），可选
+    * image: 占位（目前未使用），可选
+
+
+#### 返回值
+此方法没有返回值。
+
+### 交互流程
+#### 添加 TRC10 资产
+```typescript
+await window.tron.request({
+  method: 'wallet_watchAsset',
+  params: {
+    type: 'trc10',
+    options: {
+      address: '1002000'
+    },
+  },
+});
+```
+
+代码执行时，TronLink 会弹出添加窗口，用户点击确定添加 TRC10 资产，或者取消添加。
+
+![TronLink 添加 TRC10 资产弹窗，显示代币 ID、名称及"添加"/"取消"按钮](../images/zh_plugin-wallet_add_trc10.png)
+
+点击”添加”按钮，资产被添加到资产列表，如下图所示。
+
+![资产列表添加 TRC10 后界面，新代币显示在列表顶部](../images/zh_plugin-wallet_add_trc10_success.png)
+
+
+
+#### 添加 TRC20 资产
+```typescript
+await window.tron.request({
+  method: 'wallet_watchAsset',
+  params: {
+    type: 'trc20',
+    options: {
+      address: 'TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m9'
+    },
+  },
+});
+```
+
+代码执行时，TronLink 会弹出添加窗口，用户点击确定添加 TRC20 资产，或者取消添加。
+
+![TronLink 添加 TRC20 资产弹窗，显示合约地址、符号及"添加"/"取消"按钮](../images/zh_plugin-wallet_add_trc20.png)
+
+点击”添加”按钮，资产被添加到资产列表，如下图所示。
+
+![资产列表添加 TRC20 后界面，新代币显示在列表顶部](../images/zh_plugin-wallet_add_trc20_success.png)
+
+#### 添加 TRC721 资产
+```typescript
+await window.tron.request({
+  method: 'wallet_watchAsset',
+  params: {
+    type: 'trc721',
+    options: {
+      address: 'TVtaUnsgKXhTfqSFRnHCsSXzPiXmm53nZt'
+    },
+  },
+});
+```
+
+代码执行时，TronLink 会弹出添加窗口，用户点击确定添加 TRC721 资产，或者取消添加。
+
+![TronLink 添加 TRC721 资产弹窗，显示 NFT 合约地址及"添加"/"取消"按钮](../images/zh_plugin-wallet_add_trc721.png)
+
+点击”添加”按钮，资产被添加到资产列表，如下图所示。
+
+![资产列表添加 TRC721 后界面，新藏品集合显示在列表顶部](../images/zh_plugin-wallet_add_trc721_success.png)
+
+> **旧版用法（不推荐）：** [兼容用法：wallet_watchAsset（window.tronLink）](#wallet_watchassetwindowtronlink)
+
+
+## 切换网络 TIP-3326
+
+### 简介
+大部分 DApp 都会在特定的链上提供服务。DApp 可以通过调用本协议，告诉 TronLink 期望使用的链，TronLink 会弹出弹窗告知用户即将切换的链，用户可以选择是否同意切换。
+在用户同意切换后，DApp 可以基于目标链，提供正常的 DApp 服务。
+本协议遵循以太坊 EIP-3326 协议。
+
+### 技术规范
+#### 代码示例
+```javascript
+try {
+  await window.tron.request({
+    method: 'wallet_switchEthereumChain',
+    params: [{chainId: '0x2b6653dc'}]
+  });
+} catch (e) {}
+```
+#### 参数
+params 接受一个只有单一元素的数组，单一元素为 `SwitchTronChainParameter` 类型：
+```typescript
+interface SwitchTronChainParameter {
+  chainId: string;
+}
+```
+- 目前只支持如下 chainId：
+  - mainnet（主网）：`0x2b6653dc`
+  - shasta（shasta 测试网）：`0x94a9059e`
+  - nile（nile 测试网）：`0xcd8690dc`
+- chainId 的值大小写敏感。
+
+
+#### 返回值
+如果成功，返回 null。
+如果失败，则会返回错误码及报错信息。详见“错误码”部分。
+
+#### 错误码
+|  错误码   | 名称  | 描述 |
+|  ----  | ----  | ---- |
+| 4001  | 用户拒绝请求 | 用户通过点击“拒绝”按钮，或关闭弹窗，都会触发该错误码 |
+| 4902  | 不合法 chainId | 目前只支持部分 chainId，详见“目前支持的 chainId”部分 |
+| -32002  | 处于其他流程中 | 当前 DApp 存在其他流程，无法执行当前请求 |
+| -32602  | 参数不合规 | 传入的参数不合规，或者传入了额外的参数 |
+| 4200  | 不支持此方法 | 不支持此方法 |
+
+
+### 交互流程
+触发 `wallet_switchEthereumChain` 之后，如果 TronLink 处于锁屏状态，会弹出锁屏弹窗：
+
+![TronLink 解锁弹窗，输入钱包密码](../images/zh_plugin-wallet_lock-page.png)
+
+解锁后，或者 TronLink 已经提前解锁，会打开连接确认的弹窗：
+
+![TronLink 网络切换确认弹窗，显示目标网络名称、chainId 与"确认"/"拒绝"按钮](../images/zh_plugin-wallet_switch-chain.png)
+
+> **旧版用法（不推荐）：** [兼容用法：wallet_switchEthereumChain（tronLink.request）](#wallet_switchethereumchaintronlinkrequest)
+
+
+---
+
+## 旧版用法（不推荐）
+
+下列接口作为兼容别名保留，新接入请使用上方推荐用法。`window.tronLink` 与 `window.tron` 在功能上等价，但前者将逐步不再维护。
+
+## 兼容用法：tron_requestAccounts
+
+### 简介
+TronLink 提供外部发起 TRX 转账、合约签名、授权等功能。基于安全的考虑，需要用户在关键操作前先对发起请求的 DApp 进行【连接网站】授权，在授权成功后才允许操作。
+所以 DApp 要先进行【连接网站】操作，等待用户允许后，方能发起需要授权的请求。
+
+### 技术规范
+#### 代码示例
+```typescript
+const res = await tronWeb.request(
+  {
+    method: 'tron_requestAccounts',
+    params: {
+      websiteIcon: '<WEBSITE ICON URI>',
+      websiteName: '<WEBSITE NAME>',
+    } as RequestAccountParams,
+  }
+);
+```
+
+#### 参数
+```typescript
+interface RequestAccountsParams {
+  websiteIcon?: string;
+  websiteName?: string;
+}
+```
+* method: `tron_requestAccounts` 固定的字符串
+* params: `RequestAccountParams` 类型，具体参数如下
+    * websiteIcon: DApp 网站的 Icon 的 URI，具体会展示在用户已连接网站列表中
+    * websiteName: DApp 网站名称
+
+
+#### 返回值
+类型说明：
+```typescript
+interface ReqestAccountsResponse {
+  code: 200 | 4000 | 4001,
+  message: string
+}
+```
+
+|  返回码   | 描述  | 返回消息 |
+|  ----  | ----  | ---- |
+| 无  | 钱包处于锁定状态 | 空字符串 |
+| 200  | 网站此前已被用户允许连接 | The site is already in the whitelist |
+| 200  | 用户同意连接 | User allowed the request. |
+| 4000  | 当前请求前已经有同一个 DApp 发起了连接网站请求，并且弹窗仍未关闭 | Authorization requests are being processed, please do not resubmit |
+| 4001  | 用户拒绝连接 | User rejected the request |
+
+
+## 兼容用法：sendTrx（window.tronLink）
+
+```typescript
+if (window.tronLink.ready) {
+  const tronweb = tronLink.tronWeb;
+  const fromAddress = tronweb.defaultAddress.base58;
+  const toAddress = "TDvSsdrNM5eeXNL3czpa6AxLDHZA9nwe9K";
+  const tx = await tronweb.transactionBuilder.sendTrx(toAddress, 10, fromAddress); // 步骤1
+  try {
+    const signedTx = await tronweb.trx.sign(tx); // 步骤2
+    await tronweb.trx.sendRawTransaction(signedTx); // 步骤3
+  } catch (e) {}
+}
+```
+
+
+## 兼容用法：multiSign（window.tronLink）
+
+```typescript
+if (window.tronLink.ready) {
+  const tronweb = tronLink.tronWeb;
+  const toAddress = "TDvSsdrNM5eeXNL3czpa6AxLDHZA9nwe9K";
+  const activePermissionId = 2;
+  const tx = await tronweb.transactionBuilder.sendTrx(
+      toAddress, 10, 
+      { permissionId: activePermissionId}
+  ); // 步骤1
+  try {
+    const signedTx = await tronweb.trx.multiSign(tx, undefined, activePermissionId); // 步骤2
+    await tronweb.trx.sendRawTransaction(signedTx); // 步骤3
+  } catch (e) {}
+}
+```
+
+
+## 兼容用法：signMessageV2（window.tronLink）
+
+```typescript
+if (window.tronLink.ready) {
+  const tronweb = tronLink.tronWeb;
+  try {
+    const message = "0x01EF"; // any hex string
+    const signedString = await tronweb.trx.signMessageV2(message);
+  } catch (e) {}
+}
+```
+
+
+## 兼容用法：wallet_watchAsset（window.tronLink）
+
+```typescript
+// 添加 TRC10
+if (window.tronLink.ready) {
+  const tronweb = tronLink.tronWeb;
+  try {
+    tronweb.request({
+      method: 'wallet_watchAsset',
+      params: {
+        type: 'trc10',
+        options: { address: '1002000' },
+      },
+    });
+  } catch (e) {}
+}
+
+// 添加 TRC20
+if (window.tronLink.ready) {
+  const tronweb = tronLink.tronWeb;
+  try {
+    tronweb.request({
+      method: 'wallet_watchAsset',
+      params: {
+        type: 'trc20',
+        options: { address: 'TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m9' },
+      },
+    });
+  } catch (e) {}
+}
+
+// 添加 TRC721
+if (window.tronLink.ready) {
+  const tronweb = tronLink.tronWeb;
+  try {
+    tronweb.request({
+      method: 'wallet_watchAsset',
+      params: {
+        type: 'trc721',
+        options: { address: 'TVtaUnsgKXhTfqSFRnHCsSXzPiXmm53nZt' },
+      },
+    });
+  } catch (e) {}
+}
+```
+
+
+## 兼容用法：wallet_switchEthereumChain（tronLink.request）
+
+```javascript
+try {
+  await tronLink.request({
+    method: 'wallet_switchEthereumChain',
+    params: [{chainId: '0x2b6653dc'}]
+  });
+} catch (e) {}
+```
+
+---
+
+<!-- source: docs/plugin-wallet/passive-messages.zh.md | url: /docs/zh/plugin-wallet/passive-messages/ -->
+
+# 被动接收TronLink插件的消息
+
+TronLink 支持 TRON 主网及测试网（Shasta、Nile）。开发者可以在 DApp 中监听 TronLink 派发的事件消息，以判断当前选择的网络以及当前激活的账户。下面通过一个简单示例进行演示。
+
+```html
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TronLink Events Demo</title>
+</head>
+<body>
+<script>
+    // 1. 通过 TIP-6963 发现 TronLink provider，并在该 provider 上注册事件监听
+    let tron;
+    window.addEventListener("TIP6963:announceProvider", (e) => {
+        if (e.detail.info && e.detail.info.name === "TronLink") {
+            tron = e.detail.provider; // === window.tron
+            console.log("TronLink 检测成功！");
+
+            tron.on("accountsChanged", (accounts) => {
+                console.log("accountsChanged", accounts); // 钱包锁定时为 []
+            });
+            tron.on("chainChanged", ({ chainId }) => {
+                console.log("chainChanged", chainId);
+            });
+            tron.on("connect", ({ chainId }) => {
+                console.log("connect", chainId);
+            });
+        }
+    });
+    // 让已加载的钱包重新公告自己
+    window.dispatchEvent(new Event("TIP6963:requestProvider"));
+
+    // 2. 原始 window.postMessage 事件 — 涵盖旧版 3.x 事件与授权流程
+    window.addEventListener("message", function (e) {
+        if (!e.data || !e.data.message) return;
+        const { action, data } = e.data.message;
+
+        switch (action) {
+            // --- 历史授权事件（兼容 3.x，未来版本将废弃） ---
+            case "connectWeb":
+                console.log("connectWeb", data);
+                break;
+            case "acceptWeb":
+                console.log("acceptWeb", data);
+                break;
+            case "rejectWeb":
+                console.log("rejectWeb", data);
+                break;
+            case "disconnectWeb":
+                console.log("disconnectWeb", data);
+                break;
+
+            // --- 已废弃的 3.x 事件（主链 / 侧链检测） ---
+            case "tabReply":
+                if (data?.data?.node?.chain === "_") {
+                    console.log("tronLink 当前选择主链");
+                } else {
+                    console.log("tronLink 当前选择侧链");
+                }
+                break;
+            case "setAccount":
+                console.log("setAccount，当前地址：", data.address);
+                break;
+            case "setNode":
+                if (data?.node?.chain === "_") {
+                    console.log("tronLink 当前选择主链");
+                } else {
+                    console.log("tronLink 当前选择侧链");
+                }
+                break;
+        }
+    });
+</script>
+</body>
+</html>
+```
+
+下面分别对每个监听器进行详细说明，含返回值与截图。
+
+---
+
+## 检测 TronLink（TIP-6963）
+
+事件标识：`TIP6963:announceProvider`
+
+### 简介
+
+TronLink 通过 TIP-6963 协议对外公告自己的 provider 对象。监听 `TIP6963:announceProvider` 并派发 `TIP6963:requestProvider`，即可安全地发现钱包，无需污染全局命名空间或轮询 `window.tron`。announce 事件返回的 provider 即为 `window.tron`。
+
+完整的 TIP-6963 规范请参考 [主动请求 TronLink 插件功能](./active-requests.md#tronlinkprovider-tip-6963)。
+
+### 技术规范
+
+#### 代码示例
+
+```javascript
+let tron;
+window.addEventListener('TIP6963:announceProvider', (e) => {
+  if (e.detail.info && e.detail.info.name === 'TronLink') {
+    tron = e.detail.provider; // === window.tron
+    console.log('TronLink 检测成功！');
+  }
+});
+// 让已加载的钱包重新公告自己
+window.dispatchEvent(new Event('TIP6963:requestProvider'));
+```
+
+如果派发请求后 `tron` 仍为 undefined，则说明用户未安装 TronLink，可提示用户进行安装。
+
+## 账户改变消息
+
+消息标识： `accountsChanged`
+### 简介
+以下情况会产生此消息
+
+  1. 用户登录
+
+  2. 用户切换账号
+
+  3. 用户锁定钱包
+
+  4. 钱包超时自动锁定
+
+### 技术规范
+#### 代码示例
+```typescript
+window.tron.on('accountsChanged', (accountArray) => {
+  // handler logic
+  console.log('got accountsChanged event', accountArray)
+})
+```
+#### 返回值
+```typescript
+['your_current_account_address']
+```
+##### 返回值示例
+1. 用户登录时，消息体内容为
+```javascript
+['TZ5XixnRyraxJJy996Q1sip85PHWuj4793'] // 当前的账号
+```
+
+2. 用户切换账号时，消息体内容为
+```javascript
+['TRKb2nAnCBfwxnLxgoKJro6VbyA6QmsuXq'] // 新选择的账号地址
+```
+
+3. 用户锁定和钱包超时自动锁定时，消息体内容为
+```javascript
+[]
+```
+
+> **旧版用法（不推荐）：** [setAccount（3.x）](#setaccount)
+
+
+## 网络改变消息
+
+消息标识： `chainChanged`
+### 简介
+开发者可以监听此消息来获取网络的改变
+以下情况会产生此消息
+
+1. 用户改变网络的时候
+### 技术规范
+#### 代码示例
+```typescript
+window.tron.on('chainChanged', ({chainId}) => {
+  // handler logic
+  console.log('got chainChanged event', chainId)
+})
+```
+
+#### 返回值
+
+```typescript
+{
+  chainId: string;
+}
+```
+- 目前只支持如下chainId：
+  - mainnet(主网): `0x2b6653dc`
+  - shasta(shasta测试网): `0x94a9059e`
+  - nile(nile测试网): `0xcd8690dc`
+- chainId的值大小写敏感。
+
+> **旧版用法（不推荐）：** [setNode（3.x）](#setnode) 或 [tabReply（3.x）](#tabreply)
+
+## TronLink可以提供服务的消息
+
+消息标识： `connect`
+### 简介
+如果 TronLink 及 `window.tron` 对象可用，此事件会在 provider 初始化完成后被派发一次（包含 `disconnect` 之后重新连接的场景）。
+
+**时序注意**：该事件在插件 init 完成后约 100ms 派发。如果 DApp 的监听器在插件 init 之后才注册（例如页面加载较慢、通过 TIP-6963 `requestProvider` 才拿到 provider），则可能错过 `connect` 事件。此时直接把"provider 存在"视作已连接，并结合 `tron.tronWeb?.ready` 判断当前状态即可。
+
+### 技术规范
+#### 代码示例
+```typescript
+window.tron.on('connect', ({chainId}) => {
+  // handler logic
+  console.log('got connect event', chainId)
+})
+```
+
+> **旧版用法（不推荐）：** [connectWeb（postMessage）](#connectweb) 或 [acceptWeb（postMessage）](#acceptweb)
+
+## 断开连接网站消息
+消息标识： `disconnect`
+### 简介
+TIP-1193 规范规定：当 provider 与所有链断开连接时，应派发 `disconnect` 事件并携带 `ProviderRpcError` 对象。
+
+**当前 TronLink 行为**：TronLink 目前 **不会** 在 provider 上派发 `disconnect`。当用户断开网站（或钱包被锁定）时，会通过 `accountsChanged` 派发空数组 `[]` 来表示——在 TronLink 实现 `disconnect` 之前，请以此作为断连信号。
+
+### 技术规范
+#### 代码示例
+```typescript
+// 规范保留事件——注册监听器无害，但当前不会被触发。
+window.tron.on('disconnect', (providerRpcError) => {
+  console.error(providerRpcError); // { code: 4900, message: 'Disconnected' }
+})
+```
+
+> **旧版用法（不推荐）：** [disconnectWeb（postMessage）](#disconnectweb) 或 [rejectWeb（postMessage）](#rejectweb)
+
+## 历史遗留问题
+
+以下消息通过 `window.postMessage` 派发，DApp 接收到的内容是一个 `MessageEvent`，事件结构可参考 [MessageEvent 的 MDN 文档](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent)。
+
+以下四个消息为了兼容 3.x 保留，并在未来版本将会被废弃：
+
+1. 用户拒绝连接消息`rejectWeb`
+
+2. 用户断连网站消息`disconnectWeb`
+
+3. 用户确定连接消息`acceptWeb`
+
+4. 用户主动连接网站消息`connectWeb`
+
+### 用户拒绝连接消息 rejectWeb
+消息标识： `rejectWeb`
+
+以下情况会产生此消息
+
+1. dapp请求连接，用户在弹窗中拒绝连接后
+ 
+![TronLink 连接弹窗，用户点击"拒绝"触发 rejectWeb 事件](../images/zh_plugin-wallet_rejectWeb.png)
+
+
+开发者可以监听此消息来获取用户拒绝连接消息
+```typescript
+window.addEventListener('message', function (e) {
+  if (e.data.message && e.data.message.action == "rejectWeb") {
+      // handler logic
+      console.log('got rejectWeb event', e.data)
+  }
+})
+```
+
+### 用户断连网站消息 disconnectWeb
+消息标识： `disconnectWeb`
+
+以下情况会产生此消息
+
+1. 用户主动断开连接
+
+![TronLink 已连接站点列表，用户对某 DApp 点击"断开"触发 disconnectWeb 事件](../images/zh_plugin-wallet_disconnectWeb.png)
+
+
+开发者可以监听此消息来获取用户主动断连消息
+```typescript
+window.addEventListener('message', function (e) {
+  if (e.data.message && e.data.message.action == "disconnectWeb") {
+      // handler logic
+      console.log('got disconnectWeb event', e.data)
+  }
+})
+```
+
+### 用户确定连接消息 acceptWeb
+消息标识： `acceptWeb`
+
+以下情况会产生此消息
+
+1. 用户确定连接消息
+
+
+![TronLink 连接弹窗，用户点击"接受"触发 acceptWeb 事件](../images/zh_plugin-wallet_acceptWeb.png)
+
+开发者可以监听此消息来获取用户确定连接消息
+```typescript
+window.addEventListener('message', function (e) {
+  if (e.data.message && e.data.message.action == "acceptWeb") {
+      // handler logic
+      console.log('got acceptWeb event', e.data)
+  }
+})
+```
+
+### 用户主动连接网站消息 connectWeb
+消息标识： `connectWeb`
+
+以下情况会产生此消息
+
+1. 用户主动连接网站时
+
+
+![TronLink 已连接站点列表，用户主动对某授权 DApp 点击"连接"触发 connectWeb 事件](../images/zh_plugin-wallet_connectWeb.png)
+
+
+开发者可以监听此消息来获取用户主动连接网站消息
+```typescript
+window.addEventListener('message', function (e) {
+  if (e.data.message && e.data.message.action == "connectWeb") {
+      // handler logic
+      console.log('got connectWeb event', e.data)
+  }
+})
+```
+
+---
+
+## 已废弃的 3.x 事件（主链 / 侧链）
+
+以下事件是 TronLink 3.x 通过原始 `window.postMessage` 用于检测当前网络与账户的方式。它们已被 `window.tron` 上的 `accountsChanged` / `chainChanged` 取代，仅供存量代码参考 — 新接入请勿使用。
+
+### 网络初始化（`tabReply`）
+
+页面加载后 TronLink 完成初始化时触发一次。检查 `e.data.message.data.data.node.chain`：值为 `'_'` 表示主链，其他值表示对应侧链标识。
+
+```javascript
+window.addEventListener('message', function (e) {
+  if (e.data.message && e.data.message.action == "tabReply") {
+    if (e.data.message.data.data.node.chain == '_') {
+      console.log("tronLink 当前选择主链");
+    } else {
+      console.log("tronLink 当前选择侧链");
+    }
+  }
+});
+```
+
+### 账户切换（`setAccount`）
+
+用户切换当前账户时触发。
+
+```javascript
+window.addEventListener('message', function (e) {
+  if (e.data.message && e.data.message.action == "setAccount") {
+    console.log("当前地址：", e.data.message.data.address);
+  }
+});
+```
+
+### 网络切换（`setNode`）
+
+用户切换网络时触发。`chain == '_'` 的判断方式与 `tabReply` 相同。
+
+```javascript
+window.addEventListener('message', function (e) {
+  if (e.data.message && e.data.message.action == "setNode") {
+    if (e.data.message.data.node.chain == '_') {
+      console.log("tronLink 当前选择主链");
+    } else {
+      console.log("tronLink 当前选择侧链");
+    }
+  }
+});
+```
+
+---
+
+<!-- source: docs/plugin-wallet/ledger-signing-update.zh.md | url: /docs/zh/plugin-wallet/ledger-signing-update/ -->
+
+
+# 即将实施：对ledger签名后signature的v字段进行兼容改造
+针对ledger签名（包括所有交易签名、消息签名、712签名），在将来的几个月内，会更新一项新的技术措施，会将签名后的 `signature` 字段中末尾的`01`替换成`1c`，`00`替换成`1b`。
+
+这个改动，是为了保证ledger账户签名和普通账户签名的末尾两位一致。
+
+### 普通交易签名
+
+以下是签名成功的 ledger 交易体：
+```json
+{
+    "txID": "......",
+    .....other property,
+    "signature": [
+        "......01"
+    ]
+}
+```
+会变成:
+```json
+{
+    "txID": "......",
+    .....other property,
+    "signature": [
+        "......1c"
+    ]
+}
+```
+如果需要广播，DApp会使用修改后的交易体进行广播
+
+### 消息签名
+
+DApp发送消息签名
+```javascript
+tron.tronWeb.trx.sign('.....unsign_string');
+```
+或者
+```javascript
+tron.tronWeb.trx.signMessageV2('.....unsign_string');
+```
+
+ledger返回的实际签名hash：
+```
+......50f400
+```
+
+经过修改后的hash：
+```
+......50f41b
+```
+
+### 712签名
+
+DApp发送712签名
+```javascript
+const types = {
+  Person: [
+    {
+      name: 'name',
+      type: 'string',
+    },
+    {
+      name: 'wallet',
+      type: 'address',
+    },
+  ],
+  Mail: [
+    {
+      name: 'from',
+      type: 'Person',
+    },
+    {
+      name: 'to',
+      type: 'Person',
+    },
+    {
+      name: 'contents',
+      type: 'string',
+    },
+  ],
+};
+
+const primaryType = 'Mail';
+
+const domain = {
+  name: 'Ether Mail',
+  version: '1',
+  chainId: '0x2b6653dc',
+  verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC',
+};
+
+const message = {
+  from: {
+    name: 'Cow',
+    wallet: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826',
+  },
+  to: {
+    name: 'Bob',
+    wallet: '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB',
+  },
+  contents: 'Hello, Bob!',
+};
+
+await tron.tronWeb.trx._signTypedData(domain, types, message);
+```
+
+ledger返回的实际签名hash：
+```
+.....7ee700
+```
+
+经过修改后的hash：
+```
+......7ee71b
+```
+
+---
+
+<!-- source: docs/ai-support/mcp-server-tronlink.zh.md | url: /docs/zh/ai-support/mcp-server-tronlink/ -->
+
+# MCP Server TronLink 
+
+## 概述
+
+**GitHub**: [https://github.com/TronLink/mcp-server-tronlink](https://github.com/TronLink/mcp-server-tronlink)
+
+**mcp-server-tronlink** 是一个生产级的 Model Context Protocol (MCP) 服务器，使 AI 代理（Claude、GPT 等）能够通过自然语言与 TRON 区块链交互。基于 `@tronlink/tronlink-mcp-core` 构建，提供跨两种互补操作模式的 **52 工具**。
+
+**核心亮点：**
+- 双模架构：**Playwright**（浏览器自动化）+ **Direct API**（链上操作）
+- 32 个内置 Flow Recipe，带预检查和依赖解析
+- 基于加密 `agent-wallet` 的非托管本地交易签名
+- 多签管理，支持实时 WebSocket 监控
+- 通过 GasFree 服务集成实现零 Gas TRC20 转账
+
+---
+
+## 架构设计
+
+```
+AI 代理 (Claude Desktop / Claude Code)
+         | (MCP 协议 — stdio / JSON-RPC 2.0)
+         v
+TronLink MCP 服务器
+├── Playwright 模式 ─── TronLinkSessionManager
+│   └── 浏览器自动化 + TronLink 扩展 UI 控制
+├── Direct API 模式
+│   ├── TronLinkOnChainCapability   (14 个工具)
+│   ├── TronLinkMultiSigCapability  (5 个工具)
+│   └── TronLinkGasFreeCapability   (3 个工具)
+├── 实用能力
+│   ├── TronLinkBuildCapability     (扩展构建)
+│   ├── TronLinkStateSnapshotCapability (UI 状态提取)
+│   └── TRON Crypto Utils           (地址派生、签名、Base58)
+└── Flow Recipes (32 个内置流程配方)
+         |
+         v
+TronGrid API / 多签服务 / GasFree 服务
+         |
+         v
+TRON 区块链
+```
+
+两种模式可同时运行，工具根据配置自动启用。
+
+---
+
+## 双模运行机制
+
+### 模式一：Playwright（浏览器自动化）
+
+通过 Playwright Chromium 控制 TronLink Chrome 扩展。适用于 **E2E 测试、UI 验证和 DApp 交互**。
+
+**能力：**
+- 使用 `--load-extension` 标志启动浏览器加载 TronLink
+- 从 Chrome API 自动检测扩展 ID
+- 多标签页跟踪，自动角色分类（扩展 / 通知 / DApp / 其他）
+- 基于 DOM 的状态提取（TRON 地址、TRX 余额、网络检测）
+- Base64 编码的截图捕获
+- 自动处理浏览器对话框（alert、confirm、prompt）
+
+**27 个 Playwright 工具包括：** `tl_launch`、`tl_cleanup`、`tl_navigate`、`tl_click`、`tl_type`、`tl_screenshot`、`tl_accessibility_snapshot`、`tl_describe_screen` 等。
+
+### 模式二：Direct API（链上操作）
+
+直接调用 TronGrid REST API——无需浏览器。适用于 **账户查询、转账、兑换、质押和多签管理**。
+
+**25 个 API 工具分组：**
+
+| 分组 | 工具数 | 说明 |
+|------|--------|------|
+| 钱包管理 | 3 | 列出钱包、自动创建、切换当前钱包 |
+| 链上操作 | 14 | 转账、质押、兑换、查询、多签设置 |
+| 多签管理 | 5 | 权限查询、交易提交、WebSocket 监控 |
+| GasFree | 3 | 零 Gas TRC20 转账 |
+
+---
+
+## 核心组件
+
+### 1. TronLinkSessionManager
+
+完整的浏览器生命周期管理：
+
+| 方法 | 说明 |
+|------|------|
+| `launch()` | 使用 TronLink 扩展初始化浏览器 |
+| `getExtensionState()` | 从 UI 提取钱包状态 |
+| `navigateToUrl()` | 导航到指定 URL |
+| `navigateToNotification()` | 打开 TronLink 通知弹窗 |
+| `screenshot()` | 捕获当前 UI 状态 |
+| `getTrackedPages()` | 列出所有打开的浏览器标签页 |
+| `cleanup()` | 优雅地关闭所有资源 |
+
+**页面检测：** 自动检测 15 种 TronLink 界面：`home`、`login`、`settings`、`send`、`receive`、`sign`、`broadcast`、`assets`、`address_book`、`node_management`、`dapp_list`、`create_wallet`、`import_wallet`、`notification`、`unknown`。
+
+### 2. TronLinkOnChainCapability（14 个工具）
+
+TronGrid 的直接 API 封装：
+
+**查询操作：**
+- `getAddress()` — 从本地加密的 `agent-wallet` 读取 TRON 地址
+- `getAccount()` — 余额、带宽、能量、权限
+- `getTokens()` — TRC10 和 TRC20 代币余额
+- `getTransaction()` — 按 txID 获取交易详情
+- `getHistory()` — 分页查询交易历史
+- `getStakingInfo()` — 质押状态（冻结金额、投票、解冻）
+
+**交易操作：**
+- `send()` — 转账 TRX、TRC10 或 TRC20 代币
+- `stake()` — 冻结/解冻 TRX 获取带宽或能量（Stake 2.0）
+- `resource()` — 代理/取消代理带宽或能量
+- `swap()` — 通过 SunSwap V2 代币兑换
+- `swapV3()` — 通过 SunSwap V3 智能路由代币兑换
+
+**多签操作：**
+- `setupMultisig()` — 配置多签权限
+- `createMultisigTx()` — 创建未签名的多签交易
+- `signMultisigTx()` — 签署多签交易
+
+### 3. TronLinkMultiSigCapability（5 个工具）
+
+TRON 多签服务的 REST + WebSocket API：
+
+- `queryAuth()` — 查询多签权限（所有者/活跃权限、阈值、权重）
+- `submitTransaction()` — 提交签名交易（达到阈值时自动广播）
+- `queryTransactionList()` — 带过滤条件的交易列表
+- `connectWebSocket()` — 实时交易监控
+- `disconnectWebSocket()` — 停止监控
+
+**实现细节：** HmacSHA256 签名生成用于 API 认证，基于 UUID 的请求签名，同时支持 Nile 测试网和主网凭证。
+
+### 4. TronLinkGasFreeCapability（3 个工具）
+
+通过 GasFree 服务实现零 Gas TRC20 转账：
+
+- `getAccount()` — 查询资格、支持的代币、每日配额
+- `getTransactions()` — 查询免 Gas 交易历史
+- `send()` — 零 Gas 费发送 TRC20
+
+### 5. 钱包管理（3 个工具）
+
+通过 `@bankofai/agent-wallet` 进行运行时钱包管理（加密 `local_secure` 存储）：
+
+- `tl_wallet_list` — 列出所有钱包及其 ID、类型、活跃状态和 TRON 地址
+- `tl_wallet_create` — 自动生成加密钱包并绑定到当前 MCP 会话
+- `tl_wallet_set_active` — 按 ID 切换活跃钱包（热切换到所有能力）
+
+如果启动时没有钱包，服务器会提示两条路径：调用 `tl_wallet_create` 自动生成，或通过 CLI 手动创建后设置 `AGENT_WALLET_PASSWORD`。
+自动创建这条路径会生成随机密码，把密码保存到 `~/.agent-wallet/runtime_secrets.json`，创建一个加密的 `main` 钱包，并让当前会话立即可用。
+
+### 6. TRON 密码学工具
+
+纯密码学函数——无外部服务调用：
+
+```
+signTransaction()          raw_data_hex → 65 字节签名（通过 agent-wallet）
+base58CheckEncode()        有效载荷 → base58check 编码地址
+base58CheckDecode()        TRON 地址 → 21 字节有效载荷
+addressToHex()             T 地址 → 0x41... 十六进制
+hexToAddress()             0x41... → T 地址
+```
+
+使用 `@noble/curves`（secp256k1 ECDSA）和 `@noble/hashes`（Keccak-256、SHA256）。私钥不会暴露——所有签名均通过加密的 `agent-wallet` 完成。
+
+---
+
+## Flow Recipes（32 个内置流程）
+
+预配置的多步骤工作流，带依赖检查和参数模板。
+
+### Playwright 流程
+| 流程 | 说明 |
+|------|------|
+| `switchNetworkFlow` | 切换到主网/Nile/Shasta |
+| `enableTestNetworksFlow` | 启用测试网可见性 |
+| `transferTrxFlow` | 通过 UI 进行 TRX 转账 |
+| `transferTokenFlow` | 通过 UI 进行代币转账 |
+
+### 链上流程（11 个）
+| 流程 | 说明 |
+|------|------|
+| `chainCheckBalanceFlow` | 查询余额 |
+| `chainTransferTrxFlow` | 带预检查的 TRX 转账 |
+| `chainTransferTrc20Flow` | 带预检查的 TRC20 转账 |
+| `chainStakeFlow` | 质押 TRX |
+| `chainUnstakeFlow` | 解除质押 TRX |
+| `chainGetStakingFlow` | 查询质押信息 |
+| `chainDelegateResourceFlow` | 代理带宽/能量 |
+| `chainUndelegateResourceFlow` | 取消代理资源 |
+| `chainSetupMultisigFlow` | 设置多签权限 |
+| `chainCreateMultisigTxFlow` | 创建未签名的多签交易 |
+| `chainSwapV3Flow` | SunSwap V3 代币兑换 |
+
+### 多签流程（6 个）
+| 流程 | 说明 |
+|------|------|
+| `multisigQueryAuthFlow` | 查询权限 |
+| `multisigListTransactionsFlow` | 列出待处理交易 |
+| `multisigMonitorFlow` | WebSocket 实时监控 |
+| `multisigStopMonitorFlow` | 停止监控 |
+| `multisigSubmitTxFlow` | 提交签名交易 |
+| `multisigCheckFlow` | 完整状态检查 |
+
+### GasFree 流程（3 个）
+| 流程 | 说明 |
+|------|------|
+| `gasfreeCheckAccountFlow` | 查询资格 |
+| `gasfreeTransactionHistoryFlow` | 查询历史 |
+| `gasfreeSendFlow` | 免 Gas TRC20 转账 |
+
+---
+
+## 配置说明
+
+### 环境变量
+
+**Playwright 模式：**
+
+| 变量 | 说明 |
+|------|------|
+| `TRONLINK_EXTENSION_PATH` | TronLink 扩展构建目录 |
+| `TRONLINK_SOURCE_PATH` | 启用构建能力 |
+| `TL_MODE` | `e2e`（测试）或 `prod`（生产） |
+| `TL_HEADLESS` | 浏览器无头模式 |
+| `TL_SLOW_MO` | Playwright 慢动作延迟（毫秒） |
+
+**TronGrid API：**
+
+| 变量 | 说明 |
+|------|------|
+| `TL_TRONGRID_URL` | 全节点 API 地址 |
+| `TL_TRONGRID_API_KEY` | API 密钥（主网必需）。免费档约 100k 请求/日 + ~5 QPS；付费档提高 QPS、日配额并按用量计费。具体配额与响应 header 会变——请查 [TronGrid Pricing](https://www.trongrid.io/pricing) 与控制台当前值，并在运行时读 `X-Ratelimit-*` header。触发限流返回 HTTP 429（映射到 `TL_CHAIN_QUERY_FAILED`，可重试）。长期跑批的 agent 请在 50% / 80% / 95% 设置消费告警。 |
+| `TL_SUNSWAP_ROUTER` | SunSwap V2 路由地址。**没有内置默认**——请钉到当前 router；下方示例中的值**截至 2026-05** 适用于主网。来源：[docs.sun.io](https://docs.sun.io)。SunSwap 升级新 router 时，请直接在此 env 改值，不要等文档/代码同步。 |
+| `TL_SUNSWAP_V3_ROUTER` | SunSwap V3 智能路由地址。规则同 V2。 |
+| `TL_WTRX_ADDRESS` | WTRX 合约地址。主网 WTRX 为 `TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR`。数据截至 2026-05。 |
+
+**钱包（agent-wallet）：**
+
+| 变量 | 说明 |
+|------|------|
+| `AGENT_WALLET_PASSWORD` | 钱包加密密码（自动创建时可省略；手动或已有钱包时需要） |
+| `AGENT_WALLET_DIR` | 自定义钱包目录 |
+| `TL_OWNER_WALLET_ID` | 多签 owner 使用的钱包 ID |
+| `TL_COSIGNER_WALLET_ID` | 多签 cosigner 使用的钱包 ID |
+
+**多签服务：**
+
+| 变量 | 说明 |
+|------|------|
+| `TL_MULTISIG_BASE_URL` | API 基础地址 |
+| `TL_MULTISIG_SECRET_ID` | 项目凭证 |
+| `TL_MULTISIG_SECRET_KEY` | HmacSHA256 签名密钥 |
+| `TL_MULTISIG_CHANNEL` | 渠道/项目名称 |
+
+**GasFree 服务：**
+
+| 变量 | 说明 |
+|------|------|
+| `TL_GASFREE_BASE_URL` | 服务地址 |
+| `TL_GASFREE_API_KEY` | API 密钥 |
+| `TL_GASFREE_API_SECRET` | API Secret |
+
+### 集成方式
+
+**1. 项目级 MCP 配置（`.mcp.json`）**
+
+Claude Code 自动检测：
+```json
+{
+  "mcpServers": {
+    "tronlink": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": ".",
+      "env": {
+        "TL_TRONGRID_URL": "https://nile.trongrid.io"
+      }
+    }
+  }
+}
+```
+
+如果本地还没有钱包，服务启动后会提示两条路径：
+
+1. 自动创建：调用 `tl_wallet_create`
+2. 手动创建：
+   1. 运行 `agent-wallet start local_secure --generate --wallet-id main`
+   2. 把 `AGENT_WALLET_PASSWORD` 写进 `.mcp.json`
+   3. 重启 MCP 服务
+
+如果选择自动创建，服务会生成随机密码，把密码保存到 `~/.agent-wallet/runtime_secrets.json`，创建一个加密的 `main` 钱包，并继续当前会话。
+
+如果你想直接照着一个更完整的 Nile 示例来配，可以在这个最小示例的基础上补成下面这样：
+
+```json
+{
+  "mcpServers": {
+    "tronlink": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": ".",
+      "env": {
+        "TRONLINK_EXTENSION_PATH": "/path/to/tronlink-extension/dist",
+        "TL_MODE": "prod",
+        "TL_HEADLESS": "false",
+        "TL_TRONGRID_URL": "https://nile.trongrid.io",
+        "AGENT_WALLET_PASSWORD": "your-wallet-password",
+        "TL_SUNSWAP_ROUTER": "TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax",
+        "TL_SUNSWAP_V3_ROUTER": "TB6xBCixqRPUSKiXb45ky1GhChFJ7qrfFj",
+        "TL_MULTISIG_BASE_URL": "https://apinile.walletadapter.org",
+        "TL_MULTISIG_SECRET_ID": "TEST",
+        "TL_MULTISIG_SECRET_KEY": "TESTTESTTEST",
+        "TL_MULTISIG_CHANNEL": "test",
+        "TL_GASFREE_BASE_URL": "https://open-test.gasfree.io/nile/",
+        "TL_GASFREE_API_KEY": "your_gasfree_api_key",
+        "TL_GASFREE_API_SECRET": "your_gasfree_api_secret"
+      }
+    }
+  }
+}
+```
+
+如果你只需要直接 API 工具，不需要浏览器自动化，也可以保留同样的结构，只去掉 Playwright 相关字段：
+
+```json
+{
+  "mcpServers": {
+    "tronlink": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": ".",
+      "env": {
+        "TL_TRONGRID_URL": "https://nile.trongrid.io",
+        "AGENT_WALLET_PASSWORD": "your-wallet-password",
+        "TL_MULTISIG_BASE_URL": "https://apinile.walletadapter.org",
+        "TL_MULTISIG_SECRET_ID": "TEST",
+        "TL_MULTISIG_SECRET_KEY": "TESTTESTTEST",
+        "TL_MULTISIG_CHANNEL": "test",
+        "TL_GASFREE_BASE_URL": "https://open-test.gasfree.io/nile/",
+        "TL_GASFREE_API_KEY": "your_gasfree_api_key",
+        "TL_GASFREE_API_SECRET": "your_gasfree_api_secret"
+      }
+    }
+  }
+}
+```
+
+**2. Claude Desktop**
+
+编辑 `~/Library/Application Support/Claude/claude_desktop_config.json`。
+
+**3. Claude Code 全局设置**
+
+编辑 `~/.claude/settings.json` 或 `.claude/settings.json`。
+
+**4. 任意 MCP 客户端**
+
+支持 stdio 传输协议——兼容任何符合 MCP 标准的客户端。
+
+---
+
+## 项目结构
+
+```
+mcp-server-tronlink/
+├── src/
+│   ├── index.ts                    # 服务入口、配置、能力注册
+│   ├── wallet.ts                   # 统一钱包入口（agent-wallet、加密钱包、引导创建）
+│   ├── wallet-tools.ts             # 钱包管理工具（list / create / set_active）
+│   ├── session-manager.ts          # 浏览器生命周期（TronLinkSessionManager）
+│   ├── capabilities/
+│   │   ├── on-chain.ts             # 14 个链上操作（TronGrid）
+│   │   ├── multisig.ts             # 5 个多签操作（REST + WS）
+│   │   ├── gasfree.ts              # 3 个免 Gas 转账操作
+│   │   ├── build.ts                # 扩展 webpack 构建
+│   │   ├── state-snapshot.ts       # UI 状态提取
+│   │   └── tron-crypto.ts          # 地址派生、签名、Base58
+│   └── flows/
+│       ├── index.ts                # 流程注册（32 个配方）
+│       ├── switch-network.ts       # 网络切换流程
+│       ├── transfer-trx.ts         # 转账流程
+│       ├── multisig.ts             # 6 个多签流程
+│       ├── onchain.ts              # 11 个链上流程
+│       └── gasfree.ts              # 3 个免 Gas 流程
+├── dist/                           # 编译输出
+├── .mcp.json                       # MCP 配置
+├── .env.example                    # 环境变量参考
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+---
+
+## 依赖项
+
+锁定到 `mcp-server-tronlink@0.1.1` 的 `package.json`。升级钱包、MCP 或密码学库 major 版本时务必重新核对。
+
+| 包名 | 版本 | 用途 |
+|------|------|------|
+| `@noble/curves` | ^2.0.1 | secp256k1 ECDSA 签名 |
+| `@noble/hashes` | ^2.0.1 | Keccak-256、SHA256 |
+| `@tronlink/tronlink-mcp-core` | ^0.1.0 | 核心 MCP 服务框架 |
+| `playwright` | ^1.49.0 | 浏览器自动化 |
+| `@bankofai/agent-wallet` | ^2.3.0 | 加密本地钱包管理（`local_secure`）——**已钉版本，不用 `latest`**，确保钱包行为可复现 |
+| `ws` | ^8.18.0 | WebSocket（多签监控） |
+
+---
+
+## 工具契约与副作用
+
+**输入/输出 schema 与错误契约。** 每个工具的输入/输出 schema 及结构化错误信封由底层框架定义——见 [TronLink MCP Core](tronlink-mcp-core.md#错误码) 的 SSOT 错误码表（`code` / `retryable` / `hint` / 典型触发）。每个响应均带 `meta.schemaVersion`，major 版本内字段含义稳定。Agent 应基于 `error.code` 与 `error.retryable` 分支，**不要**解析人类可读的 `message`。
+
+**逐工具输入 schema 可在运行时发现。** 每个工具的参数都由 core 用 Zod 校验,并通过 MCP `list_tools` 方法以 JSON `inputSchema` 形式暴露,因此客户端无需阅读本页即可枚举参数名、类型和必填项。下方表格按能力归纳工具;`list_tools` 才是权威的机器可读来源。
+
+**副作用分级。** 调用前先分类；对结果未知的写操作绝不自动重试。
+
+| 副作用 | 示例 |
+| --- | --- |
+| **只读**（Network Read） | `tl_chain_get_account`、`tl_chain_get_tx`、`tl_gasfree_get_account`、`tl_wallet_list`、屏幕/状态读取 |
+| **远程写**（签名 / 改变远程状态） | `tl_chain_send`、`tl_chain_stake`、`tl_chain_swap_v3`、`tl_multisig_submit_tx`、转账、资源代理 |
+
+- **预检查：** 所有交易类工具在执行前会校验（余额、回滚、资源消耗）。
+- **人工确认（HITL）：** 写操作工具使用加密的本地 `agent-wallet` 签名；浏览器模式下由用户在 TronLink UI 审批。生产环境应将每个「远程写」工具视为需要确认。
+- **重试：** 只读工具可安全重试；「远程写」工具除非证明幂等，否则不得自动重试。
+
+---
+
+## 安全模型
+
+| 方面 | 实现方式 |
+|------|----------|
+| 密钥存储 | 由 `@bankofai/agent-wallet` 负责本地加密存储（`local_secure`） |
+| 密钥暴露 | 不向 stderr 记录任何密钥信息 |
+| 签名方式 | 通过加密的 `agent-wallet` 本地交易签名——不支持明文私钥 |
+| 预检查 | 所有交易在执行前验证 |
+| Git 安全 | 配置文件在 `.gitignore` 中防止意外提交 |
+| 默认网络 | Nile 测试网，安全默认值 |
+
+### 安全边界
+
+| 边界 | 保证 | Agent / 运维方义务 |
+|---|---|---|
+| **Prompt 注入** | 工具输入按原始值作为调用参数使用，server 不会把工具输入拼接进任何向 LLM 二次提交的 prompt。**但**从链上或第三方 API 拿回来的字符串（账户备注、合约 revert 原因、交易 note 等）**可能含攻击者控制内容**，必须视为不可信。 | 不要让 agent 基于 read 工具返回的 prose 自动路由到 Remote Write。分支必须基于结构化字段（`txId`、`code`、`retryable`）。 |
+| **出站 host 白名单（SSRF）** | server 只向 4 个配置端点发起 HTTPS：`TL_TRONGRID_URL`、`TL_MULTISIG_BASE_URL`、`TL_GASFREE_BASE_URL`，以及通过 TronWeb 访问的 SunSwap router。工具不接收会被原样请求的用户 URL。 | 生产环境把这些 env 钉死到已知 host；禁止 LLM 输入回填任何 `*_BASE_URL`。 |
+| **API key 处理（token passthrough）** | `TL_TRONGRID_API_KEY`、`TL_MULTISIG_SECRET_KEY`、`TL_GASFREE_API_SECRET` 仅在启动时从 env 读取，仅用于出站；**不**会出现在任何工具响应、错误 `details` 或 Knowledge Store 记录中。server 不接受 MCP 客户端传入的 Authorization header 并转发到上游。 | 审计 MCP host 配置对 env 的捕获（部分 host 会落日志）；secret 放进 host 的 secret manager，不要写进会提交 git 的 `.mcp.json`。 |
+| **浏览器 JS 执行** | `tl_evaluate` 会在受控 Playwright 浏览器上下文中执行任意 JS。这是 **High-risk / Destructive** 原语——可读 DOM、点击隐藏元素、外泄状态、绕过 UI 上的 HITL。 | 严格不需要时，从 MCP host 的工具白名单中禁用 `tl_evaluate`。绝不要把它暴露给远程/多用户 MCP 部署。 |
+| **HITL 绕过** | Direct-API 工具（`tl_chain_send`、`tl_chain_swap_v3` 等）使用本地加密 `agent-wallet` 签名并直接广播，**不**经过 TronLink 浏览器审批。`agent-wallet` 密码是唯一屏障。 | 把 `AGENT_WALLET_PASSWORD` 保管在 agent 不可达处。生产环境涉及资金转移的工具，优先用 `mcp-tronlink-signer`（浏览器审批），而非 Direct-API。 |
+| **Confused deputy** | 工具以本地 `agent-wallet` 身份执行，不是调用用户的身份；无逐次调用授权 scope。 | 一个 MCP session = 一个钱包身份，不要把多个终端用户复用到同一 server。 |
+| **传输** | 仅 stdio，server 不监听网络端口。 | 包成对外 HTTP 之前必须重新引入认证与限流。 |
+
+#### 禁用 `tl_evaluate`
+
+如果你的工作流不需要在受控浏览器里执行任意 JS，请显式从工具面上撤下。各 host 的配置 key 不同：
+
+```jsonc
+// Claude Code —— .claude/settings.json（项目级）或 ~/.claude/settings.json（用户级）
+{
+  "permissions": {
+    "deny": ["mcp__tronlink__tl_evaluate"]
+  }
+}
+```
+
+```jsonc
+// Claude Desktop —— claude_desktop_config.json
+{
+  "mcpServers": {
+    "tronlink": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "disabledTools": ["tl_evaluate"]
+    }
+  }
+}
+```
+
+```jsonc
+// 通用 MCP 客户端：在客户端侧用 list_tools 过滤——
+// 把 server 暴露的工具列表里 name 等于 "tl_evaluate" 的项剔除，再交给模型。
+```
+
+重启后用 `list_tools` 验证：`tl_evaluate` 应当不再出现。同一套模式也适用于 `tl_seed_contract` / `tl_seed_contracts`（仅 e2e 的合约部署工具）。
+
+### 钱包密钥存储
+
+Direct-API 路径使用 `@bankofai/agent-wallet` 管理的本地加密钱包签名。解锁这把钱包有两条路径，请按目的明确选择。
+
+**路径 A — 手动（生产推荐）。** 离线创建钱包，将 `AGENT_WALLET_PASSWORD` 放进 MCP host 的 secret manager，再启动 server。密码仅存在于进程内存，server 不写任何文件。
+
+**路径 B — 自动创建（仅适合本地开发）。** 启动时若无钱包且 agent 调用了 `tl_wallet_create`，server 将：
+
+1. 生成随机密码。
+2. **将密码以明文写入 `~/.agent-wallet/runtime_secrets.json`**，以便重启后能复用同一钱包。
+3. 在 `~/.agent-wallet/` 创建加密的 `main` 钱包（可用 `AGENT_WALLET_DIR` 覆盖目录）。
+
+| 方面 | 行为 |
+|---|---|
+| **文件** | `~/.agent-wallet/runtime_secrets.json`（含密码的明文 JSON） |
+| **建议权限** | `chmod 600`——文件在用户 `$HOME` 下创建，但**没有 umask 兜底**，首次运行后请手工核查。 |
+| **Git 隔离** | `~/.agent-wallet/` 默认在任何仓库之外。若把 `AGENT_WALLET_DIR` 指到仓库内部，必须显式加 `.gitignore`。 |
+| **Knowledge Store 脱敏边界** | Knowledge Store 自动脱敏 `password`、`mnemonic`、`private_key`、`seed` 等字段；**不**读取或处理 `runtime_secrets.json`。该文件与 Knowledge Store 互相独立。 |
+| **日志 / stderr** | 自动生成的密码不会落日志；文件路径可能出现在启动输出中。 |
+| **备份** | 仅备份 `~/.agent-wallet/` 而不保护 `runtime_secrets.json`，等于让"加密落盘"形同虚设。两者必须一并加密备份，或仅备份加密钱包并在恢复时手工重置密码。 |
+
+**生产建议。**
+
+- 优先路径 A。`AGENT_WALLET_PASSWORD` 来自 host 的 secret manager（Claude Desktop env、vault 等）。
+- 必须用路径 B 时（如临时 CI），把 `AGENT_WALLET_DIR` 指到任务结束即销毁的 tmpfs。
+- 涉及真实资金的工具，生产环境优先选 `mcp-tronlink-signer`（浏览器审批、不落盘密码），避免 Direct-API。
+
+**如何强制路径 A（文档侧的当下做法）。**
+
+1. **server 启动前**离线创建钱包：
+
+    ```bash
+    agent-wallet start local_secure --generate --wallet-id main
+    # 此处输入的密码请单独保管——它是唯一的副本
+    ```
+
+2. 让密码通过 MCP host 的 secret manager 注入到 server 的 `env`：
+
+    ```jsonc
+    // .mcp.json — secret 来自 host env，而不是这个文件本身
+    {
+      "mcpServers": {
+        "tronlink": {
+          "command": "node",
+          "args": ["dist/index.js"],
+          "env": { "AGENT_WALLET_PASSWORD": "${AGENT_WALLET_PASSWORD}" }
+        }
+      }
+    }
+    ```
+
+3. **禁止 agent 调用 `tl_wallet_create`。** 用与 `tl_evaluate` 相同的方式禁用（Claude Code `permissions.deny`、Claude Desktop `disabledTools`，或客户端侧基于 `list_tools` 用名字 `tl_wallet_create` 过滤）。
+
+4. 首次启动后验证：`list_tools` 中不应出现 `tl_wallet_create`；`~/.agent-wallet/runtime_secrets.json` 不存在即说明路径 B 没有走过。
+
+**待解决（代码侧）。** 长期方案是在 server 启动时加 `--no-auto-create` / `AGENT_WALLET_DISABLE_AUTOCREATE=1` 开关，使无钱包时直接 fail-loud。上游 PR ship 之前，上面这套文档级强制方案是 defense-in-depth。
+
+---
+
+## 典型使用场景
+
+1. **钱包操作** — 列出钱包、自动创建、切换当前钱包
+2. **DApp 测试** — 启动浏览器、连接钱包、签署交易、验证状态
+3. **链上交易** — 直接 API 兑换、质押、无需浏览器的代币转账
+4. **多签工作流** — 设置权限、提交/监控交易
+5. **免 Gas 操作** — 无需 TRX 余额即可完成 TRC20 转账
+6. **基础设施测试** — 合约部署、固件管理、Mock 服务
+
+---
+
+## 快速开始
+
+```bash
+# 1. 构建
+npm install && npm run build
+
+# 2. 配置（Nile 测试网示例）
+export TL_TRONGRID_URL="https://nile.trongrid.io"
+
+# 3. 如果本地还没有钱包，二选一：
+# 方案 A：在 MCP 会话里调用 tl_wallet_create
+# 方案 B：本地执行
+# agent-wallet start local_secure --generate --wallet-id main
+# 然后把同一个密码写进 .mcp.json 的 AGENT_WALLET_PASSWORD
+
+# 4. 配合 Claude Code 使用
+# 配置好 .mcp.json 后自然语言使用：
+# "查看我的 TRX 余额"
+# "给 TAddress... 转 10 个 TRX"
+# "在 SunSwap V3 上用 100 TRX 兑换 USDT"
+```
+
+## 版本与许可证
+
+- **包：** `@tronlink/mcp-server-tronlink` v0.1.1
+- **许可证：** MIT —— `SPDX-License-Identifier: MIT`
+- **变更记录 / 发布：** [https://github.com/TronLink/mcp-server-tronlink/releases](https://github.com/TronLink/mcp-server-tronlink/releases)
+
+---
+
+<!-- source: docs/ai-support/tronlink-mcp-core.zh.md | url: /docs/zh/ai-support/tronlink-mcp-core/ -->
+
+# TronLink MCP Core 
+
+## 概述
+
+**GitHub**: [https://github.com/TronLink/tronlink-mcp-core](https://github.com/TronLink/tronlink-mcp-core)
+
+**@tronlink/tronlink-mcp-core** 是构建 TronLink MCP（Model Context Protocol）服务器的基础框架库。它不是独立应用——使用者必须实现 `ISessionManager` 接口并注入能力模块来创建可运行的服务器。
+
+**核心亮点：**
+- 接口驱动的可插拔架构，提供 **9 个能力接口**
+- **52 预定义工具处理器**，使用 Zod 验证 Schema
+- 内置 Knowledge Store，支持跨会话学习和步骤回放
+- Flow Recipe 系统，将多步骤工作流程模板化
+- 标准化响应格式 + 结构化错误码表（`code` / `retryable` / `hint`）
+- 双模支持：Playwright（UI 自动化）+ Direct API（链上操作）
+
+---
+
+## 架构设计
+
+```
+┌─ AI 代理 (Claude, GPT 等)
+│
+├─ MCP 协议 (stdio / JSON-RPC 2.0)
+│
+├─ MCP 服务器实例 (createMcpServer)
+│  ├─ 52 tl_* 工具处理器
+│  ├─ Knowledge Store（跨会话持久化）
+│  ├─ Flow Registry（流程管理）
+│  └─ Discovery 工具
+│
+├─ ISessionManager 接口（使用者实现）
+│  ├─ 会话生命周期
+│  ├─ 页面/标签管理
+│  ├─ 能力注入（9 个接口）
+│  └─ 环境模式 (e2e / prod)
+│
+├─ 能力系统（9 个可插拔接口）
+│  ├─ BuildCapability
+│  ├─ FixtureCapability
+│  ├─ ChainCapability
+│  ├─ ContractSeedingCapability
+│  ├─ StateSnapshotCapability
+│  ├─ MockServerCapability
+│  ├─ OnChainCapability
+│  ├─ MultiSigCapability
+│  └─ GasFreeCapability
+│
+└─ 可选: Playwright（浏览器自动化）
+```
+
+**设计原则：**
+1. **接口驱动** — 所有主要组件使用接口实现可扩展性
+2. **组合优于继承** — 能力通过注入，而非继承
+3. **单例模式** — SessionManager、KnowledgeStore、FlowRegistry 使用全局持有者
+4. **预检查** — 链上工具在执行前验证
+5. **数据脱敏** — Knowledge Store 自动屏蔽敏感字段
+
+---
+
+## 与 mcp-server-tronlink 的关系
+
+| 维度 | tronlink-mcp-core | mcp-server-tronlink |
+|------|-------------------|---------------------|
+| 类型 | 核心库（框架） | 独立 MCP 服务器 |
+| 角色 | 定义接口、工具、协议 | 具体实现 |
+| 使用方式 | 通过 npm 导入并扩展 | 直接 CLI 调用 |
+| 可扩展性 | 9 个可插拔能力接口 | 预配置能力 |
+| 依赖关系 | 无（它本身就是依赖） | 依赖 @tronlink/tronlink-mcp-core |
+
+**mcp-server-tronlink 是 tronlink-mcp-core 的使用者。** 核心库定义了工具"是什么"；服务器提供了工具"怎么工作"。
+
+---
+
+## ISessionManager 接口
+
+使用者必须实现的关键接口（25+ 方法）：
+
+### 会话生命周期
+```typescript
+hasActiveSession(): boolean
+getSessionId(): string
+getSessionState(): SessionState
+getSessionMetadata(): SessionMetadata
+launch(input: LaunchInput): Promise<LaunchResult>
+cleanup(): Promise<void>
+```
+
+### 页面管理
+```typescript
+getPage(): Page
+setActivePage(page: Page): void
+getTrackedPages(): TrackedPage[]
+classifyPageRole(page: Page): PageRole
+getContext(): ContextInfo
+```
+
+### 扩展状态
+```typescript
+getExtensionState(): Promise<ExtensionState>
+```
+
+### 无障碍引用
+```typescript
+setRefMap(map: Map<string, any>): void
+getRefMap(): Map<string, any>
+clearRefMap(): void
+resolveA11yRef(ref: string): any
+```
+
+### 导航
+```typescript
+navigateToHome(): Promise<void>
+navigateToSettings(): Promise<void>
+navigateToUrl(url: string): Promise<void>
+navigateToNotification(): Promise<void>
+waitForNotificationPage(timeoutMs?: number): Promise<Page>
+```
+
+### 截图
+```typescript
+screenshot(options?: ScreenshotOptions): Promise<ScreenshotResult>
+```
+
+### 能力获取器（9 个，均可选）
+```typescript
+getBuildCapability(): BuildCapability | undefined
+getFixtureCapability(): FixtureCapability | undefined
+getChainCapability(): ChainCapability | undefined
+getContractSeedingCapability(): ContractSeedingCapability | undefined
+getStateSnapshotCapability(): StateSnapshotCapability | undefined
+getMockServerCapability(): MockServerCapability | undefined
+getOnChainCapability(): OnChainCapability | undefined
+getMultiSigCapability(): MultiSigCapability | undefined
+getGasFreeCapability(): GasFreeCapability | undefined
+```
+
+### 环境
+```typescript
+getEnvironmentMode(): 'e2e' | 'prod'
+setContext(context: string, options?: any): Promise<void>
+getContextInfo(): ContextInfo
+```
+
+---
+
+## 9 个能力接口
+
+每个能力都是可选的，可独立注入：
+
+### 1. BuildCapability
+从源码构建 TronLink 扩展。
+
+### 2. FixtureCapability
+管理钱包状态 JSON（default、onboarding、自定义预设）。
+
+### 3. ChainCapability
+控制本地 TRON 节点（tron-quickstart 等）。
+
+### 4. ContractSeedingCapability
+部署智能合约（TRC20/721/1155/10/multisig/staking/energy_rental）。
+
+### 5. StateSnapshotCapability
+从 UI 提取钱包状态（界面、地址、余额、能量、带宽）。
+
+### 6. MockServerCapability
+用于隔离测试的 Mock API 服务器。
+
+### 7. OnChainCapability
+通过 TronGrid REST API 的直接链上操作（14 个方法）：
+- 查询：`getAddress`、`getAccount`、`getTokens`、`getTransaction`、`getHistory`、`getStakingInfo`
+- 交易：`send`、`stake`、`resource`、`swap`、`swapV3`
+- 多签：`setupMultisig`、`createMultisigTx`、`signMultisigTx`
+
+### 8. MultiSigCapability
+多签服务集成（REST + WebSocket，5 个方法）。
+
+### 9. GasFreeCapability
+零 Gas TRC20 转账服务（3 个方法）。
+
+---
+
+## 52 工具定义
+
+所有工具使用 `tl_` 前缀，分为 13 个类别：
+
+### 1. 会话管理（2 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_launch` | 启动带扩展的浏览器 |
+| `tl_cleanup` | 关闭浏览器和服务 |
+
+### 2. 状态与发现（4 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_get_state` | 获取钱包状态 |
+| `tl_describe_screen` | 包含状态 + testIds + a11y + 截图的界面描述 |
+| `tl_list_testids` | 列出 data-testid 属性 |
+| `tl_accessibility_snapshot` | 获取带引用的无障碍树 (e1, e2...) |
+
+### 3. 导航（4 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_navigate` | 导航到 TronLink 界面或 URL |
+| `tl_switch_to_tab` | 按角色/URL 切换标签页 |
+| `tl_close_tab` | 关闭标签页 |
+| `tl_wait_for_notification` | 等待确认弹窗 |
+
+### 4. UI 交互（6 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_click` | 点击元素（a11yRef、testId、selector） |
+| `tl_type` | 在输入框中输入文本 |
+| `tl_wait_for` | 等待元素状态 |
+| `tl_scroll` | 滚动页面/元素 |
+| `tl_keyboard` | 发送键盘事件 |
+| `tl_evaluate` | 执行 JavaScript |
+
+### 5. 截图与剪贴板（2 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_screenshot` | 捕获屏幕 |
+| `tl_clipboard` | 读写剪贴板 |
+
+### 6. 合约部署 — 仅 e2e（4 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_seed_contract` | 部署单个合约 |
+| `tl_seed_contracts` | 批量部署合约 |
+| `tl_get_contract_address` | 查询合约地址 |
+| `tl_list_contracts` | 列出已部署合约 |
+
+### 7. 上下文管理（2 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_set_context` | 切换 e2e/prod 模式 |
+| `tl_get_context` | 获取上下文信息 |
+
+### 8. Knowledge Store（4 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_knowledge_last` | 获取最近 N 个步骤 |
+| `tl_knowledge_search` | 搜索历史 |
+| `tl_knowledge_summarize` | 生成配方 |
+| `tl_knowledge_sessions` | 列出会话 |
+
+### 9. Flow Recipes（1 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_list_flows` | 列出/获取流程配方 |
+
+### 10. 批量执行（1 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_run_steps` | 顺序执行多个步骤 |
+
+### 11. 链上操作（14 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_chain_get_address` | 从私钥获取地址 |
+| `tl_chain_get_account` | 查询账户详情 |
+| `tl_chain_get_tokens` | 查询 TRC10/TRC20 余额 |
+| `tl_chain_send` | 发送 TRX/TRC10/TRC20 |
+| `tl_chain_get_tx` | 获取交易详情 |
+| `tl_chain_get_history` | 查询交易历史 |
+| `tl_chain_stake` | 冻结/解冻 TRX (Stake 2.0) |
+| `tl_chain_get_staking` | 查询质押信息 |
+| `tl_chain_resource` | 代理/取消代理资源 |
+| `tl_chain_swap` | SunSwap V2 兑换 |
+| `tl_chain_swap_v3` | SunSwap V3 兑换 |
+| `tl_chain_setup_multisig` | 配置多签权限 |
+| `tl_chain_create_multisig_tx` | 创建未签名多签交易 |
+| `tl_chain_sign_multisig_tx` | 签署多签交易 |
+
+### 12. 多签管理（5 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_multisig_query_auth` | 查询多签权限 |
+| `tl_multisig_submit_tx` | 提交签名交易 |
+| `tl_multisig_list_tx` | 列出多签交易 |
+| `tl_multisig_connect_ws` | 连接 WebSocket |
+| `tl_multisig_disconnect_ws` | 断开 WebSocket |
+
+### 13. GasFree（3 个）
+| 工具 | 说明 |
+|------|------|
+| `tl_gasfree_get_account` | 查询资格与配额 |
+| `tl_gasfree_get_transactions` | 查询交易历史 |
+| `tl_gasfree_send` | 零 Gas 发送 |
+
+---
+
+## 标准化响应格式
+
+所有工具返回一致的结构：
+
+```typescript
+// 成功
+{
+  ok: true,
+  result: { /* 工具特定数据 */ },
+  meta: {
+    timestamp: "2026-03-09T10:15:23.456Z",
+    sessionId: "tl-1741504523",
+    durationMs: 234
+  }
+}
+
+// 错误
+{
+  ok: false,
+  error: {
+    code: "TL_CLICK_FAILED",       // 稳定错误码 — 见下表
+    message: "Element not found",
+    retryable: false,              // 给 agent 的显式提示
+    hint: "重新生成可达性快照并用新的 a11yRef 重试。",
+    details: { /* 可选 */ }
+  },
+  meta: { timestamp, sessionId, durationMs, schemaVersion: "1.0" }
+}
+```
+
+### 错误码
+
+这是本框架所有工具返回错误码的**唯一数据源**（SSOT）。下游 server（`mcp-server-tronlink`、`mcp-tronlink-signer`）继承这些错误码并可扩展自有错误码。`retryable` 反映框架层面的安全性，agent 仍**必须**叠加调用工具的副作用分级——无论 `retryable` 为何，**结果未确认的 Remote Write 绝不能自动重试**。
+
+| 错误码 | Retryable | Hint | 典型触发 |
+|---|:---:|---|---|
+| `TL_BUILD_FAILED` | false | 检查 build 日志，修正源码/配置后再试。 | 启用 `BuildCapability` 时的 `tl_launch` |
+| `TL_SESSION_ALREADY_RUNNING` | false | 先调用 `tl_cleanup` 再启动新会话。 | 已有 session 时再次 `tl_launch` |
+| `TL_NO_ACTIVE_SESSION` | false | 先调用 `tl_launch`。 | 任何需要 session 的工具，但 session 不存在 |
+| `TL_LAUNCH_FAILED` | true | 浏览器/扩展启动暂时失败；可重试一次。 | `tl_launch` |
+| `TL_INVALID_INPUT` | false | 修正参数后再试，禁止用相同 payload 重发。 | Zod schema 校验失败 |
+| `TL_NAVIGATION_FAILED` | true | 页面可能仍在过渡；等待目标屏出现后重试。 | `tl_navigate`、`tl_switch_to_tab` |
+| `TL_TARGET_NOT_FOUND` | false | 用 `tl_accessibility_snapshot` 刷新 ref 后重试。 | `tl_click`、`tl_type`、`tl_wait_for` |
+| `TL_CLICK_FAILED` | true | 元素可能已重渲染；刷新 ref 后重试一次。 | `tl_click` |
+| `TL_TYPE_FAILED` | true | 同 click——刷新 ref 后重试一次。 | `tl_type` |
+| `TL_WAIT_TIMEOUT` | true | 提高超时或换一个 selector。 | `tl_wait_for`、`tl_wait_for_notification` |
+| `TL_SCREENSHOT_FAILED` | true | 偶发故障；可重试。 | `tl_screenshot`、`tl_describe_screen` |
+| `TL_CAPABILITY_NOT_AVAILABLE` | false | 当前 session 未注入该 capability；重配后重启。 | 依赖可选 capability 的工具 |
+| `TL_CHAIN_QUERY_FAILED` | true | TronGrid 暂时不可用或限流；退避后重试。 | `tl_chain_get_*` |
+| `TL_CHAIN_SEND_FAILED` | false | **禁止**自动重试。先用 `tl_chain_get_tx` 确认上一笔是否落账。 | `tl_chain_send`、`tl_chain_stake`、`tl_chain_resource` |
+| `TL_CHAIN_SWAP_FAILED` | false | 同上——重试前必须确认前一笔未落账。 | `tl_chain_swap`、`tl_chain_swap_v3` |
+| `TL_GASFREE_QUERY_FAILED` | true | 偶发故障；可重试。 | `tl_gasfree_get_account`、`tl_gasfree_get_transactions` |
+| `TL_GASFREE_SEND_FAILED` | false | **禁止**自动重试；先向 GasFree 查询最新状态。 | `tl_gasfree_send` |
+| `TL_MULTISIG_QUERY_FAILED` | true | 偶发故障；可重试。 | `tl_multisig_query_auth`、`tl_multisig_list_tx` |
+| `TL_MULTISIG_SUBMIT_FAILED` | false | **禁止**自动重试；请求可能已被接受。 | `tl_multisig_submit_tx` |
+| `TL_MULTISIG_WS_FAILED` | true | 重新连接 WebSocket。 | `tl_multisig_connect_ws` |
+| `TL_INTERNAL_ERROR` | true | 框架通用错误；重试一次后带日志上报。 | 任意工具 |
+
+下游 server 扩展自定义错误码必须满足：
+
+- 不复用上表错误码表达不同含义。
+- 每个新错误码必须声明 `retryable`。
+- major 版本内含义稳定。
+- 新错误码在使用方文档说明，禁止悄悄引入。
+
+---
+
+## Knowledge Store
+
+跨会话学习和步骤回放系统。
+
+### 存储结构
+```
+test-artifacts/llm-knowledge/
+├── tl-1741504523/
+│   ├── session.json
+│   └── steps/
+│       ├── 2026-03-09T10-15-23-456Z-tl_click.json
+│       └── ...
+└── tl-1741504600/
+    └── ...
+```
+
+### 特性
+- **自动记录：** 每次工具调用都被记录（时间戳、界面、目标、结果）
+- **敏感数据脱敏：** 密码、助记词、私钥、种子自动屏蔽
+- **搜索：** 按工具名、界面、testId、无障碍名称查询
+- **摘要生成：** 从会话历史生成可复用的"配方"
+- **会话管理：** 带元数据的会话列表
+
+---
+
+## Flow Recipe 系统
+
+将常见多步骤工作流程模板化，支持参数替换。
+
+### FlowRecipe 结构
+```typescript
+{
+  id: "transfer_trx",
+  name: "发送 TRX",
+  description: "向另一个地址转账 TRX",
+  context: "both",                      // "playwright" | "api" | "both"
+  preconditions: ["钱包已解锁"],
+  params: [
+    { name: "recipient", description: "目标 TRON 地址", required: true },
+    { name: "amount", description: "TRX 金额", required: true }
+  ],
+  steps: [
+    { tool: "navigate", input: { target: "send" } },
+    { tool: "type", input: { testId: "address-input", text: "{{recipient}}" } },
+    { tool: "type", input: { testId: "amount-input", text: "{{amount}}" } },
+    { tool: "click", input: { a11yRef: "e5" } }
+  ],
+  tags: ["transfer", "basic"]
+}
+```
+
+---
+
+## 元素定位（3 种方式）
+
+```typescript
+// 1. 无障碍引用（推荐）
+tl_click({ a11yRef: "e5" })
+
+// 2. data-testid
+tl_click({ testId: "send-button" })
+
+// 3. CSS 选择器
+tl_click({ selector: ".confirm-btn" })
+```
+
+无障碍引用来自 `tl_accessibility_snapshot` 输出——最可靠的定位方式。
+
+---
+
+## 安装与使用
+
+### 安装
+```bash
+npm install @tronlink/tronlink-mcp-core
+```
+
+### 基础使用
+```typescript
+import {
+  createMcpServer,
+  setSessionManager,
+  type ISessionManager,
+} from '@tronlink/tronlink-mcp-core';
+
+// 1. 实现 ISessionManager
+class MySessionManager implements ISessionManager {
+  // ... 实现全部 25+ 方法
+}
+
+// 2. 注册
+setSessionManager(new MySessionManager());
+
+// 3. 创建并启动服务器
+const server = createMcpServer({
+  name: 'My TronLink Server',
+  version: '1.0.0',
+});
+
+await server.start();
+```
+
+---
+
+## 项目结构
+
+```
+tronlink-mcp-core/
+├── src/
+│   ├── index.ts                           # 公共 API 导出
+│   ├── mcp-server/
+│   │   ├── server.ts                      # createMcpServer() 工厂函数
+│   │   ├── session-manager.ts             # ISessionManager 接口
+│   │   ├── knowledge-store.ts             # 持久化步骤记录
+│   │   ├── discovery.ts                   # 页面检查工具
+│   │   ├── schemas.ts                     # Zod 验证 Schema
+│   │   ├── constants.ts                   # 超时、限制、URL、界面常量
+│   │   ├── tools/                         # 52 工具处理器
+│   │   ├── types/                         # 类型定义
+│   │   └── utils/                         # 工具函数
+│   ├── capabilities/
+│   │   ├── types.ts                       # 9 个能力接口
+│   │   └── context.ts                     # 环境配置类型
+│   ├── flows/
+│   │   ├── types.ts                       # FlowRecipe 类型
+│   │   └── registry.ts                    # FlowRegistry 类
+│   ├── launcher/
+│   │   ├── extension-id-resolver.ts       # 扩展 ID 提取
+│   │   └── extension-readiness.ts         # 扩展加载检测
+│   └── utils/
+│       └── index.ts                       # 工具函数
+├── dist/                                  # 编译输出 + .d.ts
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+---
+
+## 依赖项
+
+| 包名 | 版本 | 用途 |
+|------|------|------|
+| `@modelcontextprotocol/sdk` | ^1.12.0 | MCP 协议实现 |
+| `zod` | ^3.23.0 | 输入验证 Schema |
+
+**可选对等依赖：**
+
+| 包名 | 版本 | 用途 |
+|------|------|------|
+| `playwright` | ^1.49.0 | 浏览器自动化（仅 Playwright 模式） |
+| `@playwright/test` | ^1.49.0 | 测试工具 |
+
+---
+
+## 构建与开发
+
+```bash
+npm run build      # 编译 TypeScript 到 dist/
+npm run dev        # 监视模式
+npm run test       # 运行 Vitest 测试
+npm run lint       # ESLint
+npm run clean      # 删除 dist/
+```
+
+---
+
+## 关键设计模式
+
+1. **全局单例** — `setSessionManager()` / `getSessionManager()`，`setKnowledgeStore()` / `getKnowledgeStore()`，`FlowRegistry.getInstance()`
+2. **组合优于继承** — 能力通过 getter 方法注入，而非类层次结构
+3. **接口隔离** — 每个能力都有专注的最小接口
+4. **预检查** — 链上工具在发送交易前验证余额、权限、配额
+5. **数据脱敏** — Knowledge Store 自动屏蔽 password、mnemonic、private_key、seed 字段
+6. **标准化响应** — 所有 52 工具使用一致的 `{ ok, result/error, meta }` 结构
+7. **模板系统** — Flow Recipes 使用 `{{param}}` 占位符实现可复用工作流
+
+## 版本与许可证
+
+- **包：** `@tronlink/tronlink-mcp-core` v0.1.0
+- **许可证：** MIT —— `SPDX-License-Identifier: MIT`
+- **变更记录 / 发布：** [https://github.com/TronLink/tronlink-mcp-core/releases](https://github.com/TronLink/tronlink-mcp-core/releases)
+
+---
+
+<!-- source: docs/ai-support/tronlink-skills.zh.md | url: /docs/zh/ai-support/tronlink-skills/ -->
+
+# TronLink Skills
+
+## 概述
+
+**GitHub**: [https://github.com/TronLink/tronlink-skills](https://github.com/TronLink/tronlink-skills)
+
+**TronLink Wallet Skills** 是一套 AI Agent 技能集，通过自然语言提供完整的 TRON 区块链钱包和 DeFi 功能。专为 Claude Code、Cursor、OpenCode、Codex CLI 及其他 AI 代理设计。
+
+**核心亮点：**
+- **6 大技能，33 个命令**，涵盖钱包、代币研究、市场数据、兑换、资源和质押
+- **零 npm 依赖**：使用原生 Node.js 18+ `fetch` 和 `crypto`，无需 `npm install`
+- **TRON 专属领域知识** — 专门处理能量 + 带宽资源模型
+- **多平台支持** — Claude Code、Cursor、OpenCode、Codex CLI、LangChain/CrewAI
+- **纯只读安全设计**：所有命令均为查询操作，不涉及私钥或签名
+- **MCP 服务封装**：为结构化 AI 代理集成提供标准接口
+
+---
+
+## 为什么需要 TronLink Skills？
+
+TRON 的费用模型与 EVM 链有根本性不同。TRON 不使用统一的 Gas，而是使用**能量**（用于智能合约）和**带宽**（用于所有交易）。现有的 AI Agent 技能集均未覆盖：
+
+- TRON 独特的资源模型和成本优化策略
+- Stake 2.0（冻结 TRX 获取资源并赚取奖励）
+- 超级代表（SR）投票机制
+- 跨 SunSwap V2/V3 和 Sun.io 的 DEX 聚合
+- 14 天解冻等待期及其影响
+
+TronLink Skills 以深度 TRON 领域知识填补了这一空白。
+
+---
+
+## 架构设计
+
+```
+自然语言输入
+         |
+         v
+AI 代理 (Claude Code / Cursor / OpenCode / 自定义)
+         |
+         v
+tron_api.mjs (Node.js 18+, 原生 fetch, 零依赖)
+    ├── 零 npm 依赖
+    ├── TronGrid HTTP API（公共或带 API Key）
+    └── Tronscan API 用于代币元数据
+         |
+         v
+结构化 JSON → Agent 解读 → 自然语言回复
+```
+
+---
+
+## 6 大技能详解
+
+### 1. tron-wallet（6 个命令）
+
+钱包查询与账户信息。
+
+| 命令 | 说明 |
+|------|------|
+| `wallet-balance` | TRX 余额和冻结金额 |
+| `token-balance` | 查询 TRC-20 代币余额 |
+| `wallet-tokens` | 列出所有代币持仓 |
+| `tx-history` | 最近交易历史 |
+| `account-info` | 完整账户详情 |
+| `validate-address` | 地址格式验证 |
+
+**特点：** 同时支持 Base58Check（T...）和 hex 地址格式，内置常用代币符号，自动转换精度。
+
+**何时不要用：** 发送 TRX / 代币——这些命令是只读的，请走 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)。代币层面的深度分析（rug-pull / 流动性锁定）请用 `tron-token`。
+
+### 2. tron-token（7 个命令）
+
+代币研究与安全分析。
+
+| 命令 | 说明 |
+|------|------|
+| `token-info` | 元数据、发行量、发行方、社交链接 |
+| `token-search` | 按名称/符号搜索代币 |
+| `contract-info` | ABI、字节码、验证状态 |
+| `token-holders` | 顶级持有者和持有者分析 |
+| `trending-tokens` | 24 小时最高交易量代币 |
+| `token-rankings` | 按市值、交易量、持有者、涨跌幅排序 |
+| `token-security` | 安全审计（蜜罐、代理、所有者权限） |
+
+**特点：** 检测 Rug Pull、分析持有者集中度、检查流动性锁定。
+
+**何时不要用：** 单账户余额或交易历史——那是 `tron-wallet` 的活；实时价格/成交量——那是 `tron-market` 的活。
+
+### 3. tron-market（8 个命令）
+
+实时市场数据和巨鲸监控。
+
+| 命令 | 说明 |
+|------|------|
+| `token-price` | 当前 USD/TRX 价格，24 小时变化 |
+| `kline` | OHLCV K 线数据（1 分钟到 1 周） |
+| `trade-history` | 最近 DEX 交易 |
+| `dex-volume` | 买卖量、交易笔数 |
+| `whale-transfers` | 大额转账（可配置阈值） |
+| `large-transfers` | TRX 巨鲸活动 |
+| `pool-info` | 流动性池（SunSwap V2/V3 TVL、APY） |
+| `market-overview` | TRON 网络统计（价格、市值、交易量、活跃账户） |
+
+**特点：** 多 DEX 聚合、智能资金信号检测、K 线分析。
+
+**何时不要用：** 立刻执行 swap 报价或路径——那是 `tron-swap`（会算上滑点）；静态代币元数据——`tron-token`。
+
+### 4. tron-swap（3 个命令）
+
+DEX 兑换报价与路由优化。
+
+| 命令 | 说明 |
+|------|------|
+| `swap-quote` | 预期产出、价格影响、滑点 |
+| `swap-route` | 跨 SunSwap V2/V3、Sun.io 的最优路径（含多跳） |
+| `tx-status` | 追踪交易状态 |
+
+**特点：** 聚合多源流动性、估算能量成本、处理多跳路由。
+
+**何时不要用：** 真正执行 swap——报价是只读的，实际兑换走 [MCP Server TronLink](mcp-server-tronlink.md)（`tl_chain_swap_v3`）或 signer SDK；历史成交数据——`tron-market`。
+
+### 5. tron-resource（6 个命令）
+
+能量与带宽管理 — TRON 专属。
+
+| 命令 | 说明 |
+|------|------|
+| `resource-info` | 当前可用能量/带宽及已质押量 |
+| `estimate-energy` | 智能合约调用的能量成本 |
+| `estimate-bandwidth` | 带宽成本（每日免费额度：600） |
+| `energy-price` | 当前每单位能量的 SUN 成本 |
+| `energy-rental` | 查询租赁市场选项 |
+| `optimize-cost` | 个性化建议（冻结 vs. 租赁 vs. 燃烧） |
+
+**特点：** 成本优化决策树逻辑、追踪每日免费带宽、计算 TRX 燃烧等值。
+
+**何时不要用：** 真正冻结 TRX 获取能量/带宽——那是 Remote Write，请走 signer SDK / MCP Server；冻结后的 SR 投票策略——见 `tron-staking`。
+
+### 6. tron-staking（3 个命令）
+
+Stake 2.0 查询与 SR 信息。
+
+| 命令 | 说明 |
+|------|------|
+| `sr-list` | SR 列表，含投票数、出块率、APY |
+| `staking-info` | 冻结金额、投票、未领奖励、待解冻 |
+| `staking-apy` | 计算预估年化收益率 |
+
+**特点：** Stake 2.0 状态查询、APY 计算、SR 佣金追踪。
+
+**何时不要用：** 执行 freeze / 投票 / 解冻动作——这些是 Remote Write，请走 signer SDK / MCP Server；单次操作能量成本——`tron-resource`。
+
+---
+
+## 推荐技能组合工作流
+
+### 余额与代币查询
+```
+tron-wallet（查余额）→ tron-wallet（列出代币）→ tron-resource（检查能量状态）
+```
+
+### 研究与兑换报价
+```
+tron-token（搜索）→ tron-market（价格/K线）→ tron-resource（检查能量）→ tron-swap（获取报价）
+```
+
+### 质押分析
+```
+tron-wallet（查余额）→ tron-staking（质押信息）→ tron-staking（APY 估算）→ tron-staking（SR 列表）
+```
+
+### 资源优化
+```
+tron-resource（检查状态）→ tron-resource（估算成本）→ tron-resource（optimize-cost）
+```
+
+---
+
+## TRON 资源模型参考
+
+### 能量 vs. 带宽
+
+| 资源 | 消耗场景 | 免费额度 | 获取方式 |
+|------|----------|----------|----------|
+| **带宽** | 所有交易 | 600/天 | 冻结 TRX 或燃烧 TRX |
+| **能量** | 仅智能合约 | 无 | 冻结 TRX、租赁或燃烧 TRX |
+
+### 成本示例
+
+> **数据截至 2026-05。** 能量数字会随合约升级（尤其是 USDT TRC-20）和网络参数变化；TRX 燃烧列用到的带宽/能量单价也会变。**仅作量级参考**，不是契约值。数据来源：TronGrid / Tronscan 交易采样与 TRON 网络参数。需要实时数值请用 `tron-resource` 的 `estimate-energy` / `estimate-bandwidth` 命令。
+
+| 操作 | 带宽 | 能量 | TRX 燃烧量（无资源时） |
+|------|------|------|------------------------|
+| TRX 转账 | ~267 | 0 | 0（在免费额度内） |
+| USDT 转账 | ~345 | ~65,000 | ~13-27 TRX |
+| SunSwap 兑换 | ~345 | ~65,000-200,000 | ~13-40 TRX |
+| 代币授权 | ~345 | ~30,000 | ~6-12 TRX |
+
+### Stake 2.0 要点
+- 冻结 TRX → 获取能量或带宽 → 投票给 SR → 赚取奖励
+- 解冻需 **14 天等待期** 才能提取
+- 解冻后投票重置；重新冻结后需重新投票
+- 1 冻结 TRX ≈ 每天 4.5 能量——**动态值**：取决于全网总质押量；实时数请用 `tron-resource estimate-energy`。数据截至 2026-05。
+- 投票奖励每 6 小时可领取一次
+
+---
+
+## 集成方式
+
+### 方式一：Claude Code（推荐）
+
+```bash
+# 克隆后直接使用
+git clone <repo>
+cd tronlink-skills
+claude   # 自动发现 SKILL.md 文件
+```
+
+只读操作无需 `npm install`。
+
+### 方式二：MCP 服务器
+
+```bash
+# 注册为 MCP 服务器
+claude mcp add tronlink -- node ~/.tronlink-skills/scripts/mcp_server.mjs
+
+# 提供 25 个 MCP 工具，可被 Claude Desktop / Claude Code 直接调用
+```
+
+### 方式三：命令行直接使用
+
+```bash
+# 直接执行命令
+node scripts/tron_api.mjs wallet-balance --address T地址...
+node scripts/tron_api.mjs token-price --token USDT
+node scripts/tron_api.mjs swap-quote --from TRX --to USDT --amount 100
+```
+
+### 方式四：其他 AI 平台
+
+| 平台 | 集成方式 |
+|------|----------|
+| **Cursor / Windsurf** | 克隆仓库，使用 MCP 或直接读取技能文件 |
+| **Codex CLI** | 软链接到 `~/.agents/skills/tronlink-skills` |
+| **OpenCode** | 注册插件，软链接技能 |
+| **LangChain / CrewAI** | 将 `tron_api.mjs` 封装为 Tool |
+
+#### Cursor（Windsurf 配置同构）
+
+`~/.cursor/mcp.json`:
+
+```jsonc
+{
+  "mcpServers": {
+    "tronlink-skills": {
+      "command": "node",
+      "args": ["/absolute/path/to/tronlink-skills/scripts/mcp_server.mjs"]
+    }
+  }
+}
+```
+
+#### Codex CLI
+
+```bash
+# 将 skills 目录软链到 agent 发现路径
+ln -s "$(pwd)/tronlink-skills" ~/.agents/skills/tronlink-skills
+# 验证识别
+codex skills list | grep tron
+```
+
+#### OpenCode
+
+`~/.config/opencode/config.json`:
+
+```jsonc
+{
+  "plugins": {
+    "tronlink-skills": { "path": "/absolute/path/to/tronlink-skills" }
+  }
+}
+```
+
+#### LangChain / CrewAI（Python）
+
+```python
+from langchain_core.tools import Tool
+import subprocess, json
+
+def tron_call(cmd: str) -> dict:
+    out = subprocess.check_output(
+        ["node", "scripts/tron_api.mjs", *cmd.split()],
+        cwd="/absolute/path/to/tronlink-skills",
+    )
+    return json.loads(out)
+
+tron_wallet_balance = Tool.from_function(
+    func=lambda addr: tron_call(f"wallet-balance --address {addr}"),
+    name="tron_wallet_balance",
+    description="TRX 余额与冻结量，地址为 TRON Base58（T...）字符串。",
+)
+```
+
+### 快速安装脚本
+
+```bash
+# 自动安装到所有 AI 环境
+bash install.sh
+
+# 清洁卸载
+bash uninstall.sh
+```
+
+---
+
+## 配置说明
+
+### 环境变量
+
+```bash
+# 可选：TronGrid API Key，获取更高请求频率
+export TRONGRID_API_KEY="your-api-key"
+
+# 可选：切换网络（默认：mainnet）
+export TRON_NETWORK="mainnet"    # 或 "shasta" / "nile"
+```
+
+### 网络支持
+
+| 网络 | 地址 | 用途 |
+|------|------|------|
+| 主网 | https://api.trongrid.io | 生产环境 |
+| Shasta 测试网 | https://api.shasta.trongrid.io | 测试 |
+| Nile 测试网 | https://nile.trongrid.io | 测试 |
+
+### 内置代币快捷符号
+
+| 符号 | 合约地址 |
+|------|----------|
+| TRX | 原生代币（无合约） |
+| USDT | TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t |
+| USDC | TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8 |
+| WTRX | TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR |
+| BTT | TAFjULxiVgT4qWk6UZwjqwZXTSaGaqnVp4 |
+| JST | TCFLL5dx5ZJdKnWuesXxi1VPwjLVmWZZy9 |
+| SUN | TSSMHYeV2uE9qYH95DqyoCuNCzEL1NvU3S |
+| WIN | TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7 |
+
+---
+
+## 项目结构
+
+```
+tronlink-skills/
+├── README.md                          # 主文档
+├── package.json                       # Node.js 配置文件
+├── install.sh                         # 全环境自动安装脚本
+├── uninstall.sh                       # 清洁卸载脚本
+│
+├── scripts/
+│   ├── tron_api.mjs                   # 主 CLI（33 个命令，零依赖）
+│   └── mcp_server.mjs                 # MCP 协议服务封装
+│
+├── skills/                            # 技能定义（自动发现）
+│   ├── tron-wallet/SKILL.md
+│   ├── tron-token/SKILL.md
+│   ├── tron-market/SKILL.md
+│   ├── tron-swap/SKILL.md
+│   ├── tron-resource/SKILL.md
+│   └── tron-staking/SKILL.md
+│
+├── docs/
+│   ├── claude-integration-guide.md    # 3 种集成方式
+│   ├── resource-model.md              # 能量与带宽深度解析
+│   ├── staking-guide.md               # Stake 2.0 与 APY 说明
+│   └── integration-guide.sh
+│
+├── .claude-plugin/                    # Claude Code 插件配置
+├── .cursor-plugin/                    # Cursor IDE 插件配置
+├── .opencode/                         # OpenCode 配置
+├── .codex/                            # Codex CLI 安装说明
+├── .claude/                           # 预配置测试命令
+├── _meta.json                         # 技能注册元数据
+└── LICENSE                            # MIT
+```
+
+---
+
+## 依赖项
+
+| 依赖 | 是否必需？ | 用途 |
+|------|-----------|------|
+| Node.js >= 18 | 是 | 运行时（原生 fetch、crypto） |
+| npm install | 不需要 | 所有操作均无需安装任何 npm 依赖 |
+
+---
+
+## 安全模型
+
+| 方面 | 实现方式 |
+|------|----------|
+| 纯只读设计 | 所有命令均为查询操作——不涉及私钥、签名或资金移动 |
+| 副作用 | 每个命令都是 **Network Read**：调用公共 API,但不改变任何状态。所有命令均可安全重试,无需人工确认（HITL） |
+| 无需密钥 | 仅可选 TRONGRID_API_KEY 用于提高请求频率 |
+| 频率限制 | 公共 TronGrid API；使用 TRONGRID_API_KEY 获取更高限额 |
+| 错误处理 | 失败均为查询类错误：限流（可重试,需退避）、网络错误（可重试）、地址/参数非法（不可重试——修正输入）。如需执行交易（转账、兑换、质押）,请使用 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)——这些技能本身从不签名或广播 |
+
+---
+
+## 地址格式支持
+
+所有命令均支持并自动归一化两种格式：
+
+| 格式 | 示例 | 说明 |
+|------|------|------|
+| Base58Check | `T...`（34 字符） | 标准显示格式 |
+| Hex | `41...`（42 个十六进制字符） | 内部表示格式 |
+
+---
+
+## 关键设计决策
+
+1. **零依赖** — 无需 npm install，对 AI Agent 而言轻量且即时
+2. **纯只读安全设计** — 所有命令均为查询操作，不涉及私钥或签名
+3. **TRON 专属领域知识** — 为能量/带宽和 Stake 2.0 提供专门技能，尊重 TRON 独特架构
+4. **多格式地址支持** — 透明处理 Base58Check 和 hex 两种格式
+5. **代币符号解析** — 常用代币有内置快捷方式；未知合约可直接使用地址
+6. **成本优化建议** — `optimize-cost` 命令提供个性化策略
+7. **MCP 服务封装** — 为 Claude Desktop 和现代 AI Agent 提供结构化集成
+
+---
+
+## 快速开始
+
+```bash
+# 1. 克隆
+git clone <repo>
+cd tronlink-skills
+
+# 2. 配合 Claude Code 使用（只读操作无需安装）
+claude
+> "查一下 T地址... 的 TRX 余额"
+> "展示 TRON 上最热门的代币"
+> "发送 USDT 需要多少能量？"
+> "获取能量最好的方式是什么——冻结、租赁还是燃烧？"
+
+# 3. 或直接使用命令行
+node scripts/tron_api.mjs wallet-balance --address T地址...
+node scripts/tron_api.mjs token-price --token USDT
+node scripts/tron_api.mjs optimize-cost --address T地址...
+```
+
+## 版本与许可证
+
+- **包：** `tronlink-skills` v1.0.1
+- **许可证：** MIT —— `SPDX-License-Identifier: MIT`
+- **变更记录 / 发布：** [https://github.com/TronLink/tronlink-skills/releases](https://github.com/TronLink/tronlink-skills/releases)
+
+---
+
+<!-- source: docs/ai-support/mcp-tronlink-signer.zh.md | url: /docs/zh/ai-support/mcp-tronlink-signer/ -->
+
+# mcp-tronlink-signer
+
+**GitHub**: https://github.com/TronLink/mcp-tronlink-signer
+
+将 [tronlink-signer](https://github.com/TronLink/mcp-tronlink-signer/tree/main/packages/tronlink-signer) 封装为 MCP 工具的服务器，供 Claude 及其他 AI 客户端使用。通过 TronLink 浏览器钱包对 TRON 交易进行签名，需用户在浏览器中授权确认 — 私钥始终留在钱包中，不会对外暴露。
+
+## 配置
+
+### Claude Code
+
+```bash
+claude mcp add -s user tronlink-signer -- npx mcp-tronlink-signer
+```
+
+### Claude Desktop / Cursor
+
+```json
+{
+  "mcpServers": {
+    "tronlink-signer": {
+      "command": "npx",
+      "args": ["mcp-tronlink-signer"]
+    }
+  }
+}
+```
+
+### 从源码构建
+
+```bash
+git clone https://github.com/TronLink/mcp-tronlink-signer.git
+cd mcp-tronlink-signer
+pnpm install && pnpm build
+```
+
+然后指向构建产物：
+
+```bash
+claude mcp add -s user tronlink-signer -- node /path/to/packages/mcp-tronlink-signer/dist/cli.js
+```
+
+## MCP 工具
+
+| 工具 | 说明 | 参数 | 副作用 | 可自动重试 |
+| ---- | ---- | ---- | --- | :---: |
+| `connect_wallet` | 连接 TronLink 钱包 | `network?` | Local Write（缓存 session） | 可——必要时让用户重新授权 |
+| `send_trx` | 向指定地址发送 TRX | `to`、`amount`、`network?` | **Remote Write** | **不可**——重发前先确认链上状态 |
+| `send_trc20` | 发送 TRC20 代币 | `contractAddress`、`to`、`amount`、`decimals?`、`network?` | **Remote Write** | **不可**——同 `send_trx` |
+| `sign_message` | 对消息进行签名 | `message`、`network?` | Local Write（只签名不广播） | 可——会重新弹审批 |
+| `sign_typed_data` | 对 EIP-712 结构化数据签名 | `typedData`、`network?` | Local Write（只签名） | 可——会重新弹审批 |
+| `sign_transaction`（`broadcast=false`） | 仅签名 | `transaction`、`broadcast=false`、`network?` | Local Write | 可——会重新弹审批 |
+| `sign_transaction`（`broadcast=true`） | 签名 + 广播 | `transaction`、`broadcast=true`、`network?` | **Remote Write** | **不可**——重发前先确认链上状态 |
+| `get_balance` | 查询 TRX 余额 | `address`、`network?` | Network Read | 可 |
+
+所有工具均支持可选的 `network` 参数（`mainnet` / `nile` / `shasta`），默认使用 `mainnet`。
+
+**人工确认（HITL）。** 所有涉及签名的工具（`send_trx`、`send_trc20`、`sign_message`、`sign_typed_data`、`sign_transaction`）都会打开 TronLink 浏览器审批页。AI agent **无法**在用户点击 Approve 之前签名。生产环境必须把 Remote Write 工具视为需要确认。
+
+## MCP 资源
+
+| URI | 说明 |
+| --- | ---- |
+| `wallet://networks` | 可用网络及其配置信息 |
+| `wallet://config` | 当前签名器配置 |
+
+## MCP 提示词
+
+| 提示词 | 说明 |
+| ------ | ---- |
+| `send-trx` | 发送 TRX 的引导式工作流 |
+| `check-balance` | 查询余额的引导式工作流 |
+| `send-token` | 发送 TRC20 代币的引导式工作流 |
+
+## 工作原理
+
+1. AI 智能体调用 MCP 工具（如 `send_trx`）— CLI 中会显示签名提示
+2. 服务器将请求委托给 `tronlink-signer`，后者打开**单个浏览器标签页**用于授权（如已打开则复用现有标签）
+3. 授权页面通过 **TIP-6963** 协议发现 TronLink 钱包
+4. 自动解锁钱包，并在需要时切换网络
+5. 如果钱包已连接，`connect_wallet` 会自动完成
+6. 交易详情会被解析为人类可读的格式（TRX 转账、TRC20、TRC721 NFT、质押、委托、投票等）
+7. 用户在浏览器中查看并批准
+8. TronLink 完成交易签名 — 私钥始终留在钱包中
+9. 结果返回给 AI 智能体 — 页面保持打开以便处理下一次操作
+
+## 取消
+
+所有签名工具均支持 MCP 取消机制。如果 AI 客户端取消了一个待处理的工具调用（例如用户在 Claude Code 中按下 Ctrl+C），进行中的请求会被自动中止，对于已被取消的请求不会打开浏览器授权页面。
+
+## 交易确认
+
+当调用 `sign_transaction` 且 `broadcast: true` 时，服务器会在广播后自动轮询链上确认状态，并返回执行结果（`success` 或 `pending`）。如果交易在链上失败（如 `OUT_OF_ENERGY`、Solidity revert），错误信息会连同解码后的原因一并返回给 AI 智能体。
+
+## 错误
+
+server 返回的错误使用标准 MCP 信封结构，带稳定的 `code` 与 `retryable`，便于 agent 在不解析自然语言的前提下做分支。框架层错误码统一以 [TronLink MCP Core 错误码](tronlink-mcp-core.md#错误码) 为准；signer 特有错误如下：
+
+| 条件 | Retryable | 何时发生 |
+| --- | :---: | --- |
+| `USER_REJECTED` | 否 | 用户在 TronLink 审批页点击 Reject。 |
+| `TIMEOUT` | 是 | 在超时时间内未审批（默认 5 分钟）。重发会重新弹审批；**禁止**自动重试可能已在途的广播。 |
+| `BROWSER_DISCONNECTED` | 是（仅签名场景） | 审批页被关闭或心跳丢失。重发即可重新连接；如可能已落账则**禁止**重发。 |
+| `NETWORK_ERROR` | 是 | TronGrid / RPC 请求失败，偶发性故障。 |
+| `BROADCAST_FAILED` | 否 | 签名成功但节点拒绝提交。**禁止**自动重试——签名可能已被其他节点接受。 |
+| `ON_CHAIN_FAILED` | 否 | 广播成功但链上执行失败（`OUT_OF_ENERGY`、Solidity revert、`FAILED`）。该交易已最终化；先解决根因再发送新交易。 |
+| `INVALID_INPUT` | 否 | 工具输入校验失败。修正参数。 |
+| `CANCELLED` | 否 | MCP 客户端取消调用（如用户按 Ctrl+C）。 |
+
+**重试策略。** 只读调用（`get_balance`）与签名前失败（`USER_REJECTED`、`INVALID_INPUT`、`CANCELLED`）agent 可安全用修正后的输入重发。任何签名 + 广播路径——一旦请求离开 server，结果就必须视为未知，先用 `get_balance` 或区块浏览器确认后再考虑重发。
+
+## 安全边界
+
+| 边界 | 保证 | Agent / 运维方义务 |
+|---|---|---|
+| **Prompt 注入** | 工具输入按原始值作为调用参数，server 不会再次提交给 LLM。TronLink 审批页渲染的是解析后的交易字段，不是 agent 的自由文本。 | 链上拿到的字符串（备注、revert 原因）视为不可信；分支应基于 `txId` / `status` / `code`，而非 prose。 |
+| **本地 HTTP listener** | 本地审批 server **仅绑定 `127.0.0.1`**（端口 `TRON_HTTP_PORT`，默认 3386，被占用时自增），永远不接受跨主机连接。每个 server session 有唯一 ID，前一次 session 的浏览器标签会被自动失效。 | 不要把 3386 端口转发到外网。同一台机器不要用相同 `TRON_HTTP_PORT` 跑两份。 |
+| **出站 host 白名单（SSRF）** | signer 只与 [Networks](#环境变量) 列出的 TronGrid 端点以及本地浏览器通信，工具不接受会被原样请求的用户 URL。 | 生产环境钉死 `TRON_NETWORK`、`TRON_API_KEY`。 |
+| **API key 处理（token passthrough）** | `TRON_API_KEY` 仅在启动时从 env 读取，仅用于到 TronGrid 的出站；**不**会出现在任何工具响应、错误 `details` 或 MCP resource 中。server 不接受 MCP 客户端传入的 Authorization header 并转发到上游。 | API key 放进 MCP host 的 secret manager，不要写进会提交 git 的 `mcpServers` 配置。 |
+| **签名必须 HITL** | 所有签名工具（`send_trx`、`send_trc20`、`sign_message`、`sign_typed_data`、`sign_transaction`）都会打开 TronLink 审批页，**不存在程序化绕过**。私钥始终留在 TronLink。 | 不需要运维额外强制 HITL——这是结构性保证。不要试图通过移除浏览器层来"加固"。 |
+| **浏览器标签劫持** | 审批页基于 server session ID 验证每次请求，过期的标签会被忽略；心跳检测会在断连时关闭 session。 | 同一用户跑多个 agent 时，请让每个 agent 启动自己的 signer 实例；跨实例的请求串扰由 session ID 屏蔽，但 UI 层混淆不防。 |
+| **Confused deputy** | signer 以已连接的 TronLink 账户身份执行，没有来自 MCP 客户端的逐次授权 scope。 | 一个 signer 实例 = 一个 TronLink 账户，不要把多个终端用户复用到同一个实例。 |
+
+## 环境变量
+
+| 变量名 | 说明 | 默认值 |
+| ------ | ---- | ------ |
+| `TRON_NETWORK` | 默认网络（mainnet / nile / shasta） | `mainnet` |
+| `TRON_HTTP_PORT` | 本地 HTTP 服务端口 | `3386` |
+| `TRON_API_KEY` | TronGrid API Key（可选） | - |
+
+## 版本与许可证
+
+- **包：** `mcp-tronlink-signer` v0.1.4
+- **许可证：** MIT —— `SPDX-License-Identifier: MIT`
+- **变更记录 / 发布：** [https://github.com/TronLink/mcp-tronlink-signer/releases](https://github.com/TronLink/mcp-tronlink-signer/releases)
+
+---
+
+<!-- source: docs/ai-support/tronlink-signer.zh.md | url: /docs/zh/ai-support/tronlink-signer/ -->
+
+# tronlink-signer
+
+**GitHub**: https://github.com/TronLink/mcp-tronlink-signer/tree/main/packages/tronlink-signer
+
+通过 TronLink 浏览器钱包签署 TRON 交易的独立 SDK。私钥始终留在 TronLink 中，所有签名操作均通过本地授权页面在浏览器内完成。
+
+## 安装
+
+```bash
+npm install tronlink-signer
+```
+
+## 快速开始
+
+```ts
+import { TronSigner } from "tronlink-signer";
+
+const signer = new TronSigner();
+await signer.start();
+
+const { address, network } = await signer.connectWallet();
+const { txId, status } = await signer.sendTrx("TXxx...", 1); // status: "success" | "pending" | "failed"
+const { txId: txId2, status: s2 } = await signer.signTransaction(tx, "nile", true); // 广播 + 自动确认
+const { balance } = await signer.getBalance("TXxx...");
+
+await signer.stop();
+```
+
+## API
+
+### `new TronSigner(config?: Partial<AppConfig>)`
+
+创建一个新的签名实例。若未传入配置，则通过 `loadConfig()` 从环境变量中读取。
+
+### `signer.start(): Promise<void>`
+
+启动用于浏览器授权的本地 HTTP 服务。
+
+### `signer.stop(): Promise<void>`
+
+停止服务并清除所有待处理请求。
+
+### `signer.getConfig(): AppConfig`
+
+返回当前配置信息。
+
+### `signer.connectWallet(network?, options?): Promise<{ address: string; network: string }>`
+
+打开浏览器连接 TronLink 并获取钱包地址与当前网络。如果钱包已连接（同一浏览器标签页仍打开），则会无需用户交互自动完成。
+
+### `signer.sendTrx(to, amount, network?, options?): Promise<BroadcastResult>`
+
+向指定地址发送 TRX，会打开浏览器授权页面供用户确认。返回 `{ txId, status, error? }`，其中 `status` 为 `"success"`、`"pending"` 或 `"failed"`（参见[广播结果](#广播结果)）。
+
+| 参数 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `to` | `string` | 接收方 TRON 地址（base58 格式） |
+| `amount` | `string \| number` | 发送的 TRX 数量 |
+| `network` | `TronNetwork` | 可选，网络覆盖参数 |
+| `options` | `SignerOptions` | 可选，传入 `{ signal }` 可启用取消功能 |
+
+### `signer.sendTrc20(contractAddress, to, amount, decimals?, network?, options?): Promise<BroadcastResult>`
+
+发送 TRC20 代币，会打开浏览器授权页面。返回 `{ txId, status, error? }` — 参见[广播结果](#广播结果)。
+
+| 参数 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `contractAddress` | `string` | TRC20 代币合约地址 |
+| `to` | `string` | 接收方 TRON 地址（base58 格式） |
+| `amount` | `string` | 人类可读单位的金额（如 `"1.5"` 表示 1.5 USDT），精度转换会自动处理 |
+| `decimals` | `number` | 可选，代币精度。省略时通过合约的 `decimals()` 自动检测（推荐 — 可避免 USDD/SUN/JST 等非 6dp 代币出现 10^N 量级错误） |
+| `network` | `TronNetwork` | 可选，网络覆盖参数 |
+| `options` | `SignerOptions` | 可选，传入 `{ signal }` 可启用取消功能 |
+
+### `signer.signMessage(message, network?, options?): Promise<{ signature: string }>`
+
+对纯文本消息进行签名。
+
+### `signer.signTypedData(typedData, network?, options?): Promise<{ signature: string }>`
+
+对 EIP-712 结构化数据进行签名。
+
+```ts
+const { signature } = await signer.signTypedData({
+  domain: { name: "MyDApp", version: "1", chainId: 728126428 },
+  types: {
+    Greeting: [{ name: "contents", type: "string" }],
+  },
+  primaryType: "Greeting",
+  message: { contents: "Hello Tron!" },
+});
+```
+
+### `signer.signTransaction(transaction, network?, broadcast?, options?): Promise<{ signedTransaction; txId?; status?; error? }>`
+
+对原始交易进行签名。当 `broadcast` 为 `true` 时，签名后的交易会通过 TronLink 广播到链上，且 SDK 会自动轮询链上确认状态 — 可能的 `status` 取值参见[广播结果](#广播结果)。
+
+| 参数 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `transaction` | `Record<string, unknown>` | 待签名的原始交易对象 |
+| `network` | `TronNetwork` | 可选，网络覆盖参数 |
+| `broadcast` | `boolean` | 签名后是否广播（默认：`false`） |
+| `options` | `SignerOptions` | 可选 — 取消、确认控制、广播回调 |
+
+```ts
+// 仅签名
+const { signedTransaction } = await signer.signTransaction(tx);
+
+// 签名、广播并等待确认（默认行为）
+const { signedTransaction, txId, status, error } = await signer.signTransaction(tx, "nile", true);
+// status === "success" — 已在链上确认
+// status === "pending" — 广播成功但在超时时间内未被确认
+// status === "failed"  — 链上执行失败；`error` 包含失败原因
+
+// 广播但不等待确认
+const result = await signer.signTransaction(tx, "nile", true, { confirm: false });
+
+// 在交易进入内存池时立即收到通知
+const result = await signer.signTransaction(tx, "nile", true, {
+  onBroadcasted: ({ txId }) => console.log("Broadcast:", txId),
+});
+```
+
+### 广播结果
+
+广播类方法（`sendTrx`、`sendTrc20`、以及 `broadcast: true` 时的 `signTransaction`）均返回 `BroadcastResult`：
+
+```ts
+interface BroadcastResult {
+  txId: string;
+  status: "success" | "pending" | "failed";
+  error?: string; // 当 status === "failed" 时携带
+}
+```
+
+`"failed"` 表示交易已上链但执行失败（如 `OUT_OF_ENERGY`、Solidity revert）。**它不会抛出异常** — 请检查 `status`。SDK 仅在广播本身没有发生时才会抛出（签名异常、用户拒绝、网络不可达等）。
+
+### `signer.waitForTransaction(txId, network?, options?): Promise<{ status; error? }>`
+
+轮询网络以确认交易状态。当交易在链上确认时返回 `{ status: "success" }`；达到超时时间则返回 `{ status: "pending" }`；如果交易 revert / 能量耗尽则返回 `{ status: "failed", error }`。
+
+| 参数 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `txId` | `string` | 要监控的交易 ID |
+| `network` | `TronNetwork` | 可选，网络覆盖参数 |
+| `options` | `WaitForTransactionOptions` | 可选 — `timeoutMs`(默认：30000)、`signal` |
+
+```ts
+const { status, error } = await signer.waitForTransaction(txId, "nile");
+if (status === "success") console.log("已在链上确认");
+else if (status === "failed") console.warn("执行失败：", error);
+```
+
+> **提示：** 在使用 `signTransaction` 且 `broadcast: true` 时，确认轮询会自动执行 — 除非设置了 `confirm: false`，否则无需另行调用 `waitForTransaction`。
+
+### `signer.getBalance(address, network?): Promise<{ balance: string; balanceSun: number }>`
+
+查询指定地址的 TRX 余额，无需浏览器授权。
+
+### `signer.onBrowserDisconnect`
+
+用于设置授权页面被关闭或失去连接（心跳超时）时触发的回调。可用于资源清理或重新提示用户。
+
+```ts
+signer.onBrowserDisconnect = () => {
+  console.log("浏览器授权页面已关闭");
+};
+```
+
+### 取消与选项
+
+所有签名方法均支持可选的 `SignerOptions`：
+
+| 选项 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `signal` | `AbortSignal` | 用于取消待处理请求。若已被中止，则不会打开浏览器页面。 |
+| `confirm` | `boolean` | 广播后是否等待链上确认（默认：`true`），仅在 `broadcast: true` 时生效。 |
+| `confirmTimeoutMs` | `number` | 等待确认的最长时间（毫秒，默认：`30000`）。 |
+| `onBroadcasted` | `(info) => void` | 在交易进入内存池后（确认前）触发，回调中的错误会被吞掉。 |
+
+```ts
+const controller = new AbortController();
+
+// 30 秒后取消
+setTimeout(() => controller.abort(), 30_000);
+
+try {
+  const { txId } = await signer.sendTrx("TXxx...", 1, undefined, {
+    signal: controller.signal,
+  });
+} catch (e) {
+  // e.message === "CANCELLED_BY_CALLER"
+}
+```
+
+## 安全与副作用
+
+| 副作用 | 方法 |
+| --- | --- |
+| **读取**（无需审批，不改状态） | `getBalance`、`waitForTransaction`、`getConfig` |
+| **仅签名**（产出签名，无链上影响） | `signMessage`、`signTypedData`、`broadcast: false` 的 `signTransaction` |
+| **远程写**（签名 + 链上广播） | `sendTrx`、`sendTrc20`、`broadcast: true` 的 `signTransaction` |
+| **连接**（本地会话） | `connectWallet`、`start`、`stop` |
+
+- **人工确认（HITL）：** `connectWallet` 及每个签名/远程写调用都需要用户在 TronLink 审批页确认——被拒绝时 SDK 会抛错。私钥永不离开 TronLink。
+- **重试策略：**
+    - 读取与仅签名调用可安全重试（幂等，无链上影响）。
+    - 远程写调用**不得**盲目重试。SDK 仅在广播从未发生时抛错（签名错误、用户拒绝、网络不可达）——这些可安全重试。但返回 `status: "pending"` 意味着广播可能已上链,重发有双花风险。重试前请先用 `waitForTransaction(txId)` 对账。
+- **失败 ≠ 抛错：** 链上失败（`OUT_OF_ENERGY`、revert）以 `BroadcastResult` 的 `status: "failed"` 报告,不会抛出——请基于 `status` 分支,而非 try/catch。参见 [Broadcast Result](#broadcast-result)。
+
+## 工作原理
+
+1. 你的代码调用签名方法（如 `signMessage`）
+2. 本地 HTTP 服务在端口 3386 启动，并打开**单个浏览器标签页**显示授权页面
+3. 授权页面通过 **TIP-6963** 协议发现钱包（回退到 `window.tron`）
+4. 自动解锁钱包，并在需要时切换网络
+5. 对于 `connectWallet`，如果钱包已连接，会无需用户交互自动完成
+6. 对于签名/发送操作，用户查看交易详情后点击 **批准** 或 **拒绝**
+7. 授权页面会将交易类型（TRX 转账、TRC20、TRC721 NFT、质押、委托、投票等）解析为人类可读的展示
+8. TronLink 在浏览器中完成签名
+9. 结果返回给你的代码 — 页面保持打开状态并轮询下一个请求
+
+后续所有操作都会复用同一个浏览器标签页。每个服务会话有唯一 ID — 来自旧会话的浏览器标签页会自动失效。页面会通过心跳检测服务断开并显示会话过期提示。本地服务仅绑定到 `127.0.0.1`。若端口 3386 已被占用，会自动递增。请求超时时间为 5 分钟。进程退出时（SIGINT/SIGTERM）服务会优雅关闭。
+
+## 网络
+
+所有签名方法均支持可选的 `network` 参数：
+
+| 网络 | 完整节点地址 | 区块链浏览器 |
+| ---- | ------------ | ------------ |
+| `mainnet`（默认） | `https://api.trongrid.io` | `https://tronscan.org` |
+| `nile` | `https://nile.trongrid.io` | `https://nile.tronscan.org` |
+| `shasta` | `https://api.shasta.trongrid.io` | `https://shasta.tronscan.org` |
+
+## 环境变量
+
+| 变量名 | 说明 | 默认值 |
+| ------ | ---- | ------ |
+| `TRON_NETWORK` | 默认网络 | `mainnet` |
+| `TRON_HTTP_PORT` | 本地 HTTP 服务端口 | `3386` |
+| `TRON_API_KEY` | TronGrid API Key（可选） | - |
+
+## 类型定义
+
+```ts
+type TronNetwork = "mainnet" | "nile" | "shasta";
+
+interface AppConfig {
+  network: TronNetwork;
+  httpPort: number;
+  apiKey?: string;
+}
+
+interface NetworkConfig {
+  name: string;
+  fullHost: string;
+  explorerUrl: string;
+}
+
+interface SignerOptions {
+  signal?: AbortSignal;
+  confirm?: boolean;
+  confirmTimeoutMs?: number;
+  onBroadcasted?: (info: { txId: string; signedTransaction: Record<string, unknown> }) => void;
+}
+
+interface WaitForTransactionOptions {
+  timeoutMs?: number;
+  signal?: AbortSignal;
+}
+
+type BroadcastStatus = "success" | "pending" | "failed";
+
+interface BroadcastResult {
+  txId: string;
+  status: BroadcastStatus;
+  error?: string;
+}
+```
+
+## 导出
+
+```ts
+// 类
+export { TronSigner } from "./tron-signer.js";
+
+// 配置
+export { NETWORKS, DEFAULT_HTTP_PORT, REQUEST_TIMEOUT_MS, loadConfig } from "./config.js";
+
+// 类型
+export type {
+  TronNetwork, NetworkConfig, AppConfig,
+  PendingRequestType, PendingRequest,
+  SendTrxData, SendTrc20Data,
+  SignMessageData, SignTypedDataData, SignTransactionData,
+  SignerOptions, WaitForTransactionOptions,
+  BroadcastStatus, BroadcastResult,
+} from "./types.js";
+```
+
+## 版本与许可证
+
+- **包：** `tronlink-signer` v0.1.4
+- **许可证：** MIT —— `SPDX-License-Identifier: MIT`
+- **变更记录 / 发布：** [https://github.com/TronLink/mcp-tronlink-signer/releases](https://github.com/TronLink/mcp-tronlink-signer/releases)
+
+---
+
+<!-- source: docs/ai-support/tronlink-cli.zh.md | url: /docs/zh/ai-support/tronlink-cli/ -->
+
+# TronLink CLI
+
+**GitHub**: [https://github.com/TronLink/tronlink-cli](https://github.com/TronLink/tronlink-cli)
+
+通过 TronLink 钱包签名实现 TRON 区块链操作的命令行工具。
+
+所有交易均在本地构建，并通过 TronLink 浏览器扩展进行签名 — 私钥始终不会离开 TronLink。
+
+## 环境要求
+
+- Node.js >= 20
+- 已安装 TronLink 浏览器扩展
+- 浏览器处于运行状态（写操作会打开 TronLink 进行签名）
+
+**捆绑运行时（由 `@tronlink/tronlink-cli@1.0.1` 钉版）：**
+
+- `tronweb` `6.2.2` —— 用于 `transactionBuilder`、ABI v2 的 `trigger` 路径、`TronWeb.isAddress()` 与本地广播。TronWeb 6.x 引入了 ethers 驱动的 ABI v2 编码器，是 `trigger` 支持 tuple / 嵌套数组 / 数组 tuple 的前提，更早的 major 版本不支持。**升级此依赖前请重测所有 `trigger` 示例**。
+- `tronlink-signer` `0.1.4` —— 本地签名桥接浏览器扩展，与 [tronlink-signer](tronlink-signer.md) 是同一个 SDK。
+
+数据截至 2026-05；来源：各包 `package.json`。
+
+## 安装
+
+```bash
+# 通过 npm 安装
+npm install -g @tronlink/tronlink-cli
+
+# 本地开发
+npm install
+npm run build
+npm link
+```
+
+安装完成后，可在全局使用 `tronlink` 命令。
+
+## 全局选项
+
+| 选项 | 默认值 | 说明 |
+| ---- | ------ | ---- |
+| `--local-broadcast` | 关闭 | 由 CLI 本地广播，而不是让签名器广播 |
+| `--json` | 关闭 | 以 JSON 格式输出，便于脚本/AI 智能体处理 |
+| `--api-key <key>` | - | TronGrid API Key（也可设置 `TRON_API_KEY` 环境变量） |
+| `--timeout <ms>` | 300000 | 签名/连接超时时间（毫秒） |
+| `--port <n>` | 3386 | TronLink Signer HTTP 服务端口 |
+
+所有选项名称均**不区分大小写**（例如 `--toAddress`、`--TOADDRESS`、`--toaddress` 完全等价）。
+
+## 命令
+
+### 查询（读操作）
+
+读命令支持两种模式：
+
+- **传入 `--address`**：直接通过 TronGrid 查询，无需连接钱包。如未传 `--network`，默认查询主网。
+- **不传 `--address`**：通过 TronLink 授权读取当前钱包地址（如未传 `--network`，默认主网）。
+
+```bash
+# 查询所有代币余额
+tronlink balance --address <address> [--network mainnet]
+tronlink balance                                          # 连接钱包
+
+# 查询指定 TRC20 代币余额（自动检测精度）
+tronlink balance --address <address> --token <contract> [--decimals 6] [--network mainnet]
+
+# 查询指定 TRC10 代币余额（自动检测精度）
+tronlink balance --address <address> --tokenId <id> [--decimals 6] [--network mainnet]
+
+# 查询能量与带宽
+tronlink resource --address <address> [--network nile]
+tronlink resource                                         # 连接钱包
+```
+
+**主网查询代币**：TRX, USDT, USDD, USDC, SUN, JST, BTT, WIN, WTRX
+**Nile 查询代币**：TRX, USDT
+**Shasta 查询代币**：TRX
+
+### 转账
+
+```bash
+# TRX（金额单位为 TRX，而非 sun）
+tronlink transfer --type trx --toAddress <to> --amount <amount> [--network nile]
+
+# TRC10（自动检测精度，或通过 --decimals 指定）
+tronlink transfer --type trc10 --tokenId <id> --toAddress <to> --amount <amount> [--decimals 6] [--network nile]
+
+# TRC20（自动检测精度；可选 --fee-limit 单位为 TRX，默认 100）
+tronlink transfer --type trc20 --contract <contract> --toAddress <to> --amount <amount> [--decimals 6] [--fee-limit 150] [--network nile]
+
+# TRC721 NFT（可选 --fee-limit 单位为 TRX，默认 100）
+tronlink transfer --type trc721 --contract <contract> --toAddress <to> --tokenId <id> [--fee-limit 150] [--network nile]
+```
+
+示例：
+
+```bash
+tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --amount 100
+tronlink transfer --type trc20 --contract TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --amount 50
+tronlink transfer --type trc721 --contract TContractAddr --toAddress TRecipient --tokenId 12345
+```
+
+各类型的参数校验：
+
+| 类型 | 必需参数 | 不允许的参数 |
+| ---- | -------- | ------------ |
+| trx | `--toAddress`, `--amount` | `--tokenId`, `--contract`, `--decimals`, `--fee-limit` |
+| trc10 | `--toAddress`, `--amount`, `--tokenId` | `--contract`, `--fee-limit` |
+| trc20 | `--toAddress`, `--amount`, `--contract` | `--tokenId` |
+| trc721 | `--toAddress`, `--contract`, `--tokenId` | `--amount`, `--decimals` |
+
+### 调用智能合约
+
+调用任意智能合约方法。`--args` 是一个 JSON 数组，按位置与 `--method` 中的参数类型对应。
+
+```bash
+# 写操作（签名 + 广播）
+tronlink trigger \
+  --contract <address> \
+  --method 'transfer(address,uint256)' \
+  --args '["TRecipient...","1000000"]' \
+  [--call-value <trx>] [--fee-limit <trx>] [--network nile]
+
+# 常量（只读）调用 — 返回 constant_result 的原始 hex
+tronlink trigger \
+  --contract <address> \
+  --method 'balanceOf(address)' \
+  --args '["TQuery..."]' \
+  --constant [--address <addr>] [--network nile]
+```
+
+示例：
+
+```bash
+# TRC20 approve
+tronlink trigger --contract TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t \
+  --method 'approve(address,uint256)' \
+  --args '["TSpender...","1000000"]'
+
+# 含 tuple 数组的批量 swap
+tronlink trigger --contract TDex... \
+  --method 'swap((address,uint256)[],uint256)' \
+  --args '[[["T...","100"],["T...","200"]],"999"]' --fee-limit 200
+
+# Payable 调用（携带 --call-value）
+tronlink trigger --contract TPay... --method 'deposit()' --args '[]' --call-value 5
+
+# 只读查询
+tronlink trigger --contract TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t \
+  --method 'balanceOf(address)' --args '["TQuery..."]' --constant --address TQuery...
+```
+
+说明：
+
+- `--method` 接收 Solidity 函数签名。参数名为可选并被忽略：`transfer(address to, uint256 amount)` 与 `transfer(address,uint256)` 等价。
+- 完整支持结构化类型：tuple、嵌套数组、tuple 数组（如 `swap((address,uint256)[],uint256)`）。编码走 TronWeb 的 ABI v2 路径（底层使用 ethers）。
+- `--args` 必须是 JSON 数组，长度与方法的顶层入参数量一致。tuple 用嵌套 JSON 数组（不是对象）表示；`uint256`/`int256` 请用字符串以避免 JS 精度丢失。
+- 写操作在签名前会先在链上做一次 pre-flight 模拟（`triggerConstantContract`）。合约 revert、call-value + 手续费余额不足、超出 fee-limit 都会在交易上链前被拦截。
+- `--constant` 跳过签名与广播。如果不关心 owner 地址，可传 `--address` 避免唤起钱包授权。返回结果不会自动解码 — 请用任意 Solidity ABI 解码器解析返回的 hex。
+
+### 质押（Stake 2.0）
+
+```bash
+# 质押 TRX 以获取能量或带宽
+tronlink stake --amount <amount> --resource <energy|bandwidth> [--network nile]
+
+# 解锁已质押的 TRX
+tronlink unstake --amount <amount> --resource <energy|bandwidth> [--network nile]
+
+# 提取已解冻的 TRX（在 14 天解锁期之后）
+tronlink withdraw [--network nile]
+```
+
+### 资源代理
+
+```bash
+# 代理能量或带宽（锁定期单位为天，支持小数如 1.5）
+tronlink delegate --toAddress <to> --amount <amount> --resource <energy|bandwidth> [--lock-period <days>] [--network nile]
+
+# 回收已代理的资源
+# 支持部分回收：当一部分代理已过锁定期、另一部分仍在锁定中时，可回收至已解锁的总量为止。
+# 若申请数量超出已解锁总量，预检查会报告当前已解锁多少，以及下一批将在何时解锁。
+tronlink reclaim --fromAddress <from> --amount <amount> --resource <energy|bandwidth> [--network nile]
+```
+
+### 投票
+
+```bash
+# 为超级代表投票（格式：address:count，支持多个）
+tronlink vote --votes <address:count...> [--network nile]
+
+# 领取投票奖励
+tronlink reward [--network nile]
+```
+
+示例：
+
+```bash
+tronlink vote --votes TXxx:5 TYyy:3 TZzz:2
+tronlink reward
+```
+
+## 交易签名
+
+写操作（转账、质押、代理、投票等）需要在浏览器中通过 TronLink 进行授权：
+
+1. CLI 在本地构建交易并显示预览
+2. 浏览器打开 TronLink Signer 授权页面
+3. 用户审核后点击 **批准** 或 **拒绝**
+4. 结果返回 CLI
+
+多个命令会复用同一个浏览器窗口 — 每个会话只需要一个浏览器标签页。关闭该标签页即结束当前会话。
+
+支持多个命令并发执行，浏览器 UI 中每个待处理请求会以独立标签呈现，可按任意顺序进行授权。
+
+取消某个命令（Ctrl+C）只会取消该笔交易，其他排队中的交易不受影响。
+
+## 交易预览
+
+所有写操作在签名前都会显示预览：
+
+```text
+Transaction Preview
+┌───────────┬────────────────────────────────────────┐
+│ Action    │ Transfer TRX                           │
+│ Network   │ nile                                   │
+│ From      │ TXxx...                                │
+│ To        │ TYyy...                                │
+│ Amount    │ 100 TRX                                │
+│ Broadcast │ Signer                                 │
+└───────────┴────────────────────────────────────────┘
+Awaiting TronLink approval...
+```
+
+## 广播
+
+默认情况下，签名后的交易由签名器（TronLink）广播。使用 `--local-broadcast` 可让 CLI 通过自身的 TronWeb 实例进行本地广播：
+
+```bash
+# 默认：签名器签名后广播
+tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --amount 100
+
+# CLI 在本地广播
+tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --amount 100 --local-broadcast
+```
+
+**两条路径是互斥的，而不是冗余。** 加 `--local-broadcast` 后，签名器只返回已签名交易**不再广播**；CLI 用自己的 TronWeb 提交一次。同一条已签名 payload 不会被本次命令重复提交。
+
+若网络抖动导致 CLI 本地广播与签名器残留的广播都打到节点（例如断线重连、同一 nonce 的两次 CLI 调用），第二次提交会被节点拒绝——TRON 节点按交易 ID 去重，结果只会是一次入块 + 一次 `DUP_TRANSACTION_ERROR` 类失败，绝不会出现两次链上效果。已确认入块后再看到此类错误视为良性；尚未确认前出现则按退出码 `5`（网络）处理，先用区块浏览器核对再决定是否重试。
+
+所有输入在连接 TronLink 前会进行校验：
+
+- **金额**：仅支持非负数字，不允许科学计数法或多个小数点
+- **TRX 金额**：必须 > 0，转换为 sun 后需在安全整数范围内
+- **TRC20/TRC10 金额**：小数位数不能超过该代币的精度。如未传入 `--decimals`，会从链上自动检测
+- **地址**：必须为有效的 TRON 地址格式（通过 `TronWeb.isAddress()` 校验）
+- **合约存在性**：在查询精度前会先在指定网络上验证
+- **投票数量**：正整数，且不允许重复的 SR 地址
+- **网络**：必须为 `mainnet`、`nile` 或 `shasta`
+- **精度**：非负整数（0-77）
+- **手续费上限**：以 TRX 为单位的正数（适用于 TRC20/TRC721/trigger）
+- **Call value**（仅 trigger）：以 TRX 为单位的非负数；允许 `0`，等同于不传
+- **方法签名**（trigger）：必须为 `name(type1,type2,...)`；参数名为可选且会被忽略
+- **Args**（trigger）：合法的 JSON 数组，长度需与方法顶层入参数量一致
+- **转账类型校验**：缺少必需参数或包含不适用的额外参数将被明确报错拒绝
+
+无效输入会在任何钱包交互发生之前立即被拒绝并提示明确错误。
+
+## 输出格式
+
+**表格（默认）**：人类可读的表格输出。
+
+**JSON（`--json`）**：面向脚本和 AI 智能体的机器可读输出。自动化场景请始终带上 `--json`。
+
+写操作成功时返回：
+
+```json
+{
+  "Status": "Success",
+  "TxID": "0abc...",
+  "Explorer": "https://tronscan.org/#/transaction/0abc..."
+}
+```
+
+读操作在同一顶层对象下返回查询数据（余额、资源等）。字段名在同一大版本内保持稳定。
+
+## 退出码
+
+CLI 以下面的稳定退出码退出，自动化脚本可据此对失败类型做分支，无需解析自然语言。`--json` 模式下，同一分类也会出现在输出中。
+
+| 退出码 | 类别 | 含义 | 可重试 |
+| :---: | --- | --- | :---: |
+| `0` | 成功 | 查询返回，或交易已签名并广播 | n/a |
+| `1` | 输入非法 | 在任何钱包交互前校验失败（见「输入校验」） | 否——修正输入 |
+| `2` | 用户拒绝 | 用户在 TronLink 审批页点击 Reject | 否——用户已拒绝 |
+| `3` | 签名超时 | 在 `--timeout <ms>` 内未审批（默认 5 分钟） | 是——但**已在途**的广播除外 |
+| `4` | 链上失败 | 广播成功但执行失败（`OUT_OF_ENERGY`、`REVERT`、`FAILED`） | 否——该交易已最终化，先解决根因 |
+| `5` | 网络错误 | TronGrid / RPC 请求失败（偶发） | 是；写命令需先确认上一笔未上链 |
+
+> **重试策略。** 读命令（`balance` / `resource` / `--constant trigger`）始终可安全重试。写/签名命令（transfer、stake、delegate、vote、写型 trigger）在「已提交但结果未知」时**不得**自动重试——重新发起会再次弹审批，可能重复提交。仅在通过区块浏览器或 `balance` 确认上一笔未落账后再重试。
+
+## 错误
+
+agent 应基于上面的退出码分支。下表把 CLI 在 stderr 与 `--json` 输出中提到的具体条件映射到对应退出码：
+
+| 条件 | 退出码 |
+| --- | :---: |
+| 参数解析 / 类型 / 取值校验失败 | `1` |
+| 用户在 TronLink 审批页点击 Reject | `2` |
+| `--timeout` 超时未审批 | `3` |
+| 节点返回 `OUT_OF_ENERGY` | `4` |
+| `REVERT`（Solidity revert） | `4` |
+| `FAILED`（其他链上失败） | `4` |
+| TronGrid / RPC 不可达、5xx 或超时 | `5` |
+
+## 安全与副作用
+
+| 副作用 | 命令 |
+| --- | --- |
+| **只读**（Network Read，不签名） | `balance`、`resource`、常量 `trigger`（`--constant`） |
+| **远程写**（签名 + 广播） | `transfer`、`stake`、`unstake`、`withdraw`、`delegate`、`reclaim`、`vote`、`reward`、可写 `trigger` |
+
+- **人工确认（HITL）：** 每个写命令都会本地构建交易、展示「交易预览」，并要求在 TronLink 浏览器页面显式审批后才签名。私钥永不离开 TronLink。
+- **写操作不自动重试：** 见上方重试策略。
+- **默认低风险：** 优先用测试网（`--network nile` / `shasta`）；只有动用真实资金时才用 `--network mainnet`。
+
+## 支持的网络
+
+| 网络 | API 节点 | 区块链浏览器 |
+| ---- | -------- | ------------ |
+| mainnet | `https://api.trongrid.io` | `https://tronscan.org` |
+| nile | `https://nile.trongrid.io` | `https://nile.tronscan.org` |
+| shasta | `https://api.shasta.trongrid.io` | `https://shasta.tronscan.org` |
+
+## 工作原理
+
+1. CLI 解析命令并校验所有输入
+2. 对于带 `--address` 的读操作：直接通过 TronGrid 查询
+3. 对于写操作或不带 `--address` 的读操作：连接 TronLink 浏览器扩展以获取钱包信息
+4. 使用本地 TronWeb `transactionBuilder` 构建未签名交易
+5. Pre-flight 校验：所有写命令（transfer、stake、unstake、delegate、reclaim、vote、trigger）在签名前会执行此步——校验 TRX / 代币 / 已质押 / 已委托余额，模拟合约调用以捕获 revert，估算能量与带宽消耗，校验 SR 地址（vote）、NFT 所有权（TRC721）、委托解锁时间（reclaim）
+6. 将交易发送给 TronLink 进行签名（浏览器授权页面）
+7. 广播：默认由签名器广播；使用 `--local-broadcast` 时由 CLI 在本地广播。两种模式下 CLI 都会轮询 `getUnconfirmedTransactionInfo` 直至交易被打包入块（约 3 秒），并将 OUT_OF_ENERGY / REVERT / FAILED 作为错误抛出
+8. 输出结果
+
+## AI / 智能体使用
+
+TronLink CLI 通过 `--json` 输出支持 AI 智能体集成。所有命令都会返回结构化 JSON，便于解析。
+
+### 前置条件
+
+- 已全局安装 `tronlink`（`npm i -g @tronlink/tronlink-cli`）
+- 已安装并解锁 TronLink 浏览器扩展
+- 浏览器处于运行状态（写操作会打开 TronLink 进行签名）
+
+### 使用规则
+
+1. 始终追加 `--json` 以获取机器可读输出
+2. 写操作（转账、质押、投票等）会打开浏览器供用户签名 — 需等待命令返回（默认超时：5 分钟）
+3. 带 `--address` 的读操作无需连接钱包，查询更快
+4. 通过 `--network` 指定网络；如果省略，所有命令都默认使用主网
+5. 取消命令（Ctrl+C）只会取消该笔交易，不会终止签名会话
+
+### AI 命令参考
+
+#### 查询（无需签名）
+
+```bash
+# 查询所有代币余额
+tronlink balance --address <address> --network mainnet --json
+
+# 查询指定 TRC20 代币余额
+tronlink balance --address <address> --token <contract> --network mainnet --json
+
+# 查询指定 TRC10 代币余额
+tronlink balance --address <address> --tokenId <id> --network mainnet --json
+
+# 查询能量与带宽
+tronlink resource --address <address> --network mainnet --json
+```
+
+#### 转账（需要签名）
+
+```bash
+# TRX
+tronlink transfer --type trx --toAddress <to> --amount <amount> --json
+
+# TRC20（自动检测精度）
+tronlink transfer --type trc20 --contract <contract> --toAddress <to> --amount <amount> --json
+
+# TRC10（自动检测精度）
+tronlink transfer --type trc10 --tokenId <id> --toAddress <to> --amount <amount> --json
+
+# TRC721 NFT
+tronlink transfer --type trc721 --contract <contract> --toAddress <to> --tokenId <id> --json
+```
+
+#### 调用智能合约
+
+```bash
+# 写操作（会唤起 TronLink 进行签名）
+tronlink trigger --contract <contract> \
+  --method 'transfer(address,uint256)' \
+  --args '["<to>","<rawAmount>"]' --json
+
+# 常量（只读）调用 — 返回 hex，可用任意 Solidity 解码器解析
+tronlink trigger --contract <contract> \
+  --method 'balanceOf(address)' \
+  --args '["<address>"]' --constant --address <address> --json
+```
+
+#### 质押
+
+```bash
+tronlink stake --amount <amount> --resource energy --json
+tronlink unstake --amount <amount> --resource energy --json
+tronlink withdraw --json
+```
+
+#### 资源代理
+
+```bash
+tronlink delegate --toAddress <to> --amount <amount> --resource energy --json
+tronlink reclaim --fromAddress <from> --amount <amount> --resource energy --json
+```
+
+#### 投票
+
+```bash
+tronlink vote --votes <addr:count...> --json
+tronlink reward --json
+```
+
+### 常用代币合约
+
+| 代币 | 网络 | 合约地址 |
+| ---- | ---- | -------- |
+| USDT | mainnet | TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t |
+| USDD | mainnet | TXDk8mbtRbXeYuMNS83CfKPaYYT8XWv9Hz |
+| USDC | mainnet | TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8 |
+
+### 示例：AI 转账流程
+
+```bash
+# 1. 先查询余额
+tronlink balance --address TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL --network mainnet --json
+
+# 2. 发送 10 TRX（会打开浏览器签名，需等待返回）
+tronlink transfer --type trx --toAddress TRecipientAddress --amount 10 --network mainnet --json
+
+# 3. 验证结果 — 输出包含 txId 和浏览器链接
+# { "Status": "Success", "TxID": "abc...", "Explorer": "https://tronscan.org/#/transaction/abc..." }
+```
+
+### 注意事项
+
+- 所有写命令都会阻塞，直到用户在 TronLink 浏览器弹窗中批准或拒绝
+- 如用户拒绝或签名超时（5 分钟），命令会以错误退出
+- 取消 CLI 命令（Ctrl+C）只会取消该笔交易 — 其他排队中的交易将继续执行
+- 使用 `--timeout <ms>` 可调整签名超时时间
+- 金额内部使用基于字符串的运算 — 不存在浮点精度问题
+
+## 版本与许可证
+
+- **包：** `@tronlink/tronlink-cli` v1.0.1
+- **许可证：** MIT —— `SPDX-License-Identifier: MIT`
+- **变更记录 / 发布：** [https://github.com/TronLink/tronlink-cli/releases](https://github.com/TronLink/tronlink-cli/releases)
+
+---
+
+<!-- source: docs/dapp/transfer.zh.md | url: /docs/zh/dapp/transfer/ -->
+
+# 普通转账
+
+## 简介
+
+DApp 需要用户发起一笔 TRX 转账。
+
+> **前提条件：** 已通过 `eth_requestAccounts` 完成 DApp 连接授权（参见[开始开发](getting-started.md)）。
+
+波场网络上发起转账需要3个步骤：
+
+  1. 构造转账交易
+
+  2. 对交易进行签名
+
+  3. 对签名后的交易进行广播
+
+在这里，TronLink 介入的是第2步签名的部分，1, 3 两步需要开发者使用 tronWeb 完成
+
+## 技术规范
+
+### 代码示例
+
+```javascript
+const tronweb = window.tron.tronWeb;
+const fromAddress = tronweb.defaultAddress.base58;
+const toAddress = "TTSFjEG3Lu9WkHdp4JrWYhbGP6K1REqnGQ";
+const tx = await tronweb.transactionBuilder.sendTrx(toAddress, 10, fromAddress); // 步骤1
+try {
+  const signedTx = await tronweb.trx.sign(tx); // 步骤2
+  await tronweb.trx.sendRawTransaction(signedTx); // 步骤3
+} catch (e) {
+  // error handling
+}
+```
+
+当代码执行到`await tronweb.trx.sign(tx);`时，TronLink钱包会提示弹窗，需要用户进行确认，如下图：
+
+![TronLink 交易审批弹窗，显示收款地址、TRX 金额与"拒绝"/"签名"按钮](../images/zh_plugin-wallet_sign_trx.png)
+
+如果用户在弹窗中选择【拒绝】，则会抛出异常，开发者可捕获此异常进行业务处理。
+
+如果用户在弹窗中选择【签名】，DApp 可以拿到签名后的交易，继续进行广播。
+
+---
+
+<!-- source: docs/dapp/multi-sign-transfer.zh.md | url: /docs/zh/dapp/multi-sign-transfer/ -->
+
+# 多签转账
+
+## 简介
+
+此处可参考[普通转账](transfer.zh.md)
+
+> **前提条件：** 已通过 `eth_requestAccounts` 完成 DApp 连接授权（参见[开始开发](getting-started.md)）。
+
+## 技术规范
+
+### 代码示例
+
+```javascript
+const tronweb = window.tron.tronWeb;
+const toAddress = "TRKb2nAnCBfwxnLxgoKJro6VbyA6QmsuXq";
+const activePermissionId = 2;
+const tx = await tronweb.transactionBuilder.sendTrx(
+    toAddress, 10,
+    { permissionId: activePermissionId }
+); // 步骤1
+try {
+  const signedTx = await tronweb.trx.multiSign(tx, undefined, activePermissionId); // 步骤2
+  await tronweb.trx.sendRawTransaction(signedTx); // 步骤3
+} catch (e) {}
+```
+
+如果用户在弹窗中选择【拒绝】，则会抛出异常，开发者可捕获此异常进行业务处理。
+
+如果用户在弹窗中选择【签名】，DApp 可以拿到签名后的交易，继续进行广播。
+
+---
+
+<!-- source: docs/dapp/message-signing.zh.md | url: /docs/zh/dapp/message-signing/ -->
+
+# 消息签名
+
+## 简介
+
+DApp 需要用户对一个 hex 消息签名，签名后消息转发给后端进行验签，以此判断用户合法登录。
+
+> **前提条件：** 已通过 `eth_requestAccounts` 完成 DApp 连接授权（参见[开始开发](getting-started.md)）。
+
+## 技术规范
+
+### 代码示例
+
+```javascript
+const tronweb = window.tron.tronWeb;
+try {
+  const message = "0x01EF"; // any hex string
+  const signedString = await tronweb.trx.signMessageV2(message);
+} catch (e) {}
+```
+
+### 参数
+
+`window.tron.tronWeb.trx.signMessageV2` 接收一个十六进制的字符串作为参数，该字符串表示当前待签名的内容。
+
+### 返回值
+
+如果用户在弹窗中选择签名, DApp 可以得到签名后的十六进制字符串, 比如：
+
+```text
+    0xb0e0b150b9b10dc348f25c7f38fc87f16e18c0d230d23946aac519a5ad9e45937f656012d33c09e9d9dec00b03fbb304e797f8991bb823dce676ac91e03a55991b
+```
+
+如果报错，则会返回如下信息：
+
+```text
+    Uncaught (in promise) Invalid transaction provided
+```
+
+## 交互流程
+
+当代码执行到`await tronweb.trx.signMessageV2(message);`时，TronLink 钱包会提示弹窗，需要用户进行确认， 如下图, 其中消息内容会以hex的方式展示：
+
+![TronLink 消息签名审批弹窗，以 hex 形式展示待签消息与"拒绝"/"签名"按钮](../images/zh_plugin-wallet_sign_message.png)
+
+如果用户在弹窗中选择【拒绝】，则会抛出异常，开发者可捕获此异常进行业务处理。
+
+---
+
+<!-- source: docs/dapp/stake2.zh.md | url: /docs/zh/dapp/stake2/ -->
+
+# Stake2.0
+
+DApp 生成质押2.0交易的时候，对于`DelegateResourceContract` 或者`UnDelegateResourceContract` 类型的交易，想要在签名时使用 tronlink 插件展示预估结果，需要向交易体添加 __options 字段。
+
+__options 内部有两个值 `estimatedBandwidth，estimatedEnergy` ，分别对应代理和回收预估的能量和带宽。
+
+通过非 tronlink 插件注入的 tronweb 生成质押2.0交易的时候，对于`DelegateResourceContract` 或者`UnDelegateResourceContract` 类型的交易想要在签名时使用 tronlink 插件展示资源对应的类型，需要向交易体添加 resource 字段。(添加 resource 仅针对非 tronlink 插件注入的 tronweb ，使用 tronlink 插件注入的 tronweb 不需要添加)。
+
+resource 对应 `'BANDWIDTH'，'ENERGY'`。
+
+![Stake 2.0 委托/取消委托签名界面示意，标注了 __resource（"BANDWIDTH" 或 "ENERGY"）与 __options.estimatedBandwidth / estimatedEnergy 字段——TronLink 据此在签名页渲染资源类型](../images/dapp_stake2.0_img_0.jpg)
+<style>
+img {
+  max-width: 100%!important;
+}
+</style>
+代码示例：
+
+```javascript
+    const transaction = await tronWeb.transactionBuilder.delegateResource(10e6, 'receiverAddress', 'BANDWIDTH', 'ownerAddress', false);
+    transaction.raw_data.contract[0].parameter.value.resource = "BANDWIDTH"
+    transaction.__options = {"estimatedBandwidth": 1}
+```
+
+estimatedEnergy estimatedBandwidth 的具体计算逻辑见![Stake 2.0 资源份额到具体数额换算公式示意图](../images/dapp_skake2.0_img_1.png)[<a class="tooltip" href="https://www.google.com/url?q=https://coredevs.medium.com/stake-2-0-adaption-faq-66bafdf53606&sa=D&source=editors&ust=1684151119972747&usg=AOvVaw0msvWulJZhW6xn5QU461cb" data-tooltip="https://www.google.com/url?q=https://coredevs.medium.com/stake-2-0-adaption-faq-66bafdf53606&sa=D&source=editors&ust=1684151119972747&usg=AOvVaw0msvWulJZhW6xn5QU461cb">Stake 2.0 Adaptation FAQ</a>](https://www.google.com/url?q=https://coredevs.medium.com/stake-2-0-adaption-faq-66bafdf53606&sa=D&source=editors&ust=1684151119972747&usg=AOvVaw0msvWulJZhW6xn5QU461cb) 最后一个章节：How to convert resource share to amount?
+
+---
+
+<!-- source: docs/reference/networks.zh.md | url: /docs/zh/reference/networks/ -->
+
+# 网络与地址
+
+汇总本文档各处用到的网络参数与常用地址。
+
+## 网络
+
+| 网络 | `chainId`（十六进制） | EVM chainId（十进制） | RPC 端点 | 浏览器 |
+|---|---|---|---|---|
+| 主网 | `0x2b6653dc` | `728126428` | `https://api.trongrid.io` | [tronscan.org](https://tronscan.org) |
+| Shasta 测试网 | `0x94a9059e` | `2494104990` | `https://api.shasta.trongrid.io` | [shasta.tronscan.org](https://shasta.tronscan.org) |
+| Nile 测试网 | `0xcd8690dc` | `3448148188` | `https://nile.trongrid.io` | [nile.tronscan.org](https://nile.tronscan.org) |
+
+- 十六进制 `chainId` 用于 `wallet_switchEthereumChain`（TIP-3326）和 `chainChanged` 事件。**`chainId` 区分大小写。**
+- EVM（十进制）chainId 用于 EIP-712 类型化数据签名的 `domain.chainId` 字段。
+
+## 测试网水龙头
+
+- Shasta：在 [Shasta 水龙头](https://www.trongrid.io/shasta)领取测试 TRX。
+- Nile：在 [Nile 水龙头](https://nileex.io/join/getJoinPage)领取测试 TRX。
+
+## 地址格式
+
+TRON 地址有两种可互转的编码：
+
+- **Base58** —— 以 `T` 开头，例如 `TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`，是面向用户的形式。
+- **Hex** —— 以 `41` 开头，例如 `41...`，是链上/原始形式（`41` 是 TRON 的地址前缀字节）。
+
+`tronWeb.address.toHex()` / `tronWeb.address.fromHex()` 可在两者间转换。
+
+## 单位
+
+- `1 TRX = 1,000,000 SUN`。`tronWeb` 交易构造器（如 `sendTrx`）中的金额以 **SUN** 为单位。
+
+## 常用代币合约（主网）
+
+| 代币 | 标准 | 合约地址 |
+|---|---|---|
+| USDT | TRC-20 | `TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` |
+
+其他代币请在 [TronScan](https://tronscan.org/#/tokens) 查询其合约地址。集成前务必核对代币合约地址——不同网络上的地址不同。
+
+---
+
+<!-- source: docs/reference/glossary.zh.md | url: /docs/zh/reference/glossary/ -->
+
+# 术语表
+
+本文档各处用到的术语、标准与标识符释义。
+
+## TRON 与代币
+
+- **TRX** —— TRON 网络的原生代币。
+- **SUN** —— TRX 的最小单位，`1 TRX = 1,000,000 SUN`。交易金额以 SUN 表示。
+- **TRC-10** —— TRON 原生代币标准，在协议层管理（用数字 token id 标识）。
+- **TRC-20** —— TRON 的智能合约同质化代币标准（类比以太坊 ERC-20）。
+- **TRC-721** —— TRON 的非同质化代币（NFT）标准（类比 ERC-721）。
+- **Energy（能量）** —— 执行智能合约操作时消耗的资源，通过质押 TRX（Stake 2.0）或燃烧 TRX 获得。
+- **Bandwidth（带宽）** —— 按交易字节大小消耗的资源，通过质押或燃烧 TRX 获得；每个账户每天有少量免费额度。
+- **Stake 2.0** —— TRON 的资源质押模型。质押 TRX 产出能量或带宽，资源可代理给其他账户（`DelegateResourceContract` / `UnDelegateResourceContract`）。参见 [Stake 2.0](../dapp/stake2.md)。
+
+## 钱包对象与 SDK
+
+- **TronWeb** —— 用于构造、签名、广播 TRON 交易的 JavaScript SDK。参见 [TronWeb 文档](https://tronweb.network/docu/docs/intro)。
+- **`window.tron`** —— TronLink 注入到页面的 provider 对象，暴露 `request`、`tronWeb`、`on` / `removeListener`。
+- **`tronWeb`（实例）** —— 绑定到用户账户/网络的 `TronWeb` SDK 实例，授权后通过 `window.tron.tronWeb` 获取；授权前为 `false`。
+- **`window.tronLink`** —— 旧版 provider 对象（已不推荐，由 `window.tron` 取代）。
+- **`iTron`** —— 仅在 TronLink 移动端内置 DApp 浏览器中注入的对象，暴露 App 端原生能力。参见 [DApp 支持](../mobile/dapp-support.md)。
+- **HD 钱包** —— 分层确定性钱包（BIP-32），由单一种子派生出多个密钥对；**BIP-44** 定义派生路径结构；种子以**助记词**表示。参见 [HD 钱包](../hd-wallets.md)。
+
+## 标准与提案
+
+- **TIP** —— TRON Improvement Proposal（TRON 改进提案），索引见 [github.com/tronprotocol/tips](https://github.com/tronprotocol/tips)。
+- **EIP** —— Ethereum Improvement Proposal（以太坊改进提案）。TronLink 复用了若干 EIP 方法名以保持兼容。
+- **TIP-1102 / EIP-1102** —— 钱包连接请求（`eth_requestAccounts`）。参见[主动请求 TronLink 插件功能](../plugin-wallet/active-requests.md)。
+- **TIP-1193 / EIP-1193** —— provider 接口及其事件（`connect`、`disconnect` 等），含 `ProviderRpcError` 结构。
+- **TIP-3326 / EIP-3326** —— 切换网络请求（`wallet_switchEthereumChain`）。
+- **TIP-6963 / EIP-6963** —— 通过 `announceProvider` / `requestProvider` 事件做多钱包 provider 发现，使 DApp 无需抢占 `window.tron` 即可选定特定钱包。
+
+## 类型与标识符
+
+- **ABI** —— Application Binary Interface，合约可调用方法与事件的 JSON 描述。若代币合约的 ABI 缺少可识别的方法（如 `transfer`、`approve`），TronLink 可能无法提供相应操作。
+- **`chainId`** —— 网络标识。TronLink 在 `wallet_switchEthereumChain` 和 `chainChanged` 用十六进制形式（如 `0x2b6653dc`），在 EIP-712 的 `domain.chainId` 用十进制 EVM 形式（如 `728126428`）。参见[网络与地址](networks.md)。
+- **`ProviderRpcError`** —— EIP-1193 在 `disconnect` 时抛出的错误对象，结构为 `{ code: number; message: string; data?: unknown }`。
+- **permission id** —— 多签交易使用的活动权限索引（传给 `tronWeb.trx.multiSign`）。参见[多签转账](../dapp/multi-sign-transfer.md)。
+- **base58 / hex 地址** —— TRON 地址的两种编码（`T...` 与 `41...`）。参见[网络与地址](networks.md)。
+
+## AI 工具
+
+- **MCP** —— Model Context Protocol，TronLink 的 AI 服务实现的标准，使智能体可调用钱包工具。参见 [AI 支持](../ai-support/ai-llms.md)。
+- **DeepLink** —— `tronlinkoutside://` URL 协议，用于从 DApp 或 H5 页面驱动 TronLink 移动端。参见 [DeepLink](../mobile/deeplink.md)。
+
+---
+
+<!-- source: docs/reference/faq.zh.md | url: /docs/zh/reference/faq/ -->
+
+# 常见问题
+
+将 DApp 接入 TronLink 时的常见问题。
+
+## `window.tron` 是 undefined / 检测不到钱包
+
+可能是 provider 尚未注入，或未安装 TronLink。请用 TIP-6963 检测，而不要直接读 `window.tron`：监听 `TIP6963:announceProvider`，再派发 `TIP6963:requestProvider`。若无 provider 应答，则说明未安装 TronLink，提示用户安装。参见[开始开发](../dapp/getting-started.md)。
+
+## `eth_requestAccounts` 被拒绝（错误码 `4001`）
+
+用户拒绝了连接（点击【拒绝】、关闭弹窗，或请求不是来自当前活动标签页）。这是正常情况——捕获该错误并允许用户重试。参见[错误码](../plugin-wallet/active-requests.md)。
+
+## 调用 `eth_requestAccounts` 返回 `-32000`
+
+同一来源在钱包锁定期间 20 秒内重复发起了 `eth_requestAccounts`（被限流）。请稍候重试，避免反复触发请求。
+
+## `tronWeb` 是 `false` / 未就绪
+
+`window.tron.tronWeb` 在用户授权前为 `false`。先调用 `eth_requestAccounts`，再读取 `tronWeb`。稳妥的写法是检查 `tronProvider.tronWeb?.ready`。参见[获取 tronWeb 实例](../dapp/getting-started.md)。
+
+## DApp 感知不到账户或网络变化
+
+`eth_requestAccounts` 只负责初次授权。之后的变化——用户切换账户、锁定钱包、切换网络——需订阅被动事件 `accountsChanged` 与 `chainChanged`。参见[被动接收 TronLink 插件的消息](../plugin-wallet/passive-messages.md)。
+
+## DApp 需要特定网络
+
+用 `wallet_switchEthereumChain`（TIP-3326）请求切换，传入目标十六进制 `chainId`。参见 [chainId 取值](networks.md)与[切换网络](../plugin-wallet/active-requests.md)。通过 `chainChanged` 确认当前网络。
+
+## 交易因资源不足而失败
+
+链上操作会消耗 **Energy（能量）**（合约执行）与 **Bandwidth（带宽）**（交易体积）。请确保签名账户有足够资源——通过质押 TRX（Stake 2.0）或燃烧 TRX 获得。参见[术语表](glossary.md)与 [Stake 2.0](../dapp/stake2.md)。
+
+## Ledger 签名看起来不一样（`v` 字节）
+
+TronLink 会规范化 Ledger 签名的末尾字节（`01`→`1c`，`00`→`1b`），使 Ledger 与普通账户签名一致。参见[对 Ledger 签名后的 v 字段兼容](../plugin-wallet/ledger-signing-update.md)。
+
+## 如何与移动端集成？
+
+使用 DeepLink（`tronlinkoutside://`）协议拉起 TronLink App 进行登录、转账与签名。参见 [DeepLink](../mobile/deeplink.md)。
+
+## 如何构建使用 TronLink 的 AI 智能体？
+
+可使用 MCP 服务、智能体技能集、签名 SDK 或 CLI。从 [AI 支持](../ai-support/ai-llms.md)开始。
+

@@ -47,6 +47,16 @@ Networks: Mainnet `chainId` `0x2b6653dc` (EVM `728126428`), Shasta testnet `0x94
 - [Glossary](/docs/reference/glossary/): Definitions of TRX/SUN, TRC standards, Energy/Bandwidth, TIP/EIP standards, ABI, chainId, and wallet objects
 - [FAQ](/docs/reference/faq/): Common integration questions — wallet detection, connection rejection, tronWeb readiness, network switching, resources
 
+## Localized
+
+The site is bilingual. Chinese pages live at the same slugs under `/docs/zh/` (served by the mkdocs-material i18n plugin); for single-fetch ingestion, use the Chinese full-text bundle below.
+
+- [llms-full.en.txt](/docs/llms-full.en.txt) — every English page, single-fetch
+- [llms-full.zh.txt](/docs/llms-full.zh.txt) — every Chinese page, single-fetch
+- [llms-full.txt](/docs/llms-full.txt) — alias of `llms-full.en.txt` (kept for back-compat)
+
+Each bundle's first lines record the generating commit SHA, UTC timestamp, page count, and a coarse token estimate. The same page in EN and ZH is a translation pair (same slug minus the language suffix); pages are emitted in the navigation order declared in `mkdocs.yml`.
+
 ## Optional
 
 - [TronWeb Documentation](https://tronweb.network/docu/docs/intro): Full `tronWeb` API reference
