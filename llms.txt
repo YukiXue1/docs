@@ -1,0 +1,54 @@
+# TronLink Developer Documentation
+
+> TronLink is a decentralized wallet for the TRON ecosystem, available as a browser extension and a mobile app. This documentation covers integrating DApps with TronLink across the browser extension, the mobile app (via DeepLink), and AI/agent tooling (MCP servers, CLI, signer SDK).
+
+How integration works: TronLink injects a `window.tron` provider into every page, exposing a `tronWeb` instance, a `request` method, and `on` / `removeListener` for events. A DApp detects the wallet via TIP-6963, requests authorization via `eth_requestAccounts` (TIP-1102), then builds, signs, and broadcasts transactions through `tronWeb`. Account/network changes arrive as passive `accountsChanged` / `chainChanged` events.
+
+Networks: Mainnet `chainId` `0x2b6653dc` (EVM `728126428`), Shasta testnet `0x94a9059e`, Nile testnet `0xcd8690dc`. `chainId` values are case-sensitive.
+
+## Getting Started
+
+- [Introduction](https://docs.tronlink.org/introduction/): Overview of TronLink and the TRON ecosystem
+- [HD Wallets](https://docs.tronlink.org/hd-wallets/): BIP-32 / BIP-44 hierarchical deterministic wallets and TRON address derivation
+- [Start Developing](https://docs.tronlink.org/dapp/getting-started/): End-to-end DApp flow — detect (TIP-6963), authorize (`eth_requestAccounts`), get `tronWeb`, sign and broadcast a TRX transfer
+
+## TronLink Wallet Extension
+
+- [Proactively Request TronLink Plugin Features](https://docs.tronlink.org/plugin-wallet/active-requests/): Connect website (TIP-1102 / EIP-1102), provider discovery (TIP-6963), normal/multi-sig transfer, message signing, `wallet_watchAsset`, switch network (TIP-3326), and legacy `window.tronLink` methods
+- [Receive Messages from TronLink](https://docs.tronlink.org/plugin-wallet/passive-messages/): `accountsChanged`, `chainChanged`, `connect`, `disconnect` (TIP-1193) events and legacy 3.x messages
+- [Ledger v-field Compatibility](https://docs.tronlink.org/plugin-wallet/ledger-signing-update/): Normalization of the signature `v` byte (`01`→`1c`, `00`→`1b`) for transaction, message, and EIP-712 signing
+
+## DApp Integration
+
+- [General Transfer](https://docs.tronlink.org/dapp/transfer/): Build, sign, and broadcast a TRX transfer
+- [Multi-Signature Transfer](https://docs.tronlink.org/dapp/multi-sign-transfer/): `multiSign` with an active permission id
+- [Message Signature](https://docs.tronlink.org/dapp/message-signing/): `signMessageV2` for hex-message login verification
+- [Stake 2.0](https://docs.tronlink.org/dapp/stake2/): `__options` / `__resource` fields for delegate/undelegate resource transactions
+
+## TronLink App (Mobile)
+
+- [Asset Management](https://docs.tronlink.org/mobile/asset-management/): Adding custom TRC-20 / TRC-721 tokens
+- [DeepLink](https://docs.tronlink.org/mobile/deeplink/): `tronlinkoutside://` scheme for open wallet, open DApp, login, transfer, sign transaction, sign message, plus result codes
+- [DApp Support](https://docs.tronlink.org/mobile/dapp-support/): In-app DApp Explorer injection (`tronWeb`, `tronLink`, `iTron`)
+
+## AI Support
+
+- [AI Support Overview](https://docs.tronlink.org/ai-support/ai-llms/): Entry point to TronLink's AI/agent tooling and machine-readable resources
+- [MCP Server TronLink](https://docs.tronlink.org/ai-support/mcp-server-tronlink/): MCP server exposing on-chain, multi-sig, and GasFree tools
+- [TronLink MCP Core](https://docs.tronlink.org/ai-support/tronlink-mcp-core/): Framework library — session manager, capability interfaces, tool definitions, flow recipes
+- [TronLink Skills](https://docs.tronlink.org/ai-support/tronlink-skills/): Agent skill set for wallet, token, market, swap, resource, and staking commands
+- [MCP TronLink Signer](https://docs.tronlink.org/ai-support/mcp-tronlink-signer/): MCP server wrapping the signer SDK
+- [TronLink Signer](https://docs.tronlink.org/ai-support/tronlink-signer/): Standalone signer SDK — connect, sendTrx, sendTrc20, signMessage, signTypedData
+- [TronLink CLI](https://docs.tronlink.org/ai-support/tronlink-cli/): Command-line tool for queries, transfers, staking, delegation, and voting
+
+## Reference
+
+- [Networks & Addresses](https://docs.tronlink.org/reference/networks/): chainIds (mainnet/Shasta/Nile), RPC endpoints, explorers, faucets, address formats, units, and common token contracts
+- [Glossary](https://docs.tronlink.org/reference/glossary/): Definitions of TRX/SUN, TRC standards, Energy/Bandwidth, TIP/EIP standards, ABI, chainId, and wallet objects
+- [FAQ](https://docs.tronlink.org/reference/faq/): Common integration questions — wallet detection, connection rejection, tronWeb readiness, network switching, resources
+
+## Optional
+
+- [TronWeb Documentation](https://tronweb.network/docu/docs/intro): Full `tronWeb` API reference
+- [TRON Developer Center](https://developers.tron.network/): TRON network developer documentation
+- [TRON Official Site](https://tron.network/)
