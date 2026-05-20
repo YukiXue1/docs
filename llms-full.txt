@@ -2060,6 +2060,8 @@ mcp-server-tronlink/
 
 **Input/output schemas and error contract.** Each tool's input/output schema and the structured error envelope are defined by the underlying framework — see [TronLink MCP Core](tronlink-mcp-core.md#error-codes) for the SSOT error code table (`code` / `retryable` / `hint` / triggered_by). Every response carries `meta.schemaVersion`; field meanings are stable within a major version. Agents should branch on `error.code` and `error.retryable`, never on the human-readable `message`.
 
+**Per-tool input schemas are discoverable at runtime.** Every tool's parameters are Zod-validated in core and exposed as a JSON `inputSchema` via the MCP `list_tools` method, so a client can enumerate names, types, and required fields without reading this page. The tables below summarize tools by capability; `list_tools` is the authoritative, machine-readable source.
+
 **Side-effect classification.** Classify before calling; never auto-retry a write whose outcome is uncertain.
 
 | Side effect | Examples |
@@ -3151,8 +3153,10 @@ tronlink-skills/
 | Aspect | Implementation |
 |--------|----------------|
 | Read-only design | All commands are queries — no private keys, no signing, no fund movements |
+| Side effects | Every command is **Network Read**: it calls public APIs but changes no state. All commands are safe to retry; no human-in-the-loop confirmation is needed |
 | No secrets required | Only optional TRONGRID_API_KEY for higher rate limits |
 | Rate limits | Public TronGrid API; use TRONGRID_API_KEY for higher limits |
+| Error handling | Failures are query errors: rate limit (retryable, back off), network errors (retryable), invalid address/parameters (not retryable — fix the input). To execute a transaction (transfer, swap, stake), use the [signer SDK](tronlink-signer.md) or [MCP Server TronLink](mcp-server-tronlink.md) — these skills never sign or broadcast |
 
 ---
 
@@ -3543,6 +3547,21 @@ try {
   // e.message === "CANCELLED_BY_CALLER"
 }
 ```
+
+## Safety & Side Effects
+
+| Side effect | Methods |
+| --- | --- |
+| **Read** (no approval, no state change) | `getBalance`, `waitForTransaction`, `getConfig` |
+| **Sign-only** (produces a signature, no on-chain effect) | `signMessage`, `signTypedData`, `signTransaction` with `broadcast: false` |
+| **Remote Write** (signs + broadcasts on-chain) | `sendTrx`, `sendTrc20`, `signTransaction` with `broadcast: true` |
+| **Connection** (local session) | `connectWallet`, `start`, `stop` |
+
+- **Human-in-the-loop:** `connectWallet` and every signing/Remote Write call require the user to approve on the TronLink approval page — the SDK throws on rejection. Private keys never leave TronLink.
+- **Retry policy:**
+    - Read and Sign-only calls are safe to retry (idempotent, no chain effect).
+    - Remote Write calls must **not** be blindly retried. The SDK throws only when broadcast never happened (signature error, user rejection, network unreachable) — those are safe to retry. But a returned `status: "pending"` means the broadcast may have landed; resending risks a double-spend. Reconcile with `waitForTransaction(txId)` before any retry.
+- **Failure ≠ throw:** an on-chain failure (`OUT_OF_ENERGY`, revert) is reported as `status: "failed"` on the `BroadcastResult`, not thrown — branch on `status`, not on try/catch. See [Broadcast Result](#broadcast-result).
 
 ## How It Works
 
