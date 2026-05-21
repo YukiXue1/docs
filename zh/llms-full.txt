@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 /docs/llms.txt 的 Localized 段。
 
-- Generated: 2026-05-20T13:00:00Z
-- Commit: 3c5a22ffb734
+- Generated: 2026-05-21T03:13:48Z
+- Commit: 61f4c934a131
 - Language: zh
 - Pages: 23
-- Token estimate: ~29,747 (chars / 4)
+- Token estimate: ~29,892 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: /docs/zh/introduction/ -->
@@ -180,32 +180,53 @@ async function getTronWeb() {
 
 <!-- source: docs/ai-support/ai-llms.zh.md | url: /docs/zh/ai-support/ai-llms/ -->
 
-# AI 支持
+# AI / LLMs
 
-TronLink 为 AI 智能体与基于 LLM 的应用提供了完整的工具链：MCP 服务、智能体技能集、命令行工具，以及独立的签名 SDK。本页是入口——先看这里，再进入你需要的具体工具。
+TronLink 的开发者文档以机器可读形式发布，便于 AI 智能体和基于 LLM 的工具直接发现、读取与集成。
 
-## 机器可读资源
+## 可用端点
 
-供直接读取文档的 LLM / AI 智能体使用：
+| 端点 | 说明 |
+| --- | --- |
+| [/docs/llms.txt](/docs/llms.txt) | 关键页面的精选索引,每条带一句话描述（[llmstxt.org](https://llmstxt.org/) 规范） |
+| [/docs/llms-full.txt](/docs/llms-full.txt) | 所有英文页面的全文聚合,便于单次抓取 |
 
-- [llms.txt](/docs/llms.txt) —— 本文档的精选索引，遵循 [llmstxt.org](https://llmstxt.org/) 规范
-- [llms-full.txt](/docs/llms-full.txt) —— 所有英文页面的全文聚合，便于单次抓取
+生产地址：`https://docs.tronlink.org/docs/llms.txt` 与 `https://docs.tronlink.org/docs/llms-full.txt`。
 
-## 工具
+## 该用哪个文件？
 
-- [MCP Server TronLink](mcp-server-tronlink.md) —— 提供链上、多签、GasFree 工具的 MCP 服务（Playwright + Direct API 两种模式）
-- [TronLink MCP Core](tronlink-mcp-core.md) —— MCP 服务背后的框架库：会话管理、能力接口、工具定义、流程配方（flow recipe）
-- [TronLink Skills](tronlink-skills.md) —— 覆盖钱包、代币、行情、兑换、资源、质押等命令的智能体技能集
-- [MCP TronLink Signer](mcp-tronlink-signer.md) —— 封装签名 SDK、用于签名与广播的轻量 MCP 服务
-- [TronLink Signer](tronlink-signer.md) —— 独立签名 SDK（`connect`、`sendTrx`、`sendTrc20`、`signMessage`、`signTypedData`）
-- [TronLink CLI](tronlink-cli.md) —— 用于查询、转账、质押、代理、投票的命令行工具
+| 场景 | 文件 |
+| --- | --- |
+| 导航 / 找到正确页面 | `llms.txt` —— 简短的纯链接地图 |
+| 单次抓取整份文档 | `llms-full.txt` —— 每页全文 |
 
-## 如何选择
+先用 `llms.txt` 并跟随其链接;需要一次性获取全部内容时再抓 `llms-full.txt`。
 
-- 构建能读写链上的自治智能体 → 从 [MCP Server TronLink](mcp-server-tronlink.md) 或 [Skills](tronlink-skills.md) 入手。
-- 把签名能力嵌入自己的服务 → 用 [Signer SDK](tronlink-signer.md) 或它的 [MCP 封装](mcp-tronlink-signer.md)。
-- 在终端里脚本化执行一次性操作 → 用 [CLI](tronlink-cli.md)。
-- 扩展或自建 MCP 服务 → 基于 [TronLink MCP Core](tronlink-mcp-core.md) 构建。
+## 添加到你的 AI 工具
+
+- **Cursor** —— Settings → Features → Docs → *Add new doc*,粘贴 `https://docs.tronlink.org/docs/llms.txt`。
+- **Claude / 支持 MCP 的智能体** —— TronLink 提供 MCP 服务以实现实时钱包与链上访问,host 配置见 [MCP Server TronLink](mcp-server-tronlink.md) 与 [MCP TronLink Signer](mcp-tronlink-signer.md)。仅作文档上下文时,把工具指向上面的 `llms.txt` 地址即可。
+- **其他工具** —— 任何支持自定义文档 URL 的工具都可使用 `llms.txt` / `llms-full.txt` 端点。
+
+## 覆盖范围
+
+该聚合覆盖完整文档,包括 AI/智能体工具链：
+
+- [MCP Server TronLink](mcp-server-tronlink.md) —— 链上、多签、GasFree 工具（Playwright + Direct API）
+- [TronLink MCP Core](tronlink-mcp-core.md) —— 框架库：schema、工具定义、流程配方
+- [TronLink Skills](tronlink-skills.md) —— 只读智能体技能集（钱包、代币、行情、兑换、资源、质押）
+- [MCP TronLink Signer](mcp-tronlink-signer.md) —— 封装签名 SDK 的 MCP 服务
+- [TronLink Signer](tronlink-signer.md) —— 独立签名 SDK
+- [TronLink CLI](tronlink-cli.md) —— 命令行工具
+
+以及 DApp 集成、移动端（DeepLink）和参考（网络、术语表、FAQ）章节。
+
+## 给智能体的说明
+
+- 从 `llms.txt` 开始——它是权威地图。不要盲目枚举站点文件。
+- 工具调用请基于结构化的 `error.code` / `error.retryable` 分支,**不要**解析人类可读的 `message`。
+- 读操作可安全重试;签名 / 远程写操作需要用户审批（HITL）,且不得自动重试——见各工具的「安全」一节。
+- 实验时默认用测试网（`nile` / `shasta`）;只有动用真实资金时才用 `mainnet`。
 
 ---
 
@@ -712,7 +733,7 @@ try {
 
 #### 返回值
 如果用户在弹窗中选择签名，DApp 可以得到签名后的十六进制字符串，比如：
-```
+```text
 0xaa302ca153b10dff25b5f00a7e2f603c5916b8f6d78cdaf2122e24cab56ad39a79f60ff3916dde9761baaadea439b567475dde183ee3f8530b4cc76082b29c341c
 ```
 如果报错，则会返回如下信息：
@@ -1456,7 +1477,7 @@ window.addEventListener('message', function (e) {
 ### 普通交易签名
 
 以下是签名成功的 ledger 交易体：
-```json
+```text
 {
     "txID": "......",
     .....other property,
@@ -1466,7 +1487,7 @@ window.addEventListener('message', function (e) {
 }
 ```
 会变成:
-```json
+```text
 {
     "txID": "......",
     .....other property,
@@ -1489,12 +1510,12 @@ tron.tronWeb.trx.signMessageV2('.....unsign_string');
 ```
 
 ledger返回的实际签名hash：
-```
+```text
 ......50f400
 ```
 
 经过修改后的hash：
-```
+```text
 ......50f41b
 ```
 
@@ -1554,12 +1575,12 @@ await tron.tronWeb.trx._signTypedData(domain, types, message);
 ```
 
 ledger返回的实际签名hash：
-```
+```text
 .....7ee700
 ```
 
 经过修改后的hash：
-```
+```text
 ......7ee71b
 ```
 
@@ -1586,7 +1607,7 @@ ledger返回的实际签名hash：
 
 ## 架构设计
 
-```
+```text
 AI 代理 (Claude Desktop / Claude Code)
          | (MCP 协议 — stdio / JSON-RPC 2.0)
          v
@@ -1722,7 +1743,7 @@ TRON 多签服务的 REST + WebSocket API：
 
 纯密码学函数——无外部服务调用：
 
-```
+```text
 signTransaction()          raw_data_hex → 65 字节签名（通过 agent-wallet）
 base58CheckEncode()        有效载荷 → base58check 编码地址
 base58CheckDecode()        TRON 地址 → 21 字节有效载荷
@@ -1931,7 +1952,7 @@ Claude Code 自动检测：
 
 ## 项目结构
 
-```
+```text
 mcp-server-tronlink/
 ├── src/
 │   ├── index.ts                    # 服务入口、配置、能力注册
@@ -2174,7 +2195,7 @@ export TL_TRONGRID_URL="https://nile.trongrid.io"
 
 ## 架构设计
 
-```
+```text
 ┌─ AI 代理 (Claude, GPT 等)
 │
 ├─ MCP 协议 (stdio / JSON-RPC 2.0)
@@ -2518,7 +2539,7 @@ getContextInfo(): ContextInfo
 跨会话学习和步骤回放系统。
 
 ### 存储结构
-```
+```text
 test-artifacts/llm-knowledge/
 ├── tl-1741504523/
 │   ├── session.json
@@ -2619,7 +2640,7 @@ await server.start();
 
 ## 项目结构
 
-```
+```text
 tronlink-mcp-core/
 ├── src/
 │   ├── index.ts                           # 公共 API 导出
@@ -2734,7 +2755,7 @@ TronLink Skills 以深度 TRON 领域知识填补了这一空白。
 
 ## 架构设计
 
-```
+```text
 自然语言输入
          |
          v
@@ -2858,22 +2879,22 @@ Stake 2.0 查询与 SR 信息。
 ## 推荐技能组合工作流
 
 ### 余额与代币查询
-```
+```text
 tron-wallet（查余额）→ tron-wallet（列出代币）→ tron-resource（检查能量状态）
 ```
 
 ### 研究与兑换报价
-```
+```text
 tron-token（搜索）→ tron-market（价格/K线）→ tron-resource（检查能量）→ tron-swap（获取报价）
 ```
 
 ### 质押分析
-```
+```text
 tron-wallet（查余额）→ tron-staking（质押信息）→ tron-staking（APY 估算）→ tron-staking（SR 列表）
 ```
 
 ### 资源优化
-```
+```text
 tron-resource（检查状态）→ tron-resource（估算成本）→ tron-resource（optimize-cost）
 ```
 
@@ -3053,7 +3074,7 @@ export TRON_NETWORK="mainnet"    # 或 "shasta" / "nile"
 
 ## 项目结构
 
-```
+```text
 tronlink-skills/
 ├── README.md                          # 主文档
 ├── package.json                       # Node.js 配置文件
