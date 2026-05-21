@@ -1,0 +1,56 @@
+# TronLink 开发者文档
+
+> TronLink 是 TRON 生态的去中心化钱包，提供浏览器扩展和移动 App。本文档涵盖 DApp 通过浏览器扩展、移动端（DeepLink）以及 AI/智能体工具链（MCP 服务、CLI、签名 SDK）与 TronLink 集成。
+
+集成原理：TronLink 向页面注入 `window.tron` provider，暴露 `tronWeb` 实例、`request` 方法以及 `on` / `removeListener` 事件订阅。DApp 通过 TIP-6963 检测钱包，用 `eth_requestAccounts`（TIP-1102）请求授权，再经 `tronWeb` 构建、签名并广播交易。账户/网络变化以 `accountsChanged` / `chainChanged` 被动事件送达。
+
+网络：主网 `chainId` `0x2b6653dc`（EVM `728126428`），Shasta 测试网 `0x94a9059e`，Nile 测试网 `0xcd8690dc`。`chainId` 区分大小写。
+
+> 英文版索引见 [/docs/llms.txt](/docs/llms.txt)；全文聚合见 [/docs/llms-full.zh.txt](/docs/llms-full.zh.txt)。
+
+## 入门
+
+- [介绍](/docs/zh/introduction/)：TronLink 与 TRON 生态概览
+- [HD 钱包](/docs/zh/hd-wallets/)：BIP-32 / BIP-44 分层确定性钱包与 TRON 地址派生
+- [开始开发](/docs/zh/dapp/getting-started/)：DApp 端到端流程——检测（TIP-6963）、授权（`eth_requestAccounts`）、获取 `tronWeb`、签名并广播 TRX 转账
+
+## 插件钱包
+
+- [主动请求 TronLink 插件功能](/docs/zh/plugin-wallet/active-requests/)：连接网站（TIP-1102 / EIP-1102）、provider 发现（TIP-6963）、普通/多签转账、消息签名、`wallet_watchAsset`、切换网络（TIP-3326）及旧版 `window.tronLink` 方法
+- [被动接收 TronLink 插件的消息](/docs/zh/plugin-wallet/passive-messages/)：`accountsChanged`、`chainChanged`、`connect`、`disconnect`（TIP-1193）事件及旧版 3.x 消息
+- [对 Ledger 签名后的 v 字段兼容](/docs/zh/plugin-wallet/ledger-signing-update/)：交易、消息、EIP-712 签名的 `v` 字节归一化（`01`→`1c`，`00`→`1b`）
+
+## DApp 集成
+
+- [普通转账](/docs/zh/dapp/transfer/)：构建、签名并广播 TRX 转账
+- [多签转账](/docs/zh/dapp/multi-sign-transfer/)：带活动权限 id 的 `multiSign`
+- [消息签名](/docs/zh/dapp/message-signing/)：用于登录验签的 `signMessageV2`
+- [Stake2.0](/docs/zh/dapp/stake2/)：代理/取消代理资源交易的 `__options` / `__resource` 字段
+
+## 移动端
+
+- [资产管理](/docs/zh/mobile/asset-management/)：添加自定义 TRC-20 / TRC-721 代币
+- [DeepLink](/docs/zh/mobile/deeplink/)：`tronlinkoutside://` 协议——打开钱包、打开 DApp、登录、转账、签名交易、签名消息及回传码
+- [DApp 支持](/docs/zh/mobile/dapp-support/)：应用内 DApp 浏览器注入（`tronWeb`、`tronLink`、`iTron`）
+
+## AI 支持
+
+- [AI / LLMs](/docs/zh/ai-support/ai-llms/)：TronLink AI/智能体工具链与机器可读资源入口
+- [MCP Server TronLink](/docs/zh/ai-support/mcp-server-tronlink/)：链上、多签、GasFree 工具的 MCP 服务
+- [TronLink MCP Core](/docs/zh/ai-support/tronlink-mcp-core/)：框架库——会话管理、能力接口、工具定义、流程配方
+- [TronLink Skills](/docs/zh/ai-support/tronlink-skills/)：钱包、代币、行情、兑换、资源、质押命令的智能体技能集
+- [MCP TronLink Signer](/docs/zh/ai-support/mcp-tronlink-signer/)：封装签名 SDK 的 MCP 服务
+- [TronLink Signer](/docs/zh/ai-support/tronlink-signer/)：独立签名 SDK——connect、sendTrx、sendTrc20、signMessage、signTypedData
+- [TronLink CLI](/docs/zh/ai-support/tronlink-cli/)：查询、转账、质押、代理、投票的命令行工具
+
+## 参考
+
+- [网络与地址](/docs/zh/reference/networks/)：chainId（主网/Shasta/Nile）、RPC 端点、浏览器、水龙头、地址格式、单位、常用代币合约
+- [术语表](/docs/zh/reference/glossary/)：TRX/SUN、TRC 标准、能量/带宽、TIP/EIP 标准、ABI、chainId、钱包对象等释义
+- [常见问题](/docs/zh/reference/faq/)：集成高频问题——钱包检测、连接拒绝、tronWeb 就绪、网络切换、资源
+
+## 可选
+
+- [TronWeb 文档](https://tronweb.network/docu/docs/intro)：完整 `tronWeb` API 参考
+- [TRON 开发者中心](https://developers.tron.network/)：TRON 网络开发者文档
+- [TRON 官网](https://tron.network/)
