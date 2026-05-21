@@ -6,7 +6,7 @@
 
 网络：主网 `chainId` `0x2b6653dc`（EVM `728126428`），Shasta 测试网 `0x94a9059e`，Nile 测试网 `0xcd8690dc`。`chainId` 区分大小写。
 
-> 英文版索引见 [/docs/llms.txt](/docs/llms.txt)；全文聚合见 [/docs/llms-full.zh.txt](/docs/llms-full.zh.txt)。
+> 英文版索引见 [/docs/llms.txt](/docs/llms.txt)；中文全文聚合见 [/docs/zh/llms-full.txt](/docs/zh/llms-full.txt)；英文全文聚合见 [/docs/llms-full.txt](/docs/llms-full.txt)。（源文件名 `llms.zh.txt` / `llms-full.zh.txt` 在部署后会被 i18n 插件剥掉 `.zh` 后缀并搬到 `/zh/` 子目录下。）
 
 ## 入门
 

@@ -51,9 +51,9 @@ Networks: Mainnet `chainId` `0x2b6653dc` (EVM `728126428`), Shasta testnet `0x94
 
 The site is bilingual. Chinese pages live at the same slugs under `/docs/zh/` (served by the mkdocs-material i18n plugin); for single-fetch ingestion, use the Chinese full-text bundle below.
 
-- [llms-full.en.txt](/docs/llms-full.en.txt) — every English page, single-fetch
-- [llms-full.zh.txt](/docs/llms-full.zh.txt) — every Chinese page, single-fetch
-- [llms-full.txt](/docs/llms-full.txt) — alias of `llms-full.en.txt` (kept for back-compat)
+- [llms-full.txt](/docs/llms-full.txt) — every English page, single-fetch (built from `docs/llms-full.en.txt`; the `.en` suffix is stripped at deploy)
+- [/zh/llms-full.txt](/docs/zh/llms-full.txt) — every Chinese page, single-fetch (built from `docs/llms-full.zh.txt`; lives under the Chinese locale root)
+- [/zh/llms.txt](/docs/zh/llms.txt) — curated Chinese index (built from `docs/llms.zh.txt`)
 
 Each bundle's first lines record the generating commit SHA, UTC timestamp, page count, and a coarse token estimate. The same page in EN and ZH is a translation pair (same slug minus the language suffix); pages are emitted in the navigation order declared in `mkdocs.yml`.
 
