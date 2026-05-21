@@ -2,6 +2,8 @@
 
 > TronLink 是 TRON 生态的去中心化钱包，提供浏览器扩展和移动 App。本文档涵盖 DApp 通过浏览器扩展、移动端（DeepLink）以及 AI/智能体工具链（MCP 服务、CLI、签名 SDK）与 TronLink 集成。
 
+> Updated: 2026-05-21T14:08:15Z · Commit: e724781c635f
+
 集成原理：TronLink 向页面注入 `window.tron` provider，暴露 `tronWeb` 实例、`request` 方法以及 `on` / `removeListener` 事件订阅。DApp 通过 TIP-6963 检测钱包，用 `eth_requestAccounts`（TIP-1102）请求授权，再经 `tronWeb` 构建、签名并广播交易。账户/网络变化以 `accountsChanged` / `chainChanged` 被动事件送达。
 
 网络：主网 `chainId` `0x2b6653dc`（EVM `728126428`），Shasta 测试网 `0x94a9059e`，Nile 测试网 `0xcd8690dc`。`chainId` 区分大小写。
@@ -47,6 +49,7 @@
 
 - [网络与地址](reference/networks/)：chainId（主网/Shasta/Nile）、RPC 端点、浏览器、水龙头、地址格式、单位、常用代币合约
 - [术语表](reference/glossary/)：TRX/SUN、TRC 标准、能量/带宽、TIP/EIP 标准、ABI、chainId、钱包对象等释义
+- [错误码对照表](reference/error-code-map/)：以业务含义为主轴,横向 join DApp provider（EIP-1474）、DeepLink（5 位码）、MCP（`TL_*`）、CLI exit code,带 retryable 列
 - [常见问题](reference/faq/)：集成高频问题——钱包检测、连接拒绝、tronWeb 就绪、网络切换、资源
 
 ## 可选

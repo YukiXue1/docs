@@ -148,6 +148,13 @@
         <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/plugin-wallet/passive-messages/"/>
     </url>
     <url>
+        <loc>https://docs.tronlink.org/reference/error-code-map/</loc>
+        <lastmod>2026-05-21</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/reference/error-code-map/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/reference/error-code-map/"/>
+    </url>
+    <url>
         <loc>https://docs.tronlink.org/reference/faq/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
@@ -320,6 +327,13 @@
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/plugin-wallet/passive-messages/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/plugin-wallet/passive-messages/"/>
+    </url>
+    <url>
+        <loc>https://docs.tronlink.org/zh/reference/error-code-map/</loc>
+        <lastmod>2026-05-21</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/reference/error-code-map/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/reference/error-code-map/"/>
     </url>
     <url>
         <loc>https://docs.tronlink.org/zh/reference/faq/</loc>

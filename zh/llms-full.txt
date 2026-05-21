@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 ../llms.txt 的 Localized 段。
 
-- Generated: 2026-05-21T12:27:15Z
-- Commit: 9d9c49bcf0fe
+- Generated: 2026-05-21T14:08:15Z
+- Commit: e724781c635f
 - Language: zh
 - Pages: 23
-- Token estimate: ~38,581 (chars / 4)
+- Token estimate: ~39,427 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: introduction/ -->
@@ -184,16 +184,21 @@ async function getTronWeb() {
 
 TronLink 的开发者文档以机器可读形式发布，便于 AI 智能体和基于 LLM 的工具直接发现、读取与集成。
 
+!!! info "允许的用途 vs. 爬虫策略"
+    本站为 **retrieval / RAG / inference-time grounding** 整理——下方的 `llms.txt` 与 `llms-full.txt` 全文包是这种用途的规范入口,且明确为 AI 使用而维护。
+
+    **训练时批量抓取**是另一个问题,由本站的 `robots.txt` 加上边缘下发的 `Content-Signal` 指令控制。目前部分仅用于训练的 user-agent 被显式 Disallow;如果你的场景需要不同的策略,请联系我们,而不是通过解析全文包绕开信号。
+
 ## 可用端点
 
 > **URL ≠ 源文件名。** 源文件带 `.en` / `.zh` 后缀（`llms.zh.txt`、`llms-full.en.txt`、`llms-full.zh.txt`），mkdocs 的 i18n 插件靠这个后缀来分流；**部署后后缀会被剥掉**，中文版本搬到 `/zh/` 下。请使用下表中的部署 URL；带语言后缀的源文件名 URL（如 `/llms-full.en.txt`）会 404。
 
 | 端点（部署 URL） | 说明 |
 | --- | --- |
-| [/llms.txt](../llms.txt) | 英文版精选索引（[llmstxt.org](https://llmstxt.org/) 规范） |
-| [/zh/llms.txt](../llms.zh.txt) | 中文版精选索引——同样版式，链接指向 `/zh/` 下的中文页面 |
-| [/llms-full.txt](../llms-full.txt) | 所有英文页面全文聚合，便于单次抓取（由 `docs/llms-full.en.txt` 构建） |
-| [/zh/llms-full.txt](../llms-full.zh.txt) | 所有中文页面全文聚合，便于单次抓取（由 `docs/llms-full.zh.txt` 构建） |
+| [/llms.txt](../../../llms.txt) | 英文版精选索引（[llmstxt.org](https://llmstxt.org/) 规范） |
+| [/zh/llms.txt](../../llms.txt) | 中文版精选索引——同样版式，链接指向 `/zh/` 下的中文页面 |
+| [/llms-full.txt](../../../llms-full.txt) | 所有英文页面全文聚合，便于单次抓取（由 `docs/llms-full.en.txt` 构建） |
+| [/zh/llms-full.txt](../../llms-full.txt) | 所有中文页面全文聚合，便于单次抓取（由 `docs/llms-full.zh.txt` 构建） |
 
 生产地址：`https://docs.tronlink.org/llms.txt`、`https://docs.tronlink.org/zh/llms.txt`，以及对应的 `/llms-full.txt` 全文聚合。
 
@@ -5001,6 +5006,19 @@ try {
 
 如果用户在弹窗中选择【签名】，DApp 可以拿到签名后的交易，继续进行广播。
 
+## 错误码
+
+DApp provider 把错误以带 `.code` / `.message` 的 JavaScript exception 抛出。此调用上可能出现的码:
+
+| 码 | 含义 | 来源 | 可重试? |
+| :---: | --- | --- | :---: |
+| `4001` | 用户在签名弹窗里点【拒绝】 | `tronWeb.trx.sign(tx)` | 否——用户拒绝 |
+| (抛出) | `Invalid address` / `Invalid amount` 等 | `transactionBuilder.sendTrx(...)` 在钱包交互前 | 否——修参数 |
+| `REVERT` / `OUT_OF_ENERGY` / `FAILED` | 广播成功但链上执行失败 | `sendRawTransaction` 返回或 `tronWeb.trx.getTransactionInfo(txid)` | **否——交易已 final,永远不要自动重试** |
+| (network error) | TronGrid / RPC 抖动 | `sendRawTransaction` HTTP 层 | 是——退避后重试 |
+
+跨 surface 的码对照(DApp ↔ DeepLink ↔ MCP ↔ CLI)见[错误码对照表](../reference/error-code-map.md)。
+
 ---
 
 <!-- source: docs/dapp/multi-sign-transfer.zh.md | url: dapp/multi-sign-transfer/ -->
@@ -5013,6 +5031,21 @@ try {
 
 > **前提条件：** 已通过 `eth_requestAccounts` 完成 DApp 连接授权（参见[开始开发](getting-started.md)）。
 
+## 查询账户的 active permissions
+
+`multiSign` 需要传入一个**有效的** `permissionId`。账户的 active permissions 通过 `tronWeb.trx.getAccount(address)` 返回的 `active_permission[]` 数组取得,每个 entry 暴露 `id`、`permission_name`、`threshold` 以及 `keys[]`(地址 + 权重)。owner 权限 id 固定为 `0`,在 `owner_permission` 字段下单独返回。
+
+```javascript
+const tronweb = window.tron.tronWeb;
+const account = await tronweb.trx.getAccount(tronweb.defaultAddress.base58);
+// account.active_permission 是数组——挑选 keys[] 里包含你要签名地址、
+// 且 weight + threshold 足够覆盖本次交易的 id。
+const activePermissions = account.active_permission ?? [];
+console.log(activePermissions.map(p => ({ id: p.id, name: p.permission_name, threshold: p.threshold })));
+```
+
+把查出来的 `id` 作为下面的 `permissionId` 传入。
+
 ## 技术规范
 
 ### 代码示例
@@ -5020,7 +5053,7 @@ try {
 ```javascript
 const tronweb = window.tron.tronWeb;
 const toAddress = "TRKb2nAnCBfwxnLxgoKJro6VbyA6QmsuXq";
-const activePermissionId = 2;
+const activePermissionId = 2; // 通过 tronWeb.trx.getAccount(...).active_permission 查出
 const tx = await tronweb.transactionBuilder.sendTrx(
     toAddress, 10,
     { permissionId: activePermissionId }
@@ -5034,6 +5067,19 @@ try {
 如果用户在弹窗中选择【拒绝】，则会抛出异常，开发者可捕获此异常进行业务处理。
 
 如果用户在弹窗中选择【签名】，DApp 可以拿到签名后的交易，继续进行广播。
+
+注意:此次调用只收集**一个**签名——完整的多签交易需要凑齐 `threshold`,通常对应**多次** `multiSign` 调用(每个 co-signer 一次)。在凑齐前应在链下(或通过 MCP 的 `tl_multisig_*` 工具)跟踪部分签名的交易,凑齐后再广播。
+
+## 错误码
+
+| 码 | 含义 | 来源 | 可重试? |
+| :---: | --- | --- | :---: |
+| `4001` | 用户在签名弹窗里点【拒绝】 | `tronWeb.trx.multiSign(...)` | 否——用户拒绝 |
+| (抛出) | `permission_id not active` / `permission_id not exist` | `transactionBuilder.sendTrx({permissionId})`——权限不存在或被撤销 | 否——重新 `getAccount(...).active_permission` 查 |
+| (抛出) | 签名权重广播后仍低于 `threshold` | `sendRawTransaction` | 否——再凑签名(每个 co-signer 一次 `multiSign`) |
+| `REVERT` / `OUT_OF_ENERGY` / `FAILED` | 广播成功但链上执行失败 | `getTransactionInfo(txid)` | **否——交易已 final,永远不要自动重试** |
+
+跨 surface 的码对照见[错误码对照表](../reference/error-code-map.md)。
 
 ---
 
@@ -5085,11 +5131,23 @@ try {
 
 如果用户在弹窗中选择【拒绝】，则会抛出异常，开发者可捕获此异常进行业务处理。
 
+## 错误码
+
+| 码 | 含义 | 来源 | 可重试? |
+| :---: | --- | --- | :---: |
+| `4001` | 用户在签名弹窗里点【拒绝】 | `tronWeb.trx.signMessageV2(message)` | 否——用户拒绝 |
+| (抛出) | `Invalid transaction provided` / 非 hex 输入 | `signMessageV2(...)` 参数校验 | 否——传合法的 hex 字符串 |
+| (抛出) | provider 未注入 / 钱包未授权 | `window.tron.tronWeb` 未定义 | 否——先通过 `eth_requestAccounts` 连接 |
+
+跨 surface 的码对照见[错误码对照表](../reference/error-code-map.md)。
+
 ---
 
 <!-- source: docs/dapp/stake2.zh.md | url: dapp/stake2/ -->
 
 # Stake2.0
+
+> **前提条件：** 已通过 `eth_requestAccounts` 完成 DApp 连接授权（参见[开始开发](getting-started.md)）。
 
 DApp 生成质押2.0交易的时候，对于`DelegateResourceContract` 或者`UnDelegateResourceContract` 类型的交易，想要在签名时使用 tronlink 插件展示预估结果，需要向交易体添加 __options 字段。
 
@@ -5114,6 +5172,17 @@ img {
 ```
 
 estimatedEnergy estimatedBandwidth 的具体计算逻辑见![Stake 2.0 资源份额到具体数额换算公式示意图](../images/dapp_skake2.0_img_1.png)[<a class="tooltip" href="https://www.google.com/url?q=https://coredevs.medium.com/stake-2-0-adaption-faq-66bafdf53606&sa=D&source=editors&ust=1684151119972747&usg=AOvVaw0msvWulJZhW6xn5QU461cb" data-tooltip="https://www.google.com/url?q=https://coredevs.medium.com/stake-2-0-adaption-faq-66bafdf53606&sa=D&source=editors&ust=1684151119972747&usg=AOvVaw0msvWulJZhW6xn5QU461cb">Stake 2.0 Adaptation FAQ</a>](https://www.google.com/url?q=https://coredevs.medium.com/stake-2-0-adaption-faq-66bafdf53606&sa=D&source=editors&ust=1684151119972747&usg=AOvVaw0msvWulJZhW6xn5QU461cb) 最后一个章节：How to convert resource share to amount?
+
+## 错误码
+
+| 码 | 含义 | 来源 | 可重试? |
+| :---: | --- | --- | :---: |
+| `4001` | 用户在签名弹窗里点【拒绝】 | 委托/取消委托交易的 `tronWeb.trx.sign(tx)` | 否——用户拒绝 |
+| (抛出) | 缺 `__options` 或 `__resource`——签名页无法渲染预估 | `tronWeb.trx.sign(tx)` | 否——按上文规则补全两个字段 |
+| (抛出) | 质押的 TRX 不足 / 无可取消的代理 | `delegateResource` / `undelegateResource` 构造器 | 否——先修链上状态 |
+| `REVERT` / `OUT_OF_ENERGY` / `FAILED` | 广播成功但链上执行失败 | `sendRawTransaction` 返回或 `getTransactionInfo` | **否——交易已 final,永远不要自动重试** |
+
+跨 surface 的码对照见[错误码对照表](../reference/error-code-map.md)。
 
 ---
 
