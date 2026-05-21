@@ -1,345 +1,345 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
     <url>
-        <loc>https://docs.tronlink.org/docs/hd-wallets/</loc>
+        <loc>https://docs.tronlink.org/hd-wallets/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/hd-wallets/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/hd-wallets/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/hd-wallets/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/hd-wallets/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/</loc>
+        <loc>https://docs.tronlink.org/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/introduction/</loc>
+        <loc>https://docs.tronlink.org/introduction/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/introduction/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/introduction/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/introduction/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/introduction/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/ai-support/ai-llms/</loc>
+        <loc>https://docs.tronlink.org/ai-support/ai-llms/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/ai-llms/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/ai-llms/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/ai-llms/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/ai-llms/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/ai-support/mcp-server-tronlink/</loc>
+        <loc>https://docs.tronlink.org/ai-support/mcp-server-tronlink/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/mcp-server-tronlink/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/mcp-server-tronlink/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/mcp-server-tronlink/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/mcp-server-tronlink/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/ai-support/mcp-tronlink-signer/</loc>
+        <loc>https://docs.tronlink.org/ai-support/mcp-tronlink-signer/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/mcp-tronlink-signer/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/mcp-tronlink-signer/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/mcp-tronlink-signer/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/mcp-tronlink-signer/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/ai-support/tronlink-cli/</loc>
+        <loc>https://docs.tronlink.org/ai-support/tronlink-cli/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/tronlink-cli/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/tronlink-cli/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/tronlink-cli/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/tronlink-cli/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/ai-support/tronlink-mcp-core/</loc>
+        <loc>https://docs.tronlink.org/ai-support/tronlink-mcp-core/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/tronlink-mcp-core/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/tronlink-mcp-core/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/tronlink-mcp-core/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/tronlink-mcp-core/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/ai-support/tronlink-signer/</loc>
+        <loc>https://docs.tronlink.org/ai-support/tronlink-signer/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/tronlink-signer/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/tronlink-signer/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/tronlink-signer/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/tronlink-signer/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/ai-support/tronlink-skills/</loc>
+        <loc>https://docs.tronlink.org/ai-support/tronlink-skills/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/tronlink-skills/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/tronlink-skills/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/tronlink-skills/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/tronlink-skills/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/dapp/getting-started/</loc>
+        <loc>https://docs.tronlink.org/dapp/getting-started/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/dapp/getting-started/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/dapp/getting-started/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/dapp/getting-started/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/dapp/getting-started/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/dapp/message-signing/</loc>
+        <loc>https://docs.tronlink.org/dapp/message-signing/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/dapp/message-signing/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/dapp/message-signing/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/dapp/message-signing/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/dapp/message-signing/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/dapp/multi-sign-transfer/</loc>
+        <loc>https://docs.tronlink.org/dapp/multi-sign-transfer/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/dapp/multi-sign-transfer/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/dapp/multi-sign-transfer/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/dapp/multi-sign-transfer/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/dapp/multi-sign-transfer/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/dapp/stake2/</loc>
+        <loc>https://docs.tronlink.org/dapp/stake2/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/dapp/stake2/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/dapp/stake2/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/dapp/stake2/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/dapp/stake2/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/dapp/transfer/</loc>
+        <loc>https://docs.tronlink.org/dapp/transfer/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/dapp/transfer/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/dapp/transfer/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/dapp/transfer/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/dapp/transfer/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/mobile/asset-management/</loc>
+        <loc>https://docs.tronlink.org/mobile/asset-management/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/mobile/asset-management/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/mobile/asset-management/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/mobile/asset-management/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/mobile/asset-management/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/mobile/dapp-support/</loc>
+        <loc>https://docs.tronlink.org/mobile/dapp-support/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/mobile/dapp-support/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/mobile/dapp-support/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/mobile/dapp-support/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/mobile/dapp-support/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/mobile/deeplink/</loc>
+        <loc>https://docs.tronlink.org/mobile/deeplink/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/mobile/deeplink/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/mobile/deeplink/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/mobile/deeplink/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/mobile/deeplink/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/plugin-wallet/active-requests/</loc>
+        <loc>https://docs.tronlink.org/plugin-wallet/active-requests/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/plugin-wallet/active-requests/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/plugin-wallet/active-requests/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/plugin-wallet/active-requests/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/plugin-wallet/active-requests/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/plugin-wallet/ledger-signing-update/</loc>
+        <loc>https://docs.tronlink.org/plugin-wallet/ledger-signing-update/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/plugin-wallet/ledger-signing-update/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/plugin-wallet/ledger-signing-update/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/plugin-wallet/ledger-signing-update/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/plugin-wallet/ledger-signing-update/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/plugin-wallet/passive-messages/</loc>
+        <loc>https://docs.tronlink.org/plugin-wallet/passive-messages/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/plugin-wallet/passive-messages/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/plugin-wallet/passive-messages/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/plugin-wallet/passive-messages/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/plugin-wallet/passive-messages/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/reference/faq/</loc>
+        <loc>https://docs.tronlink.org/reference/faq/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/reference/faq/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/reference/faq/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/reference/faq/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/reference/faq/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/reference/glossary/</loc>
+        <loc>https://docs.tronlink.org/reference/glossary/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/reference/glossary/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/reference/glossary/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/reference/glossary/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/reference/glossary/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/reference/networks/</loc>
+        <loc>https://docs.tronlink.org/reference/networks/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/reference/networks/"/>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/reference/networks/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/reference/networks/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/reference/networks/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/asset_filter_logic/</loc>
+        <loc>https://docs.tronlink.org/zh/asset_filter_logic/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/asset_filter_logic/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/asset_filter_logic/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/hd-wallets/</loc>
+        <loc>https://docs.tronlink.org/zh/hd-wallets/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/hd-wallets/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/hd-wallets/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/hd-wallets/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/hd-wallets/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/</loc>
+        <loc>https://docs.tronlink.org/zh/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/introduction/</loc>
+        <loc>https://docs.tronlink.org/zh/introduction/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/introduction/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/introduction/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/introduction/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/introduction/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/ai-support/ai-llms/</loc>
+        <loc>https://docs.tronlink.org/zh/ai-support/ai-llms/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/ai-llms/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/ai-llms/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/ai-llms/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/ai-llms/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/ai-support/mcp-server-tronlink/</loc>
+        <loc>https://docs.tronlink.org/zh/ai-support/mcp-server-tronlink/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/mcp-server-tronlink/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/mcp-server-tronlink/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/mcp-server-tronlink/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/mcp-server-tronlink/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/ai-support/mcp-tronlink-signer/</loc>
+        <loc>https://docs.tronlink.org/zh/ai-support/mcp-tronlink-signer/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/mcp-tronlink-signer/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/mcp-tronlink-signer/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/mcp-tronlink-signer/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/mcp-tronlink-signer/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/ai-support/tronlink-cli/</loc>
+        <loc>https://docs.tronlink.org/zh/ai-support/tronlink-cli/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/tronlink-cli/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/tronlink-cli/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/tronlink-cli/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/tronlink-cli/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/ai-support/tronlink-mcp-core/</loc>
+        <loc>https://docs.tronlink.org/zh/ai-support/tronlink-mcp-core/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/tronlink-mcp-core/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/tronlink-mcp-core/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/tronlink-mcp-core/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/tronlink-mcp-core/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/ai-support/tronlink-signer/</loc>
+        <loc>https://docs.tronlink.org/zh/ai-support/tronlink-signer/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/tronlink-signer/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/tronlink-signer/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/tronlink-signer/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/tronlink-signer/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/ai-support/tronlink-skills/</loc>
+        <loc>https://docs.tronlink.org/zh/ai-support/tronlink-skills/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/ai-support/tronlink-skills/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/ai-support/tronlink-skills/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/ai-support/tronlink-skills/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/ai-support/tronlink-skills/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/dapp/getting-started/</loc>
+        <loc>https://docs.tronlink.org/zh/dapp/getting-started/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/dapp/getting-started/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/dapp/getting-started/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/dapp/getting-started/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/dapp/getting-started/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/dapp/message-signing/</loc>
+        <loc>https://docs.tronlink.org/zh/dapp/message-signing/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/dapp/message-signing/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/dapp/message-signing/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/dapp/message-signing/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/dapp/message-signing/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/dapp/multi-sign-transfer/</loc>
+        <loc>https://docs.tronlink.org/zh/dapp/multi-sign-transfer/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/dapp/multi-sign-transfer/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/dapp/multi-sign-transfer/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/dapp/multi-sign-transfer/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/dapp/multi-sign-transfer/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/dapp/stake2/</loc>
+        <loc>https://docs.tronlink.org/zh/dapp/stake2/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/dapp/stake2/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/dapp/stake2/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/dapp/stake2/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/dapp/stake2/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/dapp/transfer/</loc>
+        <loc>https://docs.tronlink.org/zh/dapp/transfer/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/dapp/transfer/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/dapp/transfer/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/dapp/transfer/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/dapp/transfer/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/mobile/asset-management/</loc>
+        <loc>https://docs.tronlink.org/zh/mobile/asset-management/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/mobile/asset-management/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/mobile/asset-management/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/mobile/asset-management/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/mobile/asset-management/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/mobile/dapp-support/</loc>
+        <loc>https://docs.tronlink.org/zh/mobile/dapp-support/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/mobile/dapp-support/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/mobile/dapp-support/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/mobile/dapp-support/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/mobile/dapp-support/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/mobile/deeplink/</loc>
+        <loc>https://docs.tronlink.org/zh/mobile/deeplink/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/mobile/deeplink/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/mobile/deeplink/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/mobile/deeplink/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/mobile/deeplink/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/plugin-wallet/active-requests/</loc>
+        <loc>https://docs.tronlink.org/zh/plugin-wallet/active-requests/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/plugin-wallet/active-requests/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/plugin-wallet/active-requests/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/plugin-wallet/active-requests/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/plugin-wallet/active-requests/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/plugin-wallet/ledger-signing-update/</loc>
+        <loc>https://docs.tronlink.org/zh/plugin-wallet/ledger-signing-update/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/plugin-wallet/ledger-signing-update/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/plugin-wallet/ledger-signing-update/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/plugin-wallet/ledger-signing-update/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/plugin-wallet/ledger-signing-update/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/plugin-wallet/passive-messages/</loc>
+        <loc>https://docs.tronlink.org/zh/plugin-wallet/passive-messages/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/plugin-wallet/passive-messages/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/plugin-wallet/passive-messages/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/plugin-wallet/passive-messages/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/plugin-wallet/passive-messages/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/reference/faq/</loc>
+        <loc>https://docs.tronlink.org/zh/reference/faq/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/reference/faq/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/reference/faq/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/reference/faq/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/reference/faq/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/reference/glossary/</loc>
+        <loc>https://docs.tronlink.org/zh/reference/glossary/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/reference/glossary/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/reference/glossary/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/reference/glossary/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/reference/glossary/"/>
     </url>
     <url>
-        <loc>https://docs.tronlink.org/docs/zh/reference/networks/</loc>
+        <loc>https://docs.tronlink.org/zh/reference/networks/</loc>
         <lastmod>2026-05-21</lastmod>
         <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/docs/zh/reference/networks/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/docs/reference/networks/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://docs.tronlink.org/zh/reference/networks/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.tronlink.org/reference/networks/"/>
     </url>
 </urlset>

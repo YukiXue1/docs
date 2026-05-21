@@ -8,52 +8,52 @@ Networks: Mainnet `chainId` `0x2b6653dc` (EVM `728126428`), Shasta testnet `0x94
 
 ## Getting Started
 
-- [Introduction](/docs/introduction/): Overview of TronLink and the TRON ecosystem
-- [HD Wallets](/docs/hd-wallets/): BIP-32 / BIP-44 hierarchical deterministic wallets and TRON address derivation
-- [Start Developing](/docs/dapp/getting-started/): End-to-end DApp flow — detect (TIP-6963), authorize (`eth_requestAccounts`), get `tronWeb`, sign and broadcast a TRX transfer
+- [Introduction](introduction/): Overview of TronLink and the TRON ecosystem
+- [HD Wallets](hd-wallets/): BIP-32 / BIP-44 hierarchical deterministic wallets and TRON address derivation
+- [Start Developing](dapp/getting-started/): End-to-end DApp flow — detect (TIP-6963), authorize (`eth_requestAccounts`), get `tronWeb`, sign and broadcast a TRX transfer
 
 ## TronLink Wallet Extension
 
-- [Proactively Request TronLink Plugin Features](/docs/plugin-wallet/active-requests/): Connect website (TIP-1102 / EIP-1102), provider discovery (TIP-6963), normal/multi-sig transfer, message signing, `wallet_watchAsset`, switch network (TIP-3326), and legacy `window.tronLink` methods
-- [Receive Messages from TronLink](/docs/plugin-wallet/passive-messages/): `accountsChanged`, `chainChanged`, `connect`, `disconnect` (TIP-1193) events and legacy 3.x messages
-- [Ledger v-field Compatibility](/docs/plugin-wallet/ledger-signing-update/): Normalization of the signature `v` byte (`01`→`1c`, `00`→`1b`) for transaction, message, and EIP-712 signing
+- [Proactively Request TronLink Plugin Features](plugin-wallet/active-requests/): Connect website (TIP-1102 / EIP-1102), provider discovery (TIP-6963), normal/multi-sig transfer, message signing, `wallet_watchAsset`, switch network (TIP-3326), and legacy `window.tronLink` methods
+- [Receive Messages from TronLink](plugin-wallet/passive-messages/): `accountsChanged`, `chainChanged`, `connect`, `disconnect` (TIP-1193) events and legacy 3.x messages
+- [Ledger v-field Compatibility](plugin-wallet/ledger-signing-update/): Normalization of the signature `v` byte (`01`→`1c`, `00`→`1b`) for transaction, message, and EIP-712 signing
 
 ## DApp Integration
 
-- [General Transfer](/docs/dapp/transfer/): Build, sign, and broadcast a TRX transfer
-- [Multi-Signature Transfer](/docs/dapp/multi-sign-transfer/): `multiSign` with an active permission id
-- [Message Signature](/docs/dapp/message-signing/): `signMessageV2` for hex-message login verification
-- [Stake 2.0](/docs/dapp/stake2/): `__options` / `__resource` fields for delegate/undelegate resource transactions
+- [General Transfer](dapp/transfer/): Build, sign, and broadcast a TRX transfer
+- [Multi-Signature Transfer](dapp/multi-sign-transfer/): `multiSign` with an active permission id
+- [Message Signature](dapp/message-signing/): `signMessageV2` for hex-message login verification
+- [Stake 2.0](dapp/stake2/): `__options` / `__resource` fields for delegate/undelegate resource transactions
 
 ## TronLink App (Mobile)
 
-- [Asset Management](/docs/mobile/asset-management/): Adding custom TRC-20 / TRC-721 tokens
-- [DeepLink](/docs/mobile/deeplink/): `tronlinkoutside://` scheme for open wallet, open DApp, login, transfer, sign transaction, sign message, plus result codes
-- [DApp Support](/docs/mobile/dapp-support/): In-app DApp Explorer injection (`tronWeb`, `tronLink`, `iTron`)
+- [Asset Management](mobile/asset-management/): Adding custom TRC-20 / TRC-721 tokens
+- [DeepLink](mobile/deeplink/): `tronlinkoutside://` scheme for open wallet, open DApp, login, transfer, sign transaction, sign message, plus result codes
+- [DApp Support](mobile/dapp-support/): In-app DApp Explorer injection (`tronWeb`, `tronLink`, `iTron`)
 
 ## AI Support
 
-- [AI Support Overview](/docs/ai-support/ai-llms/): Entry point to TronLink's AI/agent tooling and machine-readable resources
-- [MCP Server TronLink](/docs/ai-support/mcp-server-tronlink/): MCP server exposing on-chain, multi-sig, and GasFree tools
-- [TronLink MCP Core](/docs/ai-support/tronlink-mcp-core/): Framework library — session manager, capability interfaces, tool definitions, flow recipes
-- [TronLink Skills](/docs/ai-support/tronlink-skills/): Agent skill set for wallet, token, market, swap, resource, and staking commands
-- [MCP TronLink Signer](/docs/ai-support/mcp-tronlink-signer/): MCP server wrapping the signer SDK
-- [TronLink Signer](/docs/ai-support/tronlink-signer/): Standalone signer SDK — connect, sendTrx, sendTrc20, signMessage, signTypedData
-- [TronLink CLI](/docs/ai-support/tronlink-cli/): Command-line tool for queries, transfers, staking, delegation, and voting
+- [AI Support Overview](ai-support/ai-llms/): Entry point to TronLink's AI/agent tooling and machine-readable resources
+- [MCP Server TronLink](ai-support/mcp-server-tronlink/): MCP server exposing on-chain, multi-sig, and GasFree tools
+- [TronLink MCP Core](ai-support/tronlink-mcp-core/): Framework library — session manager, capability interfaces, tool definitions, flow recipes
+- [TronLink Skills](ai-support/tronlink-skills/): Agent skill set for wallet, token, market, swap, resource, and staking commands
+- [MCP TronLink Signer](ai-support/mcp-tronlink-signer/): MCP server wrapping the signer SDK
+- [TronLink Signer](ai-support/tronlink-signer/): Standalone signer SDK — connect, sendTrx, sendTrc20, signMessage, signTypedData
+- [TronLink CLI](ai-support/tronlink-cli/): Command-line tool for queries, transfers, staking, delegation, and voting
 
 ## Reference
 
-- [Networks & Addresses](/docs/reference/networks/): chainIds (mainnet/Shasta/Nile), RPC endpoints, explorers, faucets, address formats, units, and common token contracts
-- [Glossary](/docs/reference/glossary/): Definitions of TRX/SUN, TRC standards, Energy/Bandwidth, TIP/EIP standards, ABI, chainId, and wallet objects
-- [FAQ](/docs/reference/faq/): Common integration questions — wallet detection, connection rejection, tronWeb readiness, network switching, resources
+- [Networks & Addresses](reference/networks/): chainIds (mainnet/Shasta/Nile), RPC endpoints, explorers, faucets, address formats, units, and common token contracts
+- [Glossary](reference/glossary/): Definitions of TRX/SUN, TRC standards, Energy/Bandwidth, TIP/EIP standards, ABI, chainId, and wallet objects
+- [FAQ](reference/faq/): Common integration questions — wallet detection, connection rejection, tronWeb readiness, network switching, resources
 
 ## Localized
 
-The site is bilingual. Chinese pages live at the same slugs under `/docs/zh/` (served by the mkdocs-material i18n plugin); for single-fetch ingestion, use the Chinese full-text bundle below.
+The site is bilingual. Chinese pages live at the same slugs under `zh/` (served by the mkdocs-material i18n plugin); for single-fetch ingestion, use the Chinese full-text bundle below.
 
-- [llms-full.txt](/docs/llms-full.txt) — every English page, single-fetch (built from `docs/llms-full.en.txt`; the `.en` suffix is stripped at deploy)
-- [/zh/llms-full.txt](/docs/zh/llms-full.txt) — every Chinese page, single-fetch (built from `docs/llms-full.zh.txt`; lives under the Chinese locale root)
-- [/zh/llms.txt](/docs/zh/llms.txt) — curated Chinese index (built from `docs/llms.zh.txt`)
+- [llms-full.txt](llms-full.txt) — every English page, single-fetch (built from `docs/llms-full.en.txt`; the `.en` suffix is stripped at deploy)
+- [zh/llms-full.txt](zh/llms-full.txt) — every Chinese page, single-fetch (built from `docs/llms-full.zh.txt`; lives under the Chinese locale root)
+- [zh/llms.txt](zh/llms.txt) — curated Chinese index (built from `docs/llms.zh.txt`)
 
 Each bundle's first lines record the generating commit SHA, UTC timestamp, page count, and a coarse token estimate. The same page in EN and ZH is a translation pair (same slug minus the language suffix); pages are emitted in the navigation order declared in `mkdocs.yml`.
 
