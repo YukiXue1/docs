@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 ../llms.txt 的 Localized 段。
 
-- Generated: 2026-05-21T14:08:15Z
-- Commit: e724781c635f
+- Generated: 2026-05-29T07:44:07Z
+- Commit: 0cf4be4b82f6
 - Language: zh
 - Pages: 23
-- Token estimate: ~39,427 (chars / 4)
+- Token estimate: ~41,552 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: introduction/ -->
@@ -238,6 +238,7 @@ TronLink 的开发者文档以机器可读形式发布，便于 AI 智能体和�
 - 工具调用请基于结构化的 `error.code` / `error.retryable` 分支,**不要**解析人类可读的 `message`。
 - 读操作可安全重试;签名 / 远程写操作需要用户审批（HITL）,且不得自动重试——见各工具的「安全」一节。
 - 实验时默认用测试网（`nile` / `shasta`）;只有动用真实资金时才用 `mainnet`。
+- 版本契约：每个工具页在「兼容性与迁移策略」一节列明了哪些是稳定契约、哪些会变动——在依赖任何名称、flag 或输出字段前请先查阅该节。
 
 ---
 
@@ -2006,7 +2007,7 @@ ledger返回的实际签名hash：
 
 **核心亮点：**
 - 双模架构：**Playwright**（浏览器自动化）+ **Direct API**（链上操作）
-- 32 个内置 Flow Recipe，带预检查和依赖解析
+- 24 个内置 Flow Recipe，带预检查和依赖解析
 - 基于加密 `agent-wallet` 的非托管本地交易签名
 - 多签管理，支持实时 WebSocket 监控
 - 通过 GasFree 服务集成实现零 Gas TRC20 转账
@@ -2025,7 +2026,7 @@ flowchart TD
   Multi["TronLinkMultiSigCapability (5 个工具)"]
   GasFree["TronLinkGasFreeCapability (3 个工具)"]
   Util["实用能力<br/>Build · StateSnapshot · TRON Crypto"]
-  Flow["Flow Recipes<br/>(32 个内置流程配方)"]
+  Flow["Flow Recipes<br/>(24 个内置流程配方)"]
   Ext["TronGrid API / 多签服务 / GasFree 服务"]
   Chain["TRON 区块链"]
   Agent -- "MCP 协议 — stdio / JSON-RPC 2.0" --> Server
@@ -2154,7 +2155,9 @@ TRON 多签服务的 REST + WebSocket API：
 - `tl_wallet_set_active` — 按 ID 切换活跃钱包（热切换到所有能力）
 
 如果启动时没有钱包，服务器会提示两条路径：调用 `tl_wallet_create` 自动生成，或通过 CLI 手动创建后设置 `AGENT_WALLET_PASSWORD`。
-自动创建这条路径会生成随机密码，把密码保存到 `~/.agent-wallet/runtime_secrets.json`，创建一个加密的 `main` 钱包，并让当前会话立即可用。
+
+!!! warning "自动创建会把密码以明文写入磁盘——仅限测试/开发"
+    自动创建这条路径会生成随机密码，并把它**以明文**保存到 `~/.agent-wallet/runtime_secrets.json`，随后创建一个加密的 `main` 钱包并让当前会话立即可用。任何能读取该文件的人都能控制钱包。生产环境请使用手动路径：在外部创建钱包，并通过密钥管理器注入 `AGENT_WALLET_PASSWORD`——不要依赖落盘的明文密码。
 
 ### 6. TRON 密码学工具
 
@@ -2172,49 +2175,49 @@ hexToAddress()             0x41... → T 地址
 
 ---
 
-## Flow Recipes（32 个内置流程）
+## Flow Recipes（24 个内置流程）
 
 预配置的多步骤工作流，带依赖检查和参数模板。
 
 ### Playwright 流程
-| 流程 | 说明 |
-|------|------|
-| `switchNetworkFlow` | 切换到主网/Nile/Shasta |
-| `enableTestNetworksFlow` | 启用测试网可见性 |
-| `transferTrxFlow` | 通过 UI 进行 TRX 转账 |
-| `transferTokenFlow` | 通过 UI 进行代币转账 |
+| 流程 | 说明 | 源文件 |
+|------|------|--------|
+| `switchNetworkFlow` | 切换到主网/Nile/Shasta | `src/flows/switch-network.ts` |
+| `enableTestNetworksFlow` | 启用测试网可见性 | `src/flows/switch-network.ts` |
+| `transferTrxFlow` | 通过 UI 进行 TRX 转账 | `src/flows/transfer-trx.ts` |
+| `transferTokenFlow` | 通过 UI 进行代币转账 | `src/flows/transfer-trx.ts` |
 
 ### 链上流程（11 个）
-| 流程 | 说明 |
-|------|------|
-| `chainCheckBalanceFlow` | 查询余额 |
-| `chainTransferTrxFlow` | 带预检查的 TRX 转账 |
-| `chainTransferTrc20Flow` | 带预检查的 TRC20 转账 |
-| `chainStakeFlow` | 质押 TRX |
-| `chainUnstakeFlow` | 解除质押 TRX |
-| `chainGetStakingFlow` | 查询质押信息 |
-| `chainDelegateResourceFlow` | 代理带宽/能量 |
-| `chainUndelegateResourceFlow` | 取消代理资源 |
-| `chainSetupMultisigFlow` | 设置多签权限 |
-| `chainCreateMultisigTxFlow` | 创建未签名的多签交易 |
-| `chainSwapV3Flow` | SunSwap V3 代币兑换 |
+| 流程 | 说明 | 源文件 |
+|------|------|--------|
+| `chainCheckBalanceFlow` | 查询余额 | `src/flows/onchain.ts` |
+| `chainTransferTrxFlow` | 带预检查的 TRX 转账 | `src/flows/onchain.ts` |
+| `chainTransferTrc20Flow` | 带预检查的 TRC20 转账 | `src/flows/onchain.ts` |
+| `chainStakeFlow` | 质押 TRX | `src/flows/onchain.ts` |
+| `chainUnstakeFlow` | 解除质押 TRX | `src/flows/onchain.ts` |
+| `chainGetStakingFlow` | 查询质押信息 | `src/flows/onchain.ts` |
+| `chainDelegateResourceFlow` | 代理带宽/能量 | `src/flows/onchain.ts` |
+| `chainUndelegateResourceFlow` | 取消代理资源 | `src/flows/onchain.ts` |
+| `chainSetupMultisigFlow` | 设置多签权限 | `src/flows/onchain.ts` |
+| `chainCreateMultisigTxFlow` | 创建未签名的多签交易 | `src/flows/onchain.ts` |
+| `chainSwapV3Flow` | SunSwap V3 代币兑换 | `src/flows/onchain.ts` |
 
 ### 多签流程（6 个）
-| 流程 | 说明 |
-|------|------|
-| `multisigQueryAuthFlow` | 查询权限 |
-| `multisigListTransactionsFlow` | 列出待处理交易 |
-| `multisigMonitorFlow` | WebSocket 实时监控 |
-| `multisigStopMonitorFlow` | 停止监控 |
-| `multisigSubmitTxFlow` | 提交签名交易 |
-| `multisigCheckFlow` | 完整状态检查 |
+| 流程 | 说明 | 源文件 |
+|------|------|--------|
+| `multisigQueryAuthFlow` | 查询权限 | `src/flows/multisig.ts` |
+| `multisigListTransactionsFlow` | 列出待处理交易 | `src/flows/multisig.ts` |
+| `multisigMonitorFlow` | WebSocket 实时监控 | `src/flows/multisig.ts` |
+| `multisigStopMonitorFlow` | 停止监控 | `src/flows/multisig.ts` |
+| `multisigSubmitTxFlow` | 提交签名交易 | `src/flows/multisig.ts` |
+| `multisigCheckFlow` | 完整状态检查 | `src/flows/multisig.ts` |
 
 ### GasFree 流程（3 个）
-| 流程 | 说明 |
-|------|------|
-| `gasfreeCheckAccountFlow` | 查询资格 |
-| `gasfreeTransactionHistoryFlow` | 查询历史 |
-| `gasfreeSendFlow` | 免 Gas TRC20 转账 |
+| 流程 | 说明 | 源文件 |
+|------|------|--------|
+| `gasfreeCheckAccountFlow` | 查询资格 | `src/flows/gasfree.ts` |
+| `gasfreeTransactionHistoryFlow` | 查询历史 | `src/flows/gasfree.ts` |
+| `gasfreeSendFlow` | 免 Gas TRC20 转账 | `src/flows/gasfree.ts` |
 
 ---
 
@@ -2384,7 +2387,7 @@ mcp-server-tronlink/
 │   │   ├── state-snapshot.ts       # UI 状态提取
 │   │   └── tron-crypto.ts          # 地址派生、签名、Base58
 │   └── flows/
-│       ├── index.ts                # 流程注册（32 个配方）
+│       ├── index.ts                # 流程注册（24 个配方）
 │       ├── switch-network.ts       # 网络切换流程
 │       ├── transfer-trx.ts         # 转账流程
 │       ├── multisig.ts             # 6 个多签流程
@@ -2410,8 +2413,10 @@ mcp-server-tronlink/
 | `@noble/hashes` | ^2.0.1 | Keccak-256、SHA256 |
 | `@tronlink/tronlink-mcp-core` | ^0.1.0 | 核心 MCP 服务框架 |
 | `playwright` | ^1.49.0 | 浏览器自动化 |
-| `@bankofai/agent-wallet` | ^2.3.0 | 加密本地钱包管理（`local_secure`）——**已钉版本，不用 `latest`**，确保钱包行为可复现 |
+| `@bankofai/agent-wallet` | 2.3.0 | 加密本地钱包管理（`local_secure`）——**已钉版本，不用 `latest`**，确保钱包行为可复现 |
 | `ws` | ^8.18.0 | WebSocket（多签监控） |
+
+> **关于 @bankofai/agent-wallet：** 版本精确钉死在 2.3.0（不用 caret，避免静默升到 npm 上的 2.4.0）。该包的 GitHub 仓库当前未公开（HTTP 404），源码透明性由 npm publish 提供——可用 `npm pack @bankofai/agent-wallet@2.3.0` 解包审计。是否升级到 2.4.0 需另行评估其 changelog 后决定。
 
 ---
 
@@ -2436,7 +2441,7 @@ mcp-server-tronlink/
 
 以下是最关键工具输入的**文档侧镜像**——当 agent 需要在没有打开 MCP 会话的情况下写工具调用站点时使用。运行时 `list_tools` 仍是权威源：那里有完整的 Zod 元信息（描述、`default` 等）以及 `meta.schemaVersion`。下方字段抄自 `@tronlink/tronlink-mcp-core` `src/mcp-server/schemas.ts`，遵循 JSON Schema Draft 7。**未**镜像全部 52 个工具——以 core 仓库为 SSOT。
 
-> **平价由 CI 强制。** `scripts/check_doc_schema_parity.py`（在 push、PR 及每日定时通过 [`check-doc-schema-parity.yml`](https://github.com/xueyuanying/docs/blob/main/.github/workflows/check-doc-schema-parity.yml) 触发）会对下方每个块的顶层字段集 + required 标记与上游 `schemas.ts` 做 diff——上游改名或 required ↔ optional 漂移都会让 CI 失败。
+> **平价由 CI 强制。** `scripts/check_doc_schema_parity.py`（在 push、PR 及每日定时通过 [`check-doc-schema-parity.yml`](https://github.com/TronLink/docs/blob/main/.github/workflows/check-doc-schema-parity.yml) 触发）会对下方每个块的顶层字段集 + required 标记与上游 `schemas.ts` 做 diff——上游改名或 required ↔ optional 漂移都会让 CI 失败。
 
 #### `tl_chain_send` —— **Remote Write**
 
@@ -2689,6 +2694,20 @@ Direct-API 路径使用 `@bankofai/agent-wallet` 管理的本地加密钱包签�
 5. **免 Gas 操作** — 无需 TRX 余额即可完成 TRC20 转账
 6. **基础设施测试** — 合约部署、固件管理、Mock 服务
 
+### 端到端示例：在 SunSwap V3 上用 100 TRX 兑换 USDT
+
+一个真实的 agent 回合，展示工具调用顺序。agent 先读取、再现取报价、交人工确认后才执行——绝不基于 read 结果自动触发「远程写」。
+
+> **用户：** "在 SunSwap V3 上用 100 TRX 兑换 USDT，滑点上限 0.5%。"
+
+1. `tl_chain_get_account`（Network Read）—— 确认当前钱包持有 ≥ 100 TRX 且留有手续费余量。
+2. `tl_chain_swap_v3`，`action=estimate`（Network Read）—— `from_token="TRX"`、`to_token="<USDT 合约>"`、`amount="100"`、`fee_tier=3000`、`slippage=0.5`。返回报价输出与路径。
+3. agent 把报价呈现给用户并等待确认（HITL——这是一笔远程写）。
+4. `tl_chain_swap_v3`，`action=execute`，并传入**相同的**显式 `slippage=0.5`——用本地 `agent-wallet` 签名并广播。返回 `txId`。
+5. `tl_chain_get_tx`（Network Read），传入返回的 `txId`——在回报前先确认链上成功。
+
+> 若第 4 步返回结果未知 / 失败，**不要**自动重试：`TL_CHAIN_SWAP_FAILED` 不可重试——先用 `tl_chain_get_tx` 核对链上状态（见「兑换安全」）。
+
 ---
 
 ## 快速开始
@@ -2701,10 +2720,10 @@ npm install && npm run build
 export TL_TRONGRID_URL="https://nile.trongrid.io"
 
 # 3. 如果本地还没有钱包，二选一：
-# 方案 A：在 MCP 会话里调用 tl_wallet_create
-# 方案 B：本地执行
-# agent-wallet start local_secure --generate --wallet-id main
-# 然后把同一个密码写进 .mcp.json 的 AGENT_WALLET_PASSWORD
+# 路径 A（手动）：本地执行
+#   agent-wallet start local_secure --generate --wallet-id main
+#   然后把同一个密码写进 .mcp.json 的 AGENT_WALLET_PASSWORD
+# 路径 B（自动创建）：在 MCP 会话里调用 tl_wallet_create
 
 # 4. 配合 Claude Code 使用
 # 配置好 .mcp.json 后自然语言使用：
@@ -2712,6 +2731,17 @@ export TL_TRONGRID_URL="https://nile.trongrid.io"
 # "给 TAddress... 转 10 个 TRX"
 # "在 SunSwap V3 上用 100 TRX 兑换 USDT"
 ```
+
+**该选哪条路径？（场景 → 路径）**
+
+| 场景 | 推荐路径 | 原因 |
+|------|---------|------|
+| 生产环境（真实资金） | A — 手动创建 + secret manager | 路径 B 会把密码以明文写入 `~/.agent-wallet/runtime_secrets.json` |
+| CI / 自动化（测试网） | A — 手动创建 + env 注入 | 同上——避免密码落盘到文件 |
+| 本地开发（一次性体验） | B — 自动创建 | 无需预配置，密码自动生成 |
+| 临时 demo 演示 | B + tmpfs 目录 | 把 `AGENT_WALLET_DIR` 指到任务结束即销毁的 tmpfs |
+
+> 路径 B（自动创建）会把生成的密码以明文写入 `~/.agent-wallet/runtime_secrets.json`，以便重启后复用同一钱包。完整的路径 A / 路径 B 对比及如何强制路径 A，见[钱包密钥存储](#钱包密钥存储)。
 
 ## 版本与许可证
 
@@ -2800,6 +2830,18 @@ flowchart TD
 | 依赖关系 | 无（它本身就是依赖） | 依赖 @tronlink/tronlink-mcp-core |
 
 **mcp-server-tronlink 是 tronlink-mcp-core 的使用者。** 核心库定义了工具"是什么"；服务器提供了工具"怎么工作"。
+
+### 该选哪个？
+
+按场景用下面的决策矩阵在两个包之间做选择：
+
+| 场景 | 选 tronlink-mcp-core | 选 mcp-server-tronlink |
+|------|:---:|:---:|
+| 构建嵌入自有业务逻辑的自定义 MCP 服务器 | ✅ | |
+| 直接把一个开箱即用的服务器交给 agent 使用 | | ✅ |
+| 通过自定义 `Capability` 实现扩展能力 | ✅ | |
+| 用可注入的 fixture / mock server 做测试或 mock | ✅ | |
+| 学习 MCP 框架（接口、工具、响应格式）的工作原理 | ✅ | |
 
 ---
 
@@ -3632,6 +3674,22 @@ tron-wallet（查余额）→ tron-staking（质押信息）→ tron-staking（A
 tron-resource（检查状态）→ tron-resource（估算成本）→ tron-resource（optimize-cost）
 ```
 
+### 端到端示例
+
+**"把 100 TRX 换成 USDT 现在划算吗？"**
+
+1. `token-price`（`tron-market`）—— 获取 TRX 与 USDT 当前价格，确定 100 TRX 的参考价值。
+2. `kline`（`tron-market`）—— 拉取近期 K 线，判断 TRX 处于上行还是下行趋势（择时）。
+3. `resource-info`（`tron-resource`）—— 查询账户的能量/带宽，便于估算本次兑换是否需要燃烧 TRX 抵扣手续费。
+4. `swap-quote`（`tron-swap`）—— 对 100 TRX → USDT 请求实际报价，含预期到账数量与价格冲击。
+5. 智能体将报价的有效汇率与第 1 步现货价对比，结合第 3 步的资源成本，回答兑换是否划算。以上均为**只读**——若要真正执行，请路由到 `mcp-server-tronlink` 的 `tl_chain_swap_v3`（Remote Write、HITL，必传 `minOut`）或 [signer SDK](tronlink-signer.md)。
+
+**"我上一笔 USDT 转账到账了吗？现在余额多少？"**
+
+1. `tx-status`（`tron-swap`）—— 查询最近一笔转账的状态与确认数。
+2. `account-info`（`tron-wallet`）—— 确认该转账结算后的当前余额。
+3. `resource-info`（`tron-resource`）—— 核对剩余能量/带宽是否足够下一笔转账（否则将燃烧 TRX）。发送下一笔转账属于 Remote Write——请路由到 [signer SDK](tronlink-signer.md) 的 `sendTrc20` 或 `mcp-server-tronlink` 的 `tl_chain_send`。
+
 ---
 
 ## TRON 资源模型参考
@@ -3784,6 +3842,16 @@ export TRONGRID_API_KEY="your-api-key"
 export TRON_NETWORK="mainnet"    # 或 "shasta" / "nile"
 ```
 
+#### TronGrid API Key —— 凭证管理
+
+`TRONGRID_API_KEY` 是可选的（只读、提高限额），但一旦配置，请从以下五个维度管理：
+
+- **存储** —— 保存在环境变量或密钥管理器中。切勿硬编码在源码、提交到 git 的配置或聊天/智能体日志里。
+- **最小权限** —— 只签发覆盖这些技能所需只读端点的 Key，不要复用更大权限的生产 Key。
+- **轮换** —— 按固定周期轮换，有访问权限的成员离职时也应轮换；保持轮换窗口尽量短。
+- **泄漏检测** —— 监控 TronGrid 用量是否出现异常调用量或非预期来源 IP，并用密钥扫描器扫描仓库历史排查误提交。
+- **吊销** —— 一旦 Key 泄漏，立即在 TronGrid 控制台吊销并签发新 Key，再恢复流量。
+
 ### 网络支持
 
 | 网络 | 地址 | 用途 |
@@ -3794,11 +3862,14 @@ export TRON_NETWORK="mainnet"    # 或 "shasta" / "nile"
 
 ### 内置代币快捷符号
 
+> 权威来源：[reference/networks — 常用代币合约（SSOT）](../reference/networks.md#ssot)。下方快捷符号已对齐该 SSOT。`tron_api.mjs` 实际内置可识别的符号为 TRX、USDT、USDC、WTRX、BTT、JST、SUN、WIN；USDD 为与 SSOT 保持一致而一并列出——请显式传入其合约地址使用。
+
 | 符号 | 合约地址 |
 |------|----------|
 | TRX | 原生代币（无合约） |
 | USDT | TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t |
 | USDC | TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8 |
+| USDD | TXDk8mbtRbXeYuMNS83CfKPaYYT8XWv9Hz |
 | WTRX | TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR |
 | BTT | TAFjULxiVgT4qWk6UZwjqwZXTSaGaqnVp4 |
 | JST | TCFLL5dx5ZJdKnWuesXxi1VPwjLVmWZZy9 |
@@ -3863,6 +3934,18 @@ tronlink-skills/
 | 无需密钥 | 仅可选 TRONGRID_API_KEY 用于提高请求频率 |
 | 频率限制 | 公共 TronGrid API；使用 TRONGRID_API_KEY 获取更高限额 |
 | 错误处理 | 失败均为查询类错误：限流（可重试,需退避）、网络错误（可重试）、地址/参数非法（不可重试——修正输入）。如需执行交易（转账、兑换、质押）,请使用 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)——这些技能本身从不签名或广播 |
+
+---
+
+## 故障排查
+
+| 现象 | 原因 | 处理方式 |
+|------|------|----------|
+| 智能体不识别某个技能 | 技能包未被发现、命令名错误，或 host 未重新加载 | 确认技能包已安装/软链（重新执行 `install.sh`，或检查 host 发现路径下的软链——如 Codex 的 `~/.agents/skills/tronlink-skills`）；对照 [6 大技能详解](#6) / [Skill ↔ MCP 工具映射](#skill--mcp) 核对准确名称；再重启智能体/host 以重新扫描 `SKILL.md`。 |
+| TronGrid 限流（HTTP 429） | 未配置 API Key，或轮询过于频繁 | 设置 `TRONGRID_API_KEY`（见[配置说明](#_1)）以获得更高限额；降低轮询频率；对 429/5xx 增加指数退避重试（这类是可重试的查询错误）。 |
+| 仅 CLI 可用的命令被通过 MCP 调用 | 33 个命令中有 8 个未暴露为 MCP 工具（`contract-info`、`trade-history`、`dex-volume`、`large-transfers`、`pool-info`、`swap-route`、`estimate-bandwidth`、`energy-rental`） | 查阅 [Skill ↔ MCP 工具映射](#skill--mcp)：标注 _(仅 CLI)_ 的行没有对应 `tron_*` MCP 工具。请改用方式一（skill 提示词）或方式三（直接 CLI：`node scripts/tron_api.mjs <command> ...`），不要走 `tools/call`。 |
+| `install.sh` 失败 | 网络被拦截、目标目录不可写，或缺少运行时 | 确认 Node.js >= 18 与 `git`/`curl` 在 `PATH` 中；在对发现目录（`~/.cursor`、`~/.agents/skills` 等）有写权限的环境下重试；若某步被权限拦截，参照方式四 —— Codex CLI 手动建立软链，再用 `codex skills list | grep tron` 验证。 |
+| 多 host 命令名冲突 | 同一技能/工具名被多个 MCP host 注册（如 `tronlink` 与 `tronlink-skills` 都暴露 `tron_*`） | 在智能体配置中为每个 host 取不同的名字（`mcpServers` 的 key / `claude mcp add <name>`），使工具名按 host 命名空间化；或停用重复的 host，使每个 `tron_*` 名仅保留一个有效注册。 |
 
 ---
 
@@ -3942,6 +4025,22 @@ Skills 已进入 **v1.0.x**，适用标准 semver——只有 **major** 升级�
 
 将 [tronlink-signer](https://github.com/TronLink/mcp-tronlink-signer/tree/main/packages/tronlink-signer) 封装为 MCP 工具的服务器，供 Claude 及其他 AI 客户端使用。通过 TronLink 浏览器钱包对 TRON 交易进行签名，需用户在浏览器中授权确认 — 私钥始终留在钱包中，不会对外暴露。
 
+> **与 `tronlink-signer` 的关系。** 本服务器是对 [`tronlink-signer`](tronlink-signer.md) SDK 的轻量 MCP 封装 —— 它将该 SDK 基于浏览器的 HITL 签名流程以 MCP 工具的形式暴露出来。两者来自同一 monorepo，同步发布（本页文档对应 `mcp-tronlink-signer` v0.1.4，与之配套的是同期 `tronlink-signer` 0.1.x；见 [版本与许可证](#版本与许可证)）。若希望将签名直接嵌入你自己的代码、而非经由 MCP 使用，请使用 [`tronlink-signer`](tronlink-signer.md) SDK。
+
+## 该用哪个
+
+TronLink 提供了三种方式让 AI 智能体在 Tron 上执行操作。请根据是否需要人工审批每一笔交易、以及智能体运行在何处来选择。
+
+| | `mcp-tronlink-signer`（本服务器） | `mcp-server-tronlink`（Direct-API 模式） | `tronlink-cli` |
+| --- | --- | --- | --- |
+| 审批 | HITL —— 用户在浏览器中审批每一笔交易 | 无 HITL —— 自动签名 | HITL —— 用户在浏览器中审批 |
+| 主机上的凭证 | 无（私钥保留在 TronLink 扩展内） | 使用 `AGENT_WALLET_PASSWORD` 解锁本地钱包 | 无（私钥保留在 TronLink 扩展内） |
+| 接口形态 | MCP 服务器 | MCP 服务器 | Shell / 命令行 |
+| 适用场景 | 任何资金转移都必须经人工显式签字确认的智能体 | 自动化、无人值守流程：CI、测试网脚本 | 需要人工签字确认的交互式终端使用 |
+| 私钥暴露风险 | 最低 | 较高（凭证位于主机上） | 最低 |
+
+如果不确定，优先选择 `mcp-tronlink-signer`（最安全的默认选项）。
+
 ## 配置
 
 ### Claude Code
@@ -3993,6 +4092,55 @@ claude mcp add -s user tronlink-signer -- node /path/to/packages/mcp-tronlink-si
 所有工具均支持可选的 `network` 参数（`mainnet` / `nile` / `shasta`），默认使用 `mainnet`。
 
 **人工确认（HITL）。** 所有涉及签名的工具（`send_trx`、`send_trc20`、`sign_message`、`sign_typed_data`、`sign_transaction`）都会打开 TronLink 浏览器审批页。AI agent **无法**在用户点击 Approve 之前签名。生产环境必须把 Remote Write 工具视为需要确认。
+
+### 部分工具 Schema（内联镜像）
+
+以下是核心写操作工具入参的文档侧镜像，依据上方工具表中记录的参数整理而成 —— 在没有 MCP 会话时，便于智能体离线编写工具调用。这里镜像的是字段名与 required 集合；运行时 `list_tools` 仍是完整输入 schema（精确字段类型、默认值及 Zod 元数据）的权威来源。
+
+`send_trx`：
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "to": { "description": "Recipient TRON address (T-prefix base58)" },
+    "amount": { "description": "Amount of TRX to send" },
+    "network": { "enum": ["mainnet", "nile", "shasta"], "description": "Optional; defaults to mainnet" }
+  },
+  "required": ["to", "amount"]
+}
+```
+
+`send_trc20`：
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "contractAddress": { "description": "TRC20 contract address (T-prefix base58)" },
+    "to": { "description": "Recipient TRON address (T-prefix base58)" },
+    "amount": { "description": "Token amount to send" },
+    "decimals": { "description": "Optional token decimals" },
+    "network": { "enum": ["mainnet", "nile", "shasta"], "description": "Optional; defaults to mainnet" }
+  },
+  "required": ["contractAddress", "to", "amount"]
+}
+```
+
+`sign_typed_data`：
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "typedData": { "description": "EIP-712 typed-data object to sign" },
+    "network": { "enum": ["mainnet", "nile", "shasta"], "description": "Optional; defaults to mainnet" }
+  },
+  "required": ["typedData"]
+}
+```
+
+> 凡无法对照上游 Zod 定义确认的字段类型，上面均有意留空；精确类型请查 `list_tools`。`sign_message`（`message`、`network?`）与 `sign_transaction`（`transaction`、`broadcast`、`network?`）遵循工具表中所示的同样参数形态。
 
 ## MCP 资源
 
@@ -4109,6 +4257,8 @@ server 返回的错误使用标准 MCP 信封结构，带稳定的 `code` 与 `r
 ### 内联 changelog
 
 本页是下游 README 镜像；以 GitHub releases 与各包 `CHANGELOG.md` 为准。下方条目只覆盖 **MCP 可见面**（工具、schema、安全边界），内部重构不列。
+
+> **同步策略。** 此内联 changelog 镜像软件包的 `CHANGELOG.md` / README；项目的 **GitHub releases 为权威来源**。在文档更新之前，本页可能比某个发布版本短暂滞后，因此当需要精确版本号时，请以 GitHub releases（以及 `list_tools`）为准核对。
 
 #### v0.1.4 _(仅 npm，截至本文写就尚未在 GitHub 打 tag)_
 
@@ -4909,11 +5059,13 @@ tronlink reward --json
 
 ### 常用代币合约
 
-| 代币 | 网络 | 合约地址 |
-| ---- | ---- | -------- |
-| USDT | mainnet | TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t |
-| USDD | mainnet | TXDk8mbtRbXeYuMNS83CfKPaYYT8XWv9Hz |
-| USDC | mainnet | TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8 |
+> 权威来源：[reference/networks — 常用代币合约（SSOT）](../reference/networks.md#ssot)。下表为对齐该 SSOT 的子集。
+
+| 代币 | 网络 | 合约地址 | 精度 |
+| ---- | ---- | -------- | ---- |
+| USDT | mainnet | TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t | 6 |
+| USDC | mainnet | TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8 | 6 |
+| USDD | mainnet | TXDk8mbtRbXeYuMNS83CfKPaYYT8XWv9Hz | 18 |
 
 ### 示例：AI 转账流程
 
@@ -5221,11 +5373,21 @@ TRON 地址有两种可互转的编码：
 
 - `1 TRX = 1,000,000 SUN`。`tronWeb` 交易构造器（如 `sendTrx`）中的金额以 **SUN** 为单位。
 
-## 常用代币合约（主网）
+## 常用代币合约（SSOT）
 
-| 代币 | 标准 | 合约地址 |
-|---|---|---|
-| USDT | TRC-20 | `TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` |
+本表是常用主网代币合约地址的单一可信源（SSOT）。其他页面——[TronLink CLI](../ai-support/tronlink-cli.md) 与 [TronLink Skills](../ai-support/tronlink-skills.md)——均对齐本表；地址变更时，请先在此处更新。
+
+| 代币 | 标准 | 主网合约地址 | 精度 | 备注 |
+|---|---|---|---|---|
+| TRX | 原生 | — | 6 | 原生币，无 TRC-20 合约 |
+| USDT | TRC-20 | `TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` | 6 | |
+| USDC | TRC-20 | `TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8` | 6 | |
+| USDD | TRC-20 | `TXDk8mbtRbXeYuMNS83CfKPaYYT8XWv9Hz` | 18 | |
+| WTRX | TRC-20 | `TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR` | 6 | Wrapped TRX |
+| BTT | TRC-20 | `TAFjULxiVgT4qWk6UZwjqwZXTSaGaqnVp4` | 18 | |
+| JST | TRC-20 | `TCFLL5dx5ZJdKnWuesXxi1VPwjLVmWZZy9` | 18 | |
+| SUN | TRC-20 | `TSSMHYeV2uE9qYH95DqyoCuNCzEL1NvU3S` | 18 | |
+| WIN | TRC-20 | `TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7` | 6 | |
 
 其他代币请在 [TronScan](https://tronscan.org/#/tokens) 查询其合约地址。集成前务必核对代币合约地址——不同网络上的地址不同。
 
