@@ -417,9 +417,9 @@ mcp-server-tronlink/
 
 ---
 
-## 工具契约与副作用
+## 工具契约与副作用 {#tool-contract-side-effects}
 
-**输入/输出 schema 与错误契约。** 每个工具的输入/输出 schema 及结构化错误信封由底层框架定义——见 [TronLink MCP Core](tronlink-mcp-core.md#错误码) 的 SSOT 错误码表（`code` / `retryable` / `hint` / 典型触发）。每个响应均带 `meta.schemaVersion`，major 版本内字段含义稳定。Agent 应基于 `error.code` 与 `error.retryable` 分支，**不要**解析人类可读的 `message`。
+**输入/输出 schema 与错误契约。** 每个工具的输入/输出 schema 及结构化错误信封由底层框架定义——见 [TronLink MCP Core](tronlink-mcp-core.md#error-codes) 的 SSOT 错误码表（`code` / `retryable` / `hint` / 典型触发）。每个响应均带 `meta.schemaVersion`，major 版本内字段含义稳定。Agent 应基于 `error.code` 与 `error.retryable` 分支，**不要**解析人类可读的 `message`。
 
 **逐工具输入 schema 可在运行时发现。** 每个工具的参数都由 core 用 Zod 校验,并通过 MCP `list_tools` 方法以 JSON `inputSchema` 形式暴露,因此客户端无需阅读本页即可枚举参数名、类型和必填项。下方表格按能力归纳工具;`list_tools` 才是权威的机器可读来源。
 
@@ -436,7 +436,7 @@ mcp-server-tronlink/
 
 ### 精选工具 schema（文档侧镜像）
 
-以下是最关键工具输入的**文档侧镜像**——当 agent 需要在没有打开 MCP 会话的情况下写工具调用站点时使用。运行时 `list_tools` 仍是权威源：那里有完整的 Zod 元信息（描述、`default` 等）以及 `meta.schemaVersion`。下方字段抄自 `@tronlink/tronlink-mcp-core` `src/mcp-server/schemas.ts`，遵循 JSON Schema Draft 7。**未**镜像全部 52 个工具——以 core 仓库为 SSOT。
+以下是最关键工具输入的**文档侧镜像**——当 agent 需要在没有打开 MCP 会话的情况下写工具调用站点时使用。运行时 `list_tools` 仍是权威源：那里有完整的 Zod 元信息（描述、`default` 等）以及 `meta.schemaVersion`。下方字段抄自 `@tronlink/tronlink-mcp-core` `src/mcp-server/schemas.ts`，遵循 JSON Schema Draft 7。**未**内联镜像全部工具——需要一次抓取全部工具契约（本 server + signer）时，请取 [/reference/mcp-tools.json](../../../reference/mcp-tools.json)，它由 `scripts/dump_mcp_tools.py` 从 npm 已发布包重新生成；SSOT 仍是 core 仓库。
 
 > **平价由 CI 强制。** `scripts/check_doc_schema_parity.py`（在 push、PR 及每日定时通过 [`check-doc-schema-parity.yml`](https://github.com/xueyuanying/docs/blob/main/.github/workflows/check-doc-schema-parity.yml) 触发）会对下方每个块的顶层字段集 + required 标记与上游 `schemas.ts` 做 diff——上游改名或 required ↔ optional 漂移都会让 CI 失败。
 
@@ -548,7 +548,7 @@ mcp-server-tronlink/
 
 ---
 
-## 安全模型
+## 安全模型 {#security-model}
 
 | 方面 | 实现方式 |
 |------|----------|
@@ -559,7 +559,7 @@ mcp-server-tronlink/
 | Git 安全 | 配置文件在 `.gitignore` 中防止意外提交 |
 | 默认网络 | Nile 测试网，安全默认值 |
 
-### 安全边界
+### 安全边界 {#security-boundaries}
 
 | 边界 | 保证 | Agent / 运维方义务 |
 |---|---|---|
@@ -590,7 +590,7 @@ mcp-server-tronlink/
 - **撤销。** 一旦怀疑泄漏，先在服务侧吊销该凭证，再轮换到新值后再开始下一次签名会话——曝光的凭证可让攻击者直接向多签队列提交交易。
 - **最小权限。** 每条凭证只授予所需的 channel / project；不要在多个无关 agent 间共享同一凭证。
 
-#### 禁用 `tl_evaluate`
+#### 禁用 `tl_evaluate` {#disabling-tl_evaluate}
 
 如果你的工作流不需要在受控浏览器里执行任意 JS，请显式从工具面上撤下。各 host 的配置 key 不同：
 
@@ -726,7 +726,7 @@ export TL_TRONGRID_URL="https://nile.trongrid.io"
 - **语义化版本。** 1.0 之前：**minor** 升级（0.x → 0.y）允许破坏性变更；**patch** 升级（0.1.x → 0.1.y）不变更工具名、输入 schema、`error.code` 值或 `meta.schemaVersion` 语义。1.0 之后：标准 semver，仅 major 允许破坏。
 - **稳定契约**（patch 不会动）：
     - 工具名（`tl_chain_send`、`tl_chain_swap_v3`、`tl_multisig_*`、`tl_gasfree_*`、`tl_evaluate` 等）
-    - `error.code` 枚举（SSOT：[TronLink MCP Core 错误码](tronlink-mcp-core.md#错误码)）
+    - `error.code` 枚举（SSOT：[TronLink MCP Core 错误码](tronlink-mcp-core.md#error-codes)）
     - `error.retryable` 语义
     - `meta.schemaVersion` 的 major 分量
     - 必需环境变量名（`TL_TRONGRID_URL`、`TL_MULTISIG_SECRET_KEY`、`AGENT_WALLET_PASSWORD` 等）

@@ -17,6 +17,7 @@ TronLink 的开发者文档以机器可读形式发布，便于 AI 智能体和�
 | [/zh/llms.txt](../../llms.txt) | 中文版精选索引——同样版式，链接指向 `/zh/` 下的中文页面 |
 | [/llms-full.txt](../../../llms-full.txt) | 所有英文页面全文聚合，便于单次抓取（由 `docs/llms-full.en.txt` 构建） |
 | [/zh/llms-full.txt](../../llms-full.txt) | 所有中文页面全文聚合，便于单次抓取（由 `docs/llms-full.zh.txt` 构建） |
+| [/reference/mcp-tools.json](../../../reference/mcp-tools.json) | 机器可读的 MCP 工具契约静态快照——name、description、`inputSchema`、annotations，经 `tools/list` 从 npm 已发布 server 抓取 |
 
 生产地址：`https://docs.tronlink.org/llms.txt`、`https://docs.tronlink.org/zh/llms.txt`，以及对应的 `/llms-full.txt` 全文聚合。
 
@@ -28,6 +29,7 @@ TronLink 的开发者文档以机器可读形式发布，便于 AI 智能体和�
 | 导航 / 找到正确的中文页面 | `/zh/llms.txt` —— 中文描述、同样版式 |
 | 一次抓取整份英文文档 | `/llms-full.txt` |
 | 一次抓取整份中文文档 | `/zh/llms-full.txt` |
+| 不启动 server 就读取完整 MCP 工具契约 | `/reference/mcp-tools.json`——静态快照；运行中 server 的 `tools/list` 仍是 SSOT |
 
 请先用对应语言的索引并跟随其链接；需要一次性获取全部内容时再抓全文包。中文索引指向 `/zh/` 下的页面，英文索引指向根目录下的页面。
 

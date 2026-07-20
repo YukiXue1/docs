@@ -68,6 +68,7 @@ plugins:
               - Compatibility for the v field after Ledger signing: plugin-wallet/ledger-signing-update.en.md
             - AI Support:
               - AI / LLMs: ai-support/ai-llms.en.md
+              - Security Model: ai-support/security-model.en.md
               - MCP Server TronLink : ai-support/mcp-server-tronlink.en.md
               - TronLink MCP Core: ai-support/tronlink-mcp-core.en.md
               - TronLink Skills: ai-support/tronlink-skills.en.md
@@ -102,6 +103,7 @@ plugins:
               - 对ledger签名后的v字段兼容: plugin-wallet/ledger-signing-update.zh.md
             - AI 支持:
               - AI / LLMs: ai-support/ai-llms.zh.md
+              - 安全模型: ai-support/security-model.zh.md
               - MCP Server TronLink : ai-support/mcp-server-tronlink.zh.md
               - TronLink MCP Core: ai-support/tronlink-mcp-core.zh.md
               - TronLink Skills: ai-support/tronlink-skills.zh.md
@@ -124,6 +126,7 @@ plugins:
 
 # Markdown 扩展（开启 mermaid 图表渲染）
 markdown_extensions:
+  - attr_list
   - admonition
   - pymdownx.details
   - pymdownx.superfences:

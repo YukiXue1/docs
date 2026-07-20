@@ -444,7 +444,7 @@ Pinned to the `package.json` of `mcp-server-tronlink@0.1.1`. Re-verify when bump
 
 ### Selected tool schemas (inline mirror)
 
-These are **docs-side mirrors** of the most critical tool inputs — useful when an agent is writing a tool-call call site without an MCP session open. Runtime `list_tools` remains the authoritative source: the schemas there carry full Zod metadata (descriptions, `default`, etc.) plus `meta.schemaVersion`. Fields below are derived from `@tronlink/tronlink-mcp-core` `src/mcp-server/schemas.ts` and follow JSON Schema Draft 7. The full set of 52 tool schemas is **not** reproduced here — see core for the SSOT.
+These are **docs-side mirrors** of the most critical tool inputs — useful when an agent is writing a tool-call call site without an MCP session open. Runtime `list_tools` remains the authoritative source: the schemas there carry full Zod metadata (descriptions, `default`, etc.) plus `meta.schemaVersion`. Fields below are derived from `@tronlink/tronlink-mcp-core` `src/mcp-server/schemas.ts` and follow JSON Schema Draft 7. The full set of tool schemas is **not** reproduced inline — for a one-fetch static snapshot of every tool contract (this server plus the signer), fetch [/reference/mcp-tools.json](../../reference/mcp-tools.json), regenerated from the published npm packages by `scripts/dump_mcp_tools.py`; core remains the SSOT.
 
 > **Parity is enforced.** `scripts/check_doc_schema_parity.py` (run on push, PR, and daily via [`check-doc-schema-parity.yml`](https://github.com/xueyuanying/docs/blob/main/.github/workflows/check-doc-schema-parity.yml)) diffs the top-level field set + required-flag set of every block below against the live `schemas.ts`. Upstream rename or required→optional drift fails CI.
 

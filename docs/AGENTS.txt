@@ -1,50 +1,60 @@
 # AGENTS.md
 
-This repository is the **public documentation site** for TronLink developer integrations. It is *not* the source code of TronLink itself, the MCP servers, the CLI, or the Signer SDK — those live in separate repositories listed below.
+This is the **public documentation site** for TronLink developer integrations, deployed at https://docs.tronlink.org/. It is *not* the source code of TronLink itself, the MCP servers, the CLI, or the Signer SDK — those live in separate repositories listed below.
 
-If you are an AI coding agent or an autonomous tool reading this for orientation, start with the curated index, not by enumerating files.
+If you are an AI coding agent or an autonomous tool reading this for orientation, start with the curated index, not by enumerating pages.
+
+> You are reading the HTTP-served variant (`/AGENTS.txt`); every link below is an absolute URL you can fetch directly. The source repository ships the same file at its root as `AGENTS.md` with repository-relative links.
 
 ## Entry points for AI agents
 
-- **Curated index:** [docs/llms.txt](docs/llms.txt) — short, link-only map of the documentation, following [llmstxt.org](https://llmstxt.org/). Use this first.
-- **Single-fetch full text:** [docs/llms-full.txt](docs/llms-full.txt) — every English page concatenated for one-shot ingestion. The header records the generating commit SHA, UTC timestamp, page count, and a rough token estimate; check those before relying on the content.
-- **Human-readable site:** [https://docs.tronlink.org/](https://docs.tronlink.org/)
+- **Curated index:** https://docs.tronlink.org/llms.txt — short, link-only map of the documentation, following the https://llmstxt.org/ format. Use this first.
+- **Single-fetch full text:** https://docs.tronlink.org/llms-full.txt — every English page concatenated for one-shot ingestion (Chinese: https://docs.tronlink.org/zh/llms-full.txt). The header records the generating commit SHA, UTC timestamp, page count, and a rough token estimate; check those before relying on the content.
+- **Static MCP tool contracts:** https://docs.tronlink.org/reference/mcp-tools.json — every MCP tool definition (name, description, `inputSchema`, annotations) captured from the published npm servers via `tools/list`, for agents that need the full contract without spawning a server.
+- **Human-readable site:** https://docs.tronlink.org/
 
 ## Topic map
 
 | Surface | Doc |
 | --- | --- |
-| DApp integration in the browser (TIP-6963 / `eth_requestAccounts` / `tronWeb`) | [docs/dapp/getting-started.en.md](docs/dapp/getting-started.en.md) + [docs/plugin-wallet/*](docs/plugin-wallet/) |
-| Mobile DeepLink (`tronlinkoutside://`) | [docs/mobile/deeplink.en.md](docs/mobile/deeplink.en.md) |
-| AI-agent tooling overview | [docs/ai-support/ai-llms.en.md](docs/ai-support/ai-llms.en.md) |
-| MCP server (production) | [docs/ai-support/mcp-server-tronlink.en.md](docs/ai-support/mcp-server-tronlink.en.md) |
-| MCP framework / SSOT error codes | [docs/ai-support/tronlink-mcp-core.en.md](docs/ai-support/tronlink-mcp-core.en.md) |
-| MCP signer wrapper (HITL signing) | [docs/ai-support/mcp-tronlink-signer.en.md](docs/ai-support/mcp-tronlink-signer.en.md) |
-| Signer SDK (browser-approval signing) | [docs/ai-support/tronlink-signer.en.md](docs/ai-support/tronlink-signer.en.md) |
-| Read-only Skills package | [docs/ai-support/tronlink-skills.en.md](docs/ai-support/tronlink-skills.en.md) |
-| CLI (transactions via browser approval) | [docs/ai-support/tronlink-cli.en.md](docs/ai-support/tronlink-cli.en.md) |
-| Networks, addresses, glossary, FAQ | [docs/reference/](docs/reference/) |
+| DApp integration in the browser (TIP-6963 / `eth_requestAccounts` / `tronWeb`) | https://docs.tronlink.org/dapp/getting-started/ + https://docs.tronlink.org/plugin-wallet/active-requests/ |
+| Mobile DeepLink (`tronlinkoutside://`) | https://docs.tronlink.org/mobile/deeplink/ |
+| AI-agent tooling overview | https://docs.tronlink.org/ai-support/ai-llms/ |
+| MCP server (production) | https://docs.tronlink.org/ai-support/mcp-server-tronlink/ |
+| MCP framework / SSOT error codes | https://docs.tronlink.org/ai-support/tronlink-mcp-core/ |
+| MCP signer wrapper (HITL signing) | https://docs.tronlink.org/ai-support/mcp-tronlink-signer/ |
+| Signer SDK (browser-approval signing) | https://docs.tronlink.org/ai-support/tronlink-signer/ |
+| Read-only Skills package | https://docs.tronlink.org/ai-support/tronlink-skills/ |
+| CLI (transactions via browser approval) | https://docs.tronlink.org/ai-support/tronlink-cli/ |
+| Cross-surface error-code map (DApp / DeepLink / MCP / CLI, with retryable flags) | https://docs.tronlink.org/reference/error-code-map/ |
+| Networks, glossary, FAQ | https://docs.tronlink.org/reference/networks/ · https://docs.tronlink.org/reference/glossary/ · https://docs.tronlink.org/reference/faq/ |
 
 ## Source-of-truth boundaries
 
-- **Error codes & retry semantics:** the SSOT is [docs/ai-support/tronlink-mcp-core.en.md#error-codes](docs/ai-support/tronlink-mcp-core.en.md#error-codes). Downstream docs link into it; do not duplicate the table.
-- **Per-tool input schemas:** the SSOT is the running MCP server's `list_tools` (returns `inputSchema` per tool). Doc tables are a summary, not a contract.
+- **Error codes & retry semantics:** the SSOT is https://docs.tronlink.org/ai-support/tronlink-mcp-core/#error-codes. Downstream docs link into it; do not duplicate the table.
+- **Per-tool input schemas:** the SSOT is the running MCP server's `list_tools` (returns `inputSchema` per tool). https://docs.tronlink.org/reference/mcp-tools.json is a stamped static snapshot of that output; doc tables are a summary, not a contract.
 - **Versions:** each AI-support page ends with `Version & License` keyed to the corresponding upstream `package.json`.
+
+## Continuous verification (enforced in CI)
+
+- **Doc ↔ schema parity:** `scripts/check_doc_schema_parity.py` runs on every push and PR and daily on a schedule. It diffs the inline JSON Schema mirrors in the MCP server doc against the upstream Zod schemas (`tronlink-mcp-core` `src/mcp-server/schemas.ts`); an upstream rename or required/optional drift fails the build, so published schema mirrors cannot silently rot. Runtime schemas additionally carry `meta.schemaVersion`.
+- **Post-deploy link check:** every deploy ends with `scripts/gen_llms_full.py --verify`, probing the four llms endpoints plus sampled index links for HTTP 200.
 
 ## Upstream code repositories (not in this repo)
 
-- [github.com/TronLink/mcp-server-tronlink](https://github.com/TronLink/mcp-server-tronlink)
-- [github.com/TronLink/tronlink-mcp-core](https://github.com/TronLink/tronlink-mcp-core)
-- [github.com/TronLink/mcp-tronlink-signer](https://github.com/TronLink/mcp-tronlink-signer) (monorepo includes `tronlink-signer`)
-- [github.com/TronLink/tronlink-cli](https://github.com/TronLink/tronlink-cli)
-- [github.com/TronLink/tronlink-skills](https://github.com/TronLink/tronlink-skills)
+- https://github.com/TronLink/mcp-server-tronlink
+- https://github.com/TronLink/tronlink-mcp-core
+- https://github.com/TronLink/mcp-tronlink-signer (monorepo includes `tronlink-signer`)
+- https://github.com/TronLink/tronlink-cli
+- https://github.com/TronLink/tronlink-skills
 
-If you need to change runtime behavior (tool schemas, error codes, transaction logic), open a PR there. PRs to this repo should only update prose, examples, and diagrams.
+If you need to change runtime behavior (tool schemas, error codes, transaction logic), open a PR there. PRs to the docs repository should only update prose, examples, and diagrams.
 
 ## How to refresh derived files
 
 ```bash
-python3 scripts/gen_llms_full.py
+python3 scripts/gen_llms_full.py     # llms-full bundles + index header stamps
+python3 scripts/dump_mcp_tools.py    # static MCP tool contracts (reference/mcp-tools.json)
 ```
 
-This regenerates `docs/llms-full.txt` with a fresh commit SHA, timestamp, and token estimate. Run it after any change under `docs/`.
+Run the first after any change under `docs/`; run the second when an upstream npm package publishes a new version. Keep this file and the repository-root `AGENTS.md` in sync when editing either.

@@ -17,6 +17,7 @@ TronLink's developer documentation is published in machine-readable form so AI a
 | [/zh/llms.txt](../../zh/llms.txt) | Curated Chinese index — same layout, links into `/zh/` pages |
 | [/llms-full.txt](../../llms-full.txt) | Every English page concatenated for single-fetch ingestion (built from `docs/llms-full.en.txt`) |
 | [/zh/llms-full.txt](../../zh/llms-full.txt) | Every Chinese page concatenated for single-fetch ingestion (built from `docs/llms-full.zh.txt`) |
+| [/reference/mcp-tools.json](../../reference/mcp-tools.json) | Static machine-readable snapshot of every MCP tool contract — name, description, `inputSchema`, annotations — captured from the published npm servers via `tools/list` |
 
 Production URLs: `https://docs.tronlink.org/llms.txt`, `https://docs.tronlink.org/zh/llms.txt`, and the matching `llms-full.txt` bundles under each locale root.
 
@@ -28,6 +29,7 @@ Production URLs: `https://docs.tronlink.org/llms.txt`, `https://docs.tronlink.or
 | Navigate / find the right Chinese page | `/zh/llms.txt` — same layout, Chinese descriptions |
 | Ingest the whole English documentation in one request | `/llms-full.txt` |
 | Ingest the whole Chinese documentation in one request | `/zh/llms-full.txt` |
+| Read the full MCP tool contracts without spawning a server | `/reference/mcp-tools.json` — static snapshot; the running server's `tools/list` is the SSOT |
 
 Start with the index for your language and follow its links; fetch a full bundle when you need everything at once. The Chinese index points at `/zh/` slugs; the English index points at root-level slugs.
 

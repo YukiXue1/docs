@@ -1,0 +1,1575 @@
+{
+  "title": "TronLink MCP tool contracts — static snapshot",
+  "description": "Full tool definitions (name, description, inputSchema, annotations) captured from the published npm MCP servers via the MCP tools/list endpoint. The running server's tools/list remains the source of truth; this file is a stamped snapshot for one-fetch consumption.",
+  "generated": "2026-07-20T09:02:37Z",
+  "commit": "dd689f66abbe",
+  "generator": "scripts/dump_mcp_tools.py",
+  "errorCodes": "https://docs.tronlink.org/reference/error-code-map/",
+  "servers": [
+    {
+      "name": "mcp-server-tronlink",
+      "npmPackage": "@tronlink/mcp-server-tronlink",
+      "version": "0.1.1",
+      "protocolVersion": "2024-11-05",
+      "docs": "https://docs.tronlink.org/ai-support/mcp-server-tronlink/",
+      "toolCount": 55,
+      "tools": [
+        {
+          "name": "tl_accessibility_snapshot",
+          "description": "Get trimmed accessibility tree with deterministic refs (e1, e2, ...) for element targeting.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "tl_chain_create_multisig_tx",
+          "description": "Create an unsigned multisig TRX transfer transaction with a specific permission ID.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "to": {
+                "type": "string",
+                "description": "Recipient TRON address"
+              },
+              "amount_sun": {
+                "type": "number",
+                "description": "Amount in SUN (1 TRX = 1,000,000 SUN)"
+              },
+              "permission_id": {
+                "type": "number",
+                "description": "Permission ID to use (default: 2 = first active permission)"
+              }
+            },
+            "required": [
+              "to",
+              "amount_sun"
+            ]
+          }
+        },
+        {
+          "name": "tl_chain_get_account",
+          "description": "Query TRON account: TRX balance, bandwidth, energy, permissions, activation status.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "TRON address to query (default: configured wallet)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_chain_get_address",
+          "description": "Get the TRON address derived from the configured private key (base58 + hex).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "tl_chain_get_history",
+          "description": "Query transaction history for an address with pagination.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "TRON address (default: configured wallet)"
+              },
+              "limit": {
+                "type": "number",
+                "description": "Max transactions to return (default: 20)"
+              },
+              "fingerprint": {
+                "type": "string",
+                "description": "Pagination cursor from previous response"
+              },
+              "only_to": {
+                "type": "boolean",
+                "description": "Only show incoming transactions"
+              },
+              "only_from": {
+                "type": "boolean",
+                "description": "Only show outgoing transactions"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_chain_get_staking",
+          "description": "Query TRX staking info: frozen amounts for bandwidth/energy, votes, pending unfreezing, withdrawable amounts.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "TRON address to query staking info (default: configured wallet)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_chain_get_tokens",
+          "description": "Query TRC10 and TRC20 token balances for an address.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "TRON address to query tokens for (default: configured wallet)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_chain_get_tx",
+          "description": "Get transaction details by transaction ID (hash).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "tx_id": {
+                "type": "string",
+                "description": "Transaction hash (64 hex chars)"
+              }
+            },
+            "required": [
+              "tx_id"
+            ]
+          }
+        },
+        {
+          "name": "tl_chain_resource",
+          "description": "Delegate, undelegate, or query resource delegations (bandwidth/energy).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "delegate",
+                  "undelegate",
+                  "query"
+                ],
+                "description": "Resource action"
+              },
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "BANDWIDTH",
+                  "ENERGY"
+                ],
+                "description": "Resource type"
+              },
+              "receiver": {
+                "type": "string",
+                "description": "Receiver address (required for delegate/undelegate)"
+              },
+              "amount_trx": {
+                "type": "number",
+                "description": "Amount of TRX resource to delegate/undelegate"
+              },
+              "lock": {
+                "type": "boolean",
+                "description": "Lock delegation (cannot be undelegated during lock period)"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          }
+        },
+        {
+          "name": "tl_chain_send",
+          "description": "Send TRX, TRC10 or TRC20 tokens to an address. Signs and broadcasts the transaction.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "to": {
+                "type": "string",
+                "description": "Recipient TRON address (T-prefix, 34 chars)"
+              },
+              "amount": {
+                "type": "string",
+                "description": "Amount to send (e.g. \"1.5\" for TRX, or token amount string)"
+              },
+              "token_type": {
+                "type": "string",
+                "enum": [
+                  "TRX",
+                  "TRC10",
+                  "TRC20"
+                ],
+                "description": "Token type (default: TRX)"
+              },
+              "token_id": {
+                "type": "string",
+                "description": "TRC10 token ID (required for TRC10)"
+              },
+              "contract_address": {
+                "type": "string",
+                "description": "TRC20 contract address (required for TRC20)"
+              },
+              "memo": {
+                "type": "string",
+                "description": "Transaction memo"
+              }
+            },
+            "required": [
+              "to",
+              "amount"
+            ]
+          }
+        },
+        {
+          "name": "tl_chain_setup_multisig",
+          "description": "Configure multisig permissions on the account (accountPermissionUpdate, costs 100 TRX).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "cosigner_addresses": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Co-signer TRON addresses to add"
+              },
+              "threshold": {
+                "type": "number",
+                "description": "Required signature weight threshold for active permission"
+              },
+              "permission_name": {
+                "type": "string",
+                "description": "Permission name (default: \"active0\")"
+              }
+            },
+            "required": [
+              "cosigner_addresses",
+              "threshold"
+            ]
+          }
+        },
+        {
+          "name": "tl_chain_sign_multisig_tx",
+          "description": "Sign a multisig transaction with the owner or co-signer key. Accumulates signatures.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "transaction": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "Unsigned or partially signed transaction object (from chain_create_multisig_tx)"
+              },
+              "use_cosigner": {
+                "type": "boolean",
+                "description": "Sign with co-signer key instead of owner key (default: false)"
+              }
+            },
+            "required": [
+              "transaction"
+            ]
+          }
+        },
+        {
+          "name": "tl_chain_stake",
+          "description": "Freeze or unfreeze TRX for bandwidth or energy (Stake 2.0).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "freeze",
+                  "unfreeze"
+                ],
+                "description": "Stake action"
+              },
+              "amount_trx": {
+                "type": "number",
+                "description": "Amount of TRX to freeze/unfreeze"
+              },
+              "resource": {
+                "type": "string",
+                "enum": [
+                  "BANDWIDTH",
+                  "ENERGY"
+                ],
+                "description": "Resource type (default: BANDWIDTH)"
+              }
+            },
+            "required": [
+              "action",
+              "amount_trx"
+            ]
+          }
+        },
+        {
+          "name": "tl_chain_swap",
+          "description": "Estimate or execute a token swap via SunSwap V2 router.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "estimate",
+                  "execute"
+                ],
+                "description": "Swap action: estimate (quote only) or execute (sign & broadcast)"
+              },
+              "from_token": {
+                "type": "string",
+                "description": "Source token address or \"TRX\" for native TRX"
+              },
+              "to_token": {
+                "type": "string",
+                "description": "Target token address or \"TRX\" for native TRX"
+              },
+              "amount": {
+                "type": "string",
+                "description": "Input amount in token units"
+              },
+              "slippage": {
+                "type": "number",
+                "description": "Slippage tolerance percentage (default: 1.0)"
+              }
+            },
+            "required": [
+              "action",
+              "from_token",
+              "to_token",
+              "amount"
+            ]
+          }
+        },
+        {
+          "name": "tl_chain_swap_v3",
+          "description": "Estimate or execute a token swap via SunSwap V3 (concentrated liquidity). Pre-checks balance before execution. Supports fee tier selection.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "estimate",
+                  "execute"
+                ],
+                "description": "Swap action: estimate (quote only) or execute (sign & broadcast)"
+              },
+              "from_token": {
+                "type": "string",
+                "description": "Source token address or \"TRX\" for native TRX"
+              },
+              "to_token": {
+                "type": "string",
+                "description": "Target token address or \"TRX\" for native TRX"
+              },
+              "amount": {
+                "type": "string",
+                "description": "Input amount in token units"
+              },
+              "fee_tier": {
+                "type": "number",
+                "description": "Pool fee tier in bps: 500 (0.05%), 3000 (0.3%), 10000 (1%) (default: 3000)"
+              },
+              "slippage": {
+                "type": "number",
+                "description": "Slippage tolerance percentage (default: 0.5)"
+              },
+              "sqrt_price_limit": {
+                "type": "string",
+                "description": "Price limit for partial fills (optional, advanced)"
+              }
+            },
+            "required": [
+              "action",
+              "from_token",
+              "to_token",
+              "amount"
+            ]
+          }
+        },
+        {
+          "name": "tl_cleanup",
+          "description": "Safely close browser and all services (chain, fixtures, mock server).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "force": {
+                "type": "boolean",
+                "description": "Force cleanup even if session appears inactive"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_click",
+          "description": "Click an element by a11yRef (e.g. \"e5\"), testId, or CSS selector.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "a11yRef": {
+                "type": "string",
+                "description": "Accessibility reference (e.g. \"e1\", \"e2\") from a11y snapshot"
+              },
+              "testId": {
+                "type": "string",
+                "description": "data-testid attribute value"
+              },
+              "selector": {
+                "type": "string",
+                "description": "CSS selector"
+              },
+              "timeout": {
+                "type": "number",
+                "description": "Timeout in ms (default: 10000)"
+              },
+              "force": {
+                "type": "boolean",
+                "description": "Force click even if element is obscured"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_clipboard",
+          "description": "Read or write the browser clipboard (useful for copying addresses, mnemonics).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "enum": [
+                  "read",
+                  "write"
+                ],
+                "description": "Clipboard operation"
+              },
+              "text": {
+                "type": "string",
+                "description": "Text to write (required for write operation)"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          }
+        },
+        {
+          "name": "tl_close_tab",
+          "description": "Close a browser tab by role or URL pattern.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": [
+                  "extension",
+                  "dapp",
+                  "notification"
+                ],
+                "description": "Role of the tab to close"
+              },
+              "urlPattern": {
+                "type": "string",
+                "description": "URL pattern to match"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_describe_screen",
+          "description": "Comprehensive screen description: wallet state + testIds + accessibility tree + optional screenshot.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "includeScreenshot": {
+                "type": "boolean",
+                "description": "Include a screenshot (default: false)"
+              },
+              "includeA11y": {
+                "type": "boolean",
+                "description": "Include accessibility tree (default: true)"
+              },
+              "includeTestIds": {
+                "type": "boolean",
+                "description": "Include test IDs (default: true)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_evaluate",
+          "description": "Execute JavaScript in the browser page context. Useful for DOM manipulation, scrolling, reading state, or any operation not covered by other tools. Returns the serialized result.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "script": {
+                "type": "string",
+                "description": "JavaScript expression to evaluate in page context. Return value will be serialized."
+              },
+              "timeout": {
+                "type": "number",
+                "description": "Timeout in ms (default: 30000)"
+              }
+            },
+            "required": [
+              "script"
+            ]
+          }
+        },
+        {
+          "name": "tl_gasfree_get_account",
+          "description": "Query GasFree account eligibility, supported tokens, and remaining daily quota for gas-free TRC20 transfers.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "TRON address to query GasFree eligibility (default: configured wallet)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_gasfree_get_transactions",
+          "description": "Query GasFree transaction history: pending, completed, or failed gas-free transfers.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "TRON address (default: configured wallet)"
+              },
+              "limit": {
+                "type": "number",
+                "description": "Max transactions to return (default: 20)"
+              },
+              "offset": {
+                "type": "number",
+                "description": "Pagination offset (default: 0)"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "success",
+                  "failed",
+                  "all"
+                ],
+                "description": "Filter by status (default: all)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_gasfree_send",
+          "description": "Send a GasFree TRC20 transfer (no gas fee). Pre-checks: account eligibility, token support, daily quota, and token balance.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "to": {
+                "type": "string",
+                "description": "Recipient TRON address (T-prefix, 34 chars)"
+              },
+              "amount": {
+                "type": "string",
+                "description": "Token amount to send (in token units, e.g. \"10.5\")"
+              },
+              "contract_address": {
+                "type": "string",
+                "description": "TRC20 token contract address"
+              }
+            },
+            "required": [
+              "to",
+              "amount",
+              "contract_address"
+            ]
+          }
+        },
+        {
+          "name": "tl_get_context",
+          "description": "Get current context, capabilities, and session info.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "tl_get_contract_address",
+          "description": "Get the address of a previously deployed contract by name.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Contract name"
+              }
+            },
+            "required": [
+              "name"
+            ]
+          }
+        },
+        {
+          "name": "tl_get_state",
+          "description": "Get TronLink wallet state: current screen, account, network, TRX balance, energy, bandwidth.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "tl_keyboard",
+          "description": "Send keyboard events. Press keys (e.g. \"Enter\", \"PageDown\", \"End\", \"Control+A\") or type text character by character (fires real key events, unlike tl_type which uses fill).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "description": "Key or key combination to press (e.g. \"Enter\", \"Control+A\", \"PageDown\", \"End\")"
+              },
+              "text": {
+                "type": "string",
+                "description": "Text to type via keyboard events (character by character, fires key events unlike tl_type)"
+              },
+              "delay": {
+                "type": "number",
+                "description": "Delay between keystrokes in ms (default: 0)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_knowledge_last",
+          "description": "Get the last N tool steps from current or all sessions.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "n": {
+                "type": "number",
+                "description": "Number of steps to retrieve (default: 10)"
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "session",
+                  "global"
+                ],
+                "description": "Scope: current session or all sessions (default: session)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_knowledge_search",
+          "description": "Search step history by tool name, screen, testId, or a11y name.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Search query (tool name, screen, testId, a11y name)"
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "session",
+                  "global"
+                ],
+                "description": "Scope (default: session)"
+              },
+              "limit": {
+                "type": "number",
+                "description": "Max results (default: 20)"
+              }
+            },
+            "required": [
+              "query"
+            ]
+          }
+        },
+        {
+          "name": "tl_knowledge_sessions",
+          "description": "List recent sessions with metadata and step counts.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "number",
+                "description": "Max sessions to list (default: 10)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_knowledge_summarize",
+          "description": "Generate a reusable recipe summary of a session.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string",
+                "description": "Session ID to summarize (default: current session)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_launch",
+          "description": "Launch a Chrome browser with TronLink extension. Supports fixture presets: \"default\" (unlocked wallet with TRX), \"onboarding\" (fresh install).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "fixture": {
+                "type": "string",
+                "description": "Wallet fixture preset: \"default\" (unlocked, TRX balance), \"onboarding\" (fresh install), or custom name"
+              },
+              "fixtureData": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "Custom fixture data override"
+              },
+              "startChain": {
+                "type": "boolean",
+                "description": "Start local TRON chain node"
+              },
+              "headless": {
+                "type": "boolean",
+                "description": "Run browser in headless mode (default: false for visual observation)"
+              },
+              "extensionPath": {
+                "type": "string",
+                "description": "Override extension build path"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_list_contracts",
+          "description": "List all deployed contracts with addresses.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "tl_list_flows",
+          "description": "List available flow recipes (common multi-step workflows like import_wallet, switch_network, transfer_trx). Call with id to get full step details for a specific flow. Use the returned steps with tl_run_steps after substituting {{param}} placeholders.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Flow recipe ID to get full details (e.g. \"import_wallet\", \"switch_network\", \"transfer_trx\"). Omit to list all flows."
+              },
+              "tag": {
+                "type": "string",
+                "description": "Filter flows by tag (e.g. \"wallet\", \"transfer\", \"network\")"
+              },
+              "context": {
+                "type": "string",
+                "enum": [
+                  "e2e",
+                  "prod"
+                ],
+                "description": "Filter flows by context"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_list_testids",
+          "description": "List all data-testid attributes on the current page.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "tl_multisig_connect_ws",
+          "description": "Connect WebSocket to receive real-time pending multisig transaction notifications for an address.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "TRON address to subscribe to pending multisig transactions"
+              }
+            },
+            "required": [
+              "address"
+            ]
+          }
+        },
+        {
+          "name": "tl_multisig_disconnect_ws",
+          "description": "Disconnect the multisig WebSocket listener.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "tl_multisig_list_tx",
+          "description": "Query multisig transaction list: pending/success/failed. Shows signature progress, threshold, current weight for each transaction.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "TRON address to query transaction list for"
+              },
+              "start": {
+                "type": "number",
+                "description": "Pagination start index (default: 0)"
+              },
+              "limit": {
+                "type": "number",
+                "description": "Page size, max 100 (default: 20)"
+              },
+              "is_sign": {
+                "type": "boolean",
+                "description": "Filter: true = signed by me, false = unsigned (default: false)"
+              },
+              "state": {
+                "type": "number",
+                "description": "Transaction state: 0=processing, 1=success, 2=failure, 255=all (default: 255)"
+              }
+            },
+            "required": [
+              "address"
+            ]
+          }
+        },
+        {
+          "name": "tl_multisig_query_auth",
+          "description": "Query multisig permissions for a TRON address: which addresses it controls and active permission details (threshold, weight, operations).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "TRON address to query multisig permissions for (T-prefix, 34 chars)"
+              }
+            },
+            "required": [
+              "address"
+            ]
+          }
+        },
+        {
+          "name": "tl_multisig_submit_tx",
+          "description": "Submit a signed multisig transaction to the TRON multisig service. The service collects signatures and broadcasts when threshold is met.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "Signer address submitting this transaction"
+              },
+              "function_selector": {
+                "type": "string",
+                "description": "Contract function selector (e.g. \"transfer(address,uint256)\")"
+              },
+              "expire_time": {
+                "type": "number",
+                "description": "Expiration timestamp in ms (default: 24 hours from now)"
+              },
+              "transaction": {
+                "type": "object",
+                "properties": {
+                  "raw_data": {
+                    "type": "object",
+                    "properties": {
+                      "ref_block_bytes": {
+                        "type": "string"
+                      },
+                      "ref_block_hash": {
+                        "type": "string"
+                      },
+                      "expiration": {
+                        "type": "number"
+                      },
+                      "contract": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string"
+                            },
+                            "parameter": {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": "object",
+                                  "additionalProperties": true
+                                },
+                                "type_url": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "value",
+                                "type_url"
+                              ]
+                            },
+                            "Permission_id": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "type",
+                            "parameter"
+                          ]
+                        }
+                      },
+                      "timestamp": {
+                        "type": "number"
+                      },
+                      "fee_limit": {}
+                    },
+                    "required": [
+                      "ref_block_bytes",
+                      "ref_block_hash",
+                      "expiration",
+                      "contract",
+                      "timestamp",
+                      "fee_limit"
+                    ]
+                  },
+                  "signature": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "raw_data"
+                ],
+                "description": "Signed transaction object with raw_data and signatures"
+              }
+            },
+            "required": [
+              "address",
+              "transaction"
+            ]
+          }
+        },
+        {
+          "name": "tl_navigate",
+          "description": "Navigate to a TronLink screen: home, settings, send, receive, swap, assets, notification, address_book, node_management, dapp_list, or a custom URL.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "settings",
+                  "send",
+                  "receive",
+                  "swap",
+                  "notification",
+                  "assets",
+                  "address_book",
+                  "node_management",
+                  "dapp_list",
+                  "url"
+                ],
+                "description": "Target screen to navigate to"
+              },
+              "url": {
+                "type": "string",
+                "description": "URL to navigate to (required when target is \"url\")"
+              }
+            },
+            "required": [
+              "target"
+            ]
+          }
+        },
+        {
+          "name": "tl_run_steps",
+          "description": "Execute multiple tool steps in sequence. Useful for complex multi-step flows.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "tool": {
+                      "type": "string",
+                      "description": "Tool name (without prefix)"
+                    },
+                    "input": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "description": "Tool input"
+                    }
+                  },
+                  "required": [
+                    "tool",
+                    "input"
+                  ]
+                },
+                "description": "Steps to execute in sequence"
+              },
+              "stopOnError": {
+                "type": "boolean",
+                "description": "Stop on first error (default: true)"
+              }
+            },
+            "required": [
+              "steps"
+            ]
+          }
+        },
+        {
+          "name": "tl_screenshot",
+          "description": "Take a screenshot of the TronLink extension or dApp page.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "extension",
+                  "dapp",
+                  "active"
+                ],
+                "description": "Which page to screenshot (default: active)"
+              },
+              "fullPage": {
+                "type": "boolean",
+                "description": "Capture full page (default: false)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_scroll",
+          "description": "Scroll the page or a specific element. Supports direction (up/down/left/right) and pixel amount. Can target a scrollable container by a11yRef, testId, or CSS selector.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "a11yRef": {
+                "type": "string",
+                "description": "Accessibility reference (e.g. \"e1\", \"e2\") from a11y snapshot"
+              },
+              "testId": {
+                "type": "string",
+                "description": "data-testid attribute value"
+              },
+              "selector": {
+                "type": "string",
+                "description": "CSS selector"
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "up",
+                  "down",
+                  "left",
+                  "right"
+                ],
+                "description": "Scroll direction (default: down)"
+              },
+              "amount": {
+                "type": "number",
+                "description": "Scroll amount in pixels (default: 500)"
+              },
+              "timeout": {
+                "type": "number",
+                "description": "Timeout in ms (default: 10000)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_seed_contract",
+          "description": "Deploy a smart contract: trc20, trc721, trc1155, trc10, multisig, staking, energy_rental. E2E only.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "enum": [
+                  "trc20",
+                  "trc721",
+                  "trc1155",
+                  "trc10",
+                  "multisig",
+                  "staking",
+                  "energy_rental"
+                ],
+                "description": "Contract type to deploy"
+              },
+              "deployer": {
+                "type": "string",
+                "description": "Deployer address or private key"
+              },
+              "feeLimit": {
+                "type": "number",
+                "description": "Fee limit in SUN (default: 1000000000)"
+              }
+            },
+            "required": [
+              "name"
+            ]
+          }
+        },
+        {
+          "name": "tl_seed_contracts",
+          "description": "Deploy multiple smart contracts in sequence. E2E only.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "names": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "trc20",
+                    "trc721",
+                    "trc1155",
+                    "trc10",
+                    "multisig",
+                    "staking",
+                    "energy_rental"
+                  ]
+                },
+                "description": "Contract types to deploy"
+              },
+              "deployer": {
+                "type": "string",
+                "description": "Deployer address or private key"
+              }
+            },
+            "required": [
+              "names"
+            ]
+          }
+        },
+        {
+          "name": "tl_set_context",
+          "description": "Switch workflow context between e2e (testing with local chain) and prod (real networks).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "context": {
+                "type": "string",
+                "enum": [
+                  "e2e",
+                  "prod"
+                ],
+                "description": "Context to switch to"
+              },
+              "options": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "Additional context options"
+              }
+            },
+            "required": [
+              "context"
+            ]
+          }
+        },
+        {
+          "name": "tl_switch_to_tab",
+          "description": "Switch to a browser tab by role (extension/dapp/notification) or URL pattern.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": [
+                  "extension",
+                  "dapp",
+                  "notification"
+                ],
+                "description": "Role of the tab to switch to"
+              },
+              "urlPattern": {
+                "type": "string",
+                "description": "URL pattern to match"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_type",
+          "description": "Type text into an input element. Supports a11yRef, testId, or selector targeting.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "a11yRef": {
+                "type": "string",
+                "description": "Accessibility reference (e.g. \"e1\", \"e2\") from a11y snapshot"
+              },
+              "testId": {
+                "type": "string",
+                "description": "data-testid attribute value"
+              },
+              "selector": {
+                "type": "string",
+                "description": "CSS selector"
+              },
+              "text": {
+                "type": "string",
+                "description": "Text to type"
+              },
+              "clear": {
+                "type": "boolean",
+                "description": "Clear existing text before typing (default: true)"
+              },
+              "timeout": {
+                "type": "number",
+                "description": "Timeout in ms (default: 10000)"
+              }
+            },
+            "required": [
+              "text"
+            ]
+          }
+        },
+        {
+          "name": "tl_wait_for",
+          "description": "Wait for an element to reach a state (visible/hidden/attached/detached).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "a11yRef": {
+                "type": "string",
+                "description": "Accessibility reference (e.g. \"e1\", \"e2\") from a11y snapshot"
+              },
+              "testId": {
+                "type": "string",
+                "description": "data-testid attribute value"
+              },
+              "selector": {
+                "type": "string",
+                "description": "CSS selector"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "visible",
+                  "hidden",
+                  "attached",
+                  "detached"
+                ],
+                "description": "State to wait for (default: visible)"
+              },
+              "timeout": {
+                "type": "number",
+                "description": "Timeout in ms (default: 10000)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_wait_for_notification",
+          "description": "Wait for TronLink notification popup (transaction confirmation, dApp connection request).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "timeout": {
+                "type": "number",
+                "description": "Timeout in ms (default: 30000)"
+              }
+            }
+          }
+        },
+        {
+          "name": "tl_wallet_create",
+          "description": "Auto-generate an encrypted wallet (local_secure). Use this when no wallet exists and the user wants automatic setup. After creation, the wallet is immediately available for on-chain, gasfree, and multisig operations. Fund the generated address with TRX before performing write operations.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "tl_wallet_list",
+          "description": "List all agent-wallet wallets with their IDs, types, active status, and TRON addresses.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "tl_wallet_set_active",
+          "description": "Switch the active wallet by wallet ID. The new wallet will be used for all subsequent on-chain, gasfree, and multisig operations.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "wallet_id": {
+                "type": "string",
+                "description": "The wallet ID to activate"
+              }
+            },
+            "required": [
+              "wallet_id"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "mcp-tronlink-signer",
+      "npmPackage": "mcp-tronlink-signer",
+      "version": "0.1.4",
+      "protocolVersion": "2024-11-05",
+      "docs": "https://docs.tronlink.org/ai-support/mcp-tronlink-signer/",
+      "toolCount": 7,
+      "tools": [
+        {
+          "name": "connect_wallet",
+          "description": "Connect to TronLink wallet. ⚠️ ACTION REQUIRED: Please switch to your browser and approve/reject this request in the TronLink Signer page.",
+          "inputSchema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "network": {
+                "description": "Tron network to use (default: mainnet)",
+                "type": "string",
+                "enum": [
+                  "mainnet",
+                  "nile",
+                  "shasta"
+                ]
+              }
+            }
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "get_balance",
+          "description": "Get TRX balance for an address",
+          "inputSchema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "Tron address to check balance (base58)"
+              },
+              "network": {
+                "description": "Tron network to use (default: mainnet)",
+                "type": "string",
+                "enum": [
+                  "mainnet",
+                  "nile",
+                  "shasta"
+                ]
+              }
+            },
+            "required": [
+              "address"
+            ]
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "send_trc20",
+          "description": "Send TRC20 tokens. ⚠️ ACTION REQUIRED: Please switch to your browser and approve/reject this request in the TronLink Signer page.",
+          "inputSchema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "contractAddress": {
+                "type": "string",
+                "description": "TRC20 token contract address (base58)"
+              },
+              "to": {
+                "type": "string",
+                "description": "Recipient Tron address (base58)"
+              },
+              "amount": {
+                "type": "string",
+                "description": "Amount of tokens to send in human-readable units (e.g. '1.5' for 1.5 USDT). Decimals conversion is handled automatically."
+              },
+              "decimals": {
+                "description": "Token decimals. Omit to auto-detect via the contract's decimals() view — required to avoid 10^N magnitude errors on non-6dp tokens (USDD/SUN/JST = 18dp).",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 18
+              },
+              "network": {
+                "description": "Tron network to use (default: mainnet)",
+                "type": "string",
+                "enum": [
+                  "mainnet",
+                  "nile",
+                  "shasta"
+                ]
+              }
+            },
+            "required": [
+              "contractAddress",
+              "to",
+              "amount"
+            ]
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "send_trx",
+          "description": "Send TRX to an address. ⚠️ ACTION REQUIRED: Please switch to your browser and approve/reject this request in the TronLink Signer page.",
+          "inputSchema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "to": {
+                "type": "string",
+                "description": "Recipient Tron address (base58)"
+              },
+              "amount": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d+(\\.\\d+)?$"
+                  }
+                ],
+                "description": "Amount of TRX to send in human-readable units. Prefer a string (e.g. '1.5') to avoid floating-point precision loss for large amounts; numbers are still accepted for backward compatibility. Max 6 decimal places."
+              },
+              "network": {
+                "description": "Tron network to use (default: mainnet)",
+                "type": "string",
+                "enum": [
+                  "mainnet",
+                  "nile",
+                  "shasta"
+                ]
+              }
+            },
+            "required": [
+              "to",
+              "amount"
+            ]
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "sign_message",
+          "description": "Sign a message with the wallet. ⚠️ ACTION REQUIRED: Please switch to your browser and approve/reject this request in the TronLink Signer page.",
+          "inputSchema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string",
+                "description": "The message to sign"
+              },
+              "network": {
+                "description": "Tron network to use (default: mainnet)",
+                "type": "string",
+                "enum": [
+                  "mainnet",
+                  "nile",
+                  "shasta"
+                ]
+              }
+            },
+            "required": [
+              "message"
+            ]
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "sign_transaction",
+          "description": "Sign a raw transaction. ⚠️ ACTION REQUIRED: Please switch to your browser and approve/reject this request in the TronLink Signer page.",
+          "inputSchema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "transaction": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {},
+                "description": "Raw transaction object to sign"
+              },
+              "broadcast": {
+                "default": false,
+                "description": "Whether to broadcast the signed transaction on-chain (default: false)",
+                "type": "boolean"
+              },
+              "network": {
+                "description": "Tron network to use (default: mainnet)",
+                "type": "string",
+                "enum": [
+                  "mainnet",
+                  "nile",
+                  "shasta"
+                ]
+              }
+            },
+            "required": [
+              "transaction"
+            ]
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "sign_typed_data",
+          "description": "Sign EIP-712 typed data. ⚠️ ACTION REQUIRED: Please switch to your browser and approve/reject this request in the TronLink Signer page.",
+          "inputSchema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "typedData": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {},
+                "description": "EIP-712 typed data object containing domain, types, primaryType and message"
+              },
+              "network": {
+                "description": "Tron network to use (default: mainnet)",
+                "type": "string",
+                "enum": [
+                  "mainnet",
+                  "nile",
+                  "shasta"
+                ]
+              }
+            },
+            "required": [
+              "typedData"
+            ]
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        }
+      ]
+    }
+  ]
+}
