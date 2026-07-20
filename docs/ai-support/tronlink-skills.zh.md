@@ -8,7 +8,7 @@
 
 **核心亮点：**
 - **6 大技能，33 个命令**，涵盖钱包、代币研究、市场数据、兑换、资源和质押
-- **零 npm 依赖**：使用原生 Node.js 18+ `fetch` 和 `crypto`，无需 `npm install`
+- **零 npm 依赖**：使用原生 Node.js 18+ `fetch` 和 `crypto`；`crypto` 仅用于 Base58Check 地址编码/校验——**不接触私钥、不做签名**
 - **TRON 专属领域知识** — 专门处理能量 + 带宽资源模型
 - **多平台支持** — Claude Code、Cursor、OpenCode、Codex CLI、LangChain/CrewAI
 - **纯只读安全设计**：所有命令均为查询操作，不涉及私钥或签名
@@ -153,7 +153,7 @@ Stake 2.0 查询与 SR 信息。
 
 ---
 
-## Skill ↔ MCP 工具映射
+## Skill ↔ MCP 工具映射 {#skill-mcp-tool-map}
 
 `scripts/mcp_server.mjs`（即[方式二](#mcp)的封装）将 **33 个 CLI 命令中的 25 个** 暴露为 MCP 工具——签名、输入字段、输出结构都由同一份 `tron_api.mjs` 实现派生，因此 CLI 与 MCP 工具保证等价。剩余 8 个 CLI-only 命令仍可通过方式一（skill 提示词）和方式三（直接 CLI）使用。需要按用户提问路由到具体工具，或核对 `tools/list` 输出时，请用下表。
 
@@ -232,10 +232,10 @@ Skills 是**只读**的。如果用户意图涉及签名或 Remote Write，**不
 | 用户提问（意图） | ❌ 误路由（看起来合理，但只读） | ✅ 正确路由 |
 |---|---|---|
 | 「给 `T…` 转 100 TRX」 | `tron-wallet wallet-balance` 就停下——只查了余额，没转。 | [signer SDK](tronlink-signer.md) `sendTrx`（HITL）或 [`mcp-server-tronlink`](mcp-server-tronlink.md) `tl_chain_send` |
-| 「冻 1000 TRX 换能量」 | `tron-resource optimize-cost`——只算了建议，没冻。 | `mcp-server-tronlink` `tl_chain_stake`（Remote Write、HITL） |
+| 「冻 1000 TRX 换能量」 | `tron-resource optimize-cost`——只算了建议，没冻。 | `mcp-server-tronlink` `tl_chain_stake`（Remote Write——Direct-API 由 agent-wallet 签名，屏障是钱包密码而非浏览器 HITL） |
 | 「给 SR `T…` 投 5000 票」 | `tron-staking sr-list`——只读了 SR 列表，没投票。 | `mcp-server-tronlink` `tl_chain_stake` / signer SDK `signTransaction` |
 | 「给 SunSwap 路由器授权 USDT 额度」 | `tron-token token-info` / `contract-info`——纯元数据查询，没发送 approve。 | [signer SDK](tronlink-signer.md) `signTransaction` 或 `mcp-server-tronlink` `tl_chain_send` |
-| 「现在把 100 TRX 换成 USDT」 | `tron-swap swap-quote`——只报了价，没执行。 | `mcp-server-tronlink` `tl_chain_swap_v3`（Remote Write、HITL，必传 `minOut`） |
+| 「现在把 100 TRX 换成 USDT」 | `tron-swap swap-quote`——只报了价，没执行。 | `mcp-server-tronlink` `tl_chain_swap_v3`（Remote Write——务必显式传 `slippage`；不存在 min-out 参数） |
 | 「领我的质押奖励」 | `tron-staking staking-info`——只看了待领数量。 | `mcp-server-tronlink` `tl_chain_stake`（withdraw / claim）或 signer SDK |
 
 **判断口诀。** 用户动词只要出现 *send / freeze / unfreeze / vote / unvote / approve / swap（执行）/ claim / sign / broadcast*，答案就**不在**这个 Skills 集里起步。Skills 仍然可以做**前置**（报价、估算成本、校验地址、查余额）——只是别声称"Skills 调用完成了用户的请求"。
@@ -553,7 +553,7 @@ Skills 已进入 **v1.0.x**，适用标准 semver——只有 **major** 升级�
 
 - **稳定契约**（minor / patch 不会动）：
     - 33 个 CLI 命令名与其必填 / 可选 flag（`tron_api.mjs <command> [...]`）。
-    - [Skill ↔ MCP 工具映射](#skill--mcp-工具映射) 列出的 25 个 MCP 工具名（`tron_*` 形式）及其 `inputSchema` 字段名。
+    - [Skill ↔ MCP 工具映射](#skill-mcp-tool-map) 列出的 25 个 MCP 工具名（`tron_*` 形式）及其 `inputSchema` 字段名。
     - Exit code：`0` 成功，`1` 查询错误 / 参数非法，`2` 未支持 / 未知命令。
     - `Network Read` 副作用分级——任何命令未经 major 升级都不会变成 Remote Write。
 - **不稳定契约**（minor 允许变化）：

@@ -31,7 +31,7 @@ If you are an AI coding agent or an autonomous tool reading this for orientation
 
 ## Source-of-truth boundaries
 
-- **Error codes & retry semantics:** the SSOT is https://docs.tronlink.org/ai-support/tronlink-mcp-core/#error-codes. Downstream docs link into it; do not duplicate the table.
+- **Error codes & retry semantics:** the SSOT is https://docs.tronlink.org/ai-support/tronlink-mcp-core/#error-codes — downstream docs link into it; do not duplicate the table.
 - **Per-tool input schemas:** the SSOT is the running MCP server's `list_tools` (returns `inputSchema` per tool). https://docs.tronlink.org/reference/mcp-tools.json is a stamped static snapshot of that output; doc tables are a summary, not a contract.
 - **Versions:** each AI-support page ends with `Version & License` keyed to the corresponding upstream `package.json`.
 

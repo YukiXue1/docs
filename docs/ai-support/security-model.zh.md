@@ -22,6 +22,16 @@
 
 **测试网优先。** 实验默认用 `nile` / `shasta`;只有动用真实资金时才用 `mainnet`。网络、水龙头、chainId 见[网络与地址](../reference/networks.md)。
 
+## 交易生命周期与最终性 {#transaction-lifecycle-finality}
+
+所有写入面共享同一个三阶段生命周期,每一阶段都可能独立失败:
+
+1. **广播** —— 返回 `txId` 只代表网络接受了这笔交易等待打包,仅此而已。
+2. **执行** —— 合约调用仍可能在链上失败(`REVERT`、`OUT_OF_ENERGY`、`FAILED`)。用 `tl_chain_get_tx`、`tronWeb.trx.getTransactionInfo(txId)` 或区块浏览器核对 `ret[0].contractRet === "SUCCESS"`。
+3. **最终性** —— TRON 区块需约 19/27 个超级代表确认(≈ 57 秒)后才不可逆。在此之前理论上存在重组可能;大额转账请等固化状态(`/walletsolidity` 端点只查固化区块)。
+
+由此推出的 agent 规则:把 `txId` 当"已提交"而非"已成功";任何结果不确定的写操作(超时、断连)之后,**先**查链上交易再决定是否重发;永远不要把报价/估算当成已执行结果。
+
 ## 各面安全章节索引
 
 | 面 | 安全章节 | 覆盖内容 |
@@ -37,4 +47,4 @@
 
 - 调用工具**之前**先分类副作用;生产环境中把所有 Remote Write 级工具视为需要用户确认。
 - 结果不确定的写操作(超时、传输错误)之后,先查链上交易,再决定是否重发。
-- 限频(`TL_RATE_LIMITED`)与钱包锁定状态在退避/解锁后可重试;用户拒绝不可重试。[错误码对照表](../reference/error-code-map.md)是权威 join。
+- 限频与钱包锁定状态在退避/解锁后可重试(它们表现为 provider `-32000`,或 HTTP 429 在 MCP 侧映射为 `TL_CHAIN_QUERY_FAILED`);用户拒绝不可重试。[错误码对照表](../reference/error-code-map.md)是权威 join。

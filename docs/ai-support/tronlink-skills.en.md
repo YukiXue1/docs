@@ -8,7 +8,7 @@
 
 **Key Highlights:**
 - **6 skills, 33 commands** covering wallet, token research, market data, swaps, resources, and staking
-- **Zero npm dependencies** — uses native Node.js 18+ `fetch` and `crypto`, no `npm install` needed
+- **Zero npm dependencies** — uses native Node.js 18+ `fetch` and `crypto`; the `crypto` usage is limited to Base58Check address encoding/validation — **no key handling, no signing**
 - **TRON-specific domain knowledge** — dedicated handling of Energy + Bandwidth resource model
 - **Multi-platform support** — Claude Code, Cursor, OpenCode, Codex CLI, LangChain/CrewAI
 - **Read-only & safe** — all commands are query-only, no private keys or signing involved
@@ -232,10 +232,10 @@ Skills are **read-only**. If the user intent implies a signed / Remote Write act
 | User says (intent) | ❌ Wrong route (looks plausible, but read-only) | ✅ Correct route |
 |---|---|---|
 | "Send 100 TRX to `T…`" | `tron-wallet wallet-balance` then stop — this only checks the balance, never sends. | [signer SDK](tronlink-signer.md) `sendTrx` (HITL) or [`mcp-server-tronlink`](mcp-server-tronlink.md) `tl_chain_send` |
-| "Freeze 1000 TRX to get Energy" | `tron-resource optimize-cost` — this only computes the recommendation. | `mcp-server-tronlink` `tl_chain_stake` (Remote Write, HITL) |
+| "Freeze 1000 TRX to get Energy" | `tron-resource optimize-cost` — this only computes the recommendation. | `mcp-server-tronlink` `tl_chain_stake` (Remote Write — Direct-API signs with the agent-wallet, password-gated rather than browser-HITL) |
 | "Vote 5000 votes for SR `T…`" | `tron-staking sr-list` — only reads the SR list, no vote is cast. | `mcp-server-tronlink` `tl_chain_stake` / signer SDK `signTransaction` |
 | "Approve USDT spending for the SunSwap router" | `tron-token token-info` / `contract-info` — pure metadata, no approval is broadcast. | [signer SDK](tronlink-signer.md) `signTransaction` or `mcp-server-tronlink` `tl_chain_send` |
-| "Swap 100 TRX for USDT now" | `tron-swap swap-quote` — only quotes price, never executes. | `mcp-server-tronlink` `tl_chain_swap_v3` (Remote Write, HITL, set `minOut`) |
+| "Swap 100 TRX for USDT now" | `tron-swap swap-quote` — only quotes price, never executes. | `mcp-server-tronlink` `tl_chain_swap_v3` (Remote Write — always pass `slippage` explicitly; there is no min-out parameter) |
 | "Claim my staking rewards" | `tron-staking staking-info` — only shows the pending balance. | `mcp-server-tronlink` `tl_chain_stake` (withdraw / claim) or signer SDK |
 
 **Heuristic.** If the user's verb is *send / freeze / unfreeze / vote / unvote / approve / swap (execute) / claim / sign / broadcast*, the answer never starts in this Skills set. Skills can still **precede** the write (quote, estimate cost, validate address, check balance) — just don't claim a Skills call finished the user's request.
@@ -553,7 +553,7 @@ Skills are at **v1.0.x**, so standard semver applies — only **major** bumps ma
 
 - **Stable contracts** (won't change in a minor or patch):
     - The 33 CLI command names and their required / optional flags (`tron_api.mjs <command> [...]`).
-    - The 25 MCP tool names listed in [Skill ↔ MCP Tool Map](#skill--mcp-tool-map) (`tron_*` form) and their `inputSchema` keys.
+    - The 25 MCP tool names listed in [Skill ↔ MCP Tool Map](#skill-mcp-tool-map) (`tron_*` form) and their `inputSchema` keys.
     - Exit codes: `0` success, `1` query error / invalid input, `2` unsupported / unknown command.
     - The `Network Read` side-effect classification — no command will ever become a Remote Write without a major bump.
 - **Volatile contracts** (may change in a minor):

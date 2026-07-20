@@ -47,14 +47,22 @@ claude mcp add -s user tronlink-signer -- node /path/to/packages/mcp-tronlink-si
 | `send_trx` | Send TRX to an address | `to`, `amount`, `network?` | **Remote Write** | **No** — verify on-chain before re-issuing |
 | `send_trc20` | Send TRC20 tokens | `contractAddress`, `to`, `amount`, `decimals?`, `network?` | **Remote Write** | **No** — same as `send_trx` |
 | `sign_message` | Sign a message | `message`, `network?` | Local Write (signs only; no broadcast) | Yes — re-prompts the user |
-| `sign_typed_data` | Sign EIP-712 typed data | `typedData`, `network?` | Local Write (signs only) | Yes — re-prompts the user |
+| `sign_typed_data` | Sign TIP-712 typed data (TRON's EIP-712 adaptation) | `typedData`, `network?` | Local Write (signs only) | Yes — re-prompts the user |
 | `sign_transaction` (`broadcast=false`) | Sign a raw transaction | `transaction`, `broadcast=false`, `network?` | Local Write | Yes — re-prompts the user |
 | `sign_transaction` (`broadcast=true`) | Sign + broadcast | `transaction`, `broadcast=true`, `network?` | **Remote Write** | **No** — verify on-chain before re-issuing |
 | `get_balance` | Get TRX balance | `address`, `network?` | Network Read | Yes |
 
 All tools support an optional `network` parameter (`mainnet` / `nile` / `shasta`), defaulting to `mainnet`.
 
+> **Typed-data caution.** `typedData` is passed through opaquely — the schema does not validate `domain` / `types` / `message` structure. Before calling, verify yourself that `typedData.domain.chainId` matches the `network` parameter (mainnet `728126428`, Nile `3448148188`, Shasta `2494104990`) and that `verifyingContract` is the contract you intend — a mismatched domain enables cross-network replay of the signature.
+
+> **Raw-transaction expiry.** A pre-built `transaction` for `sign_transaction` carries `raw_data.expiration` (TronWeb default ≈ 60 s from build time), while the approval window is up to 5 minutes. If the user approves after the tx expired, the broadcast fails with an expired-transaction error — build the raw tx immediately before calling, or extend its expiration deliberately. Re-broadcasting the **same** signed payload is idempotent (same txId, nodes deduplicate); rebuilding + re-signing creates a **new** transaction — that is the double-spend path to avoid.
+
 **Human-in-the-loop.** Every tool that signs (`send_trx`, `send_trc20`, `sign_message`, `sign_typed_data`, `sign_transaction`) opens the TronLink approval page in the browser. The AI agent **cannot** sign without the user clicking Approve. Treat Remote Write tools as requiring confirmation in production.
+
+**No unattended path.** Signing requires a live browser and a human click — in headless CI or on a server, only `get_balance` works; there is no service-account signing mode.
+
+**Review the approval carefully.** Address-poisoning attacks rely on look-alike addresses with matching first/last characters — verify the **full** base58 recipient address on the approval page, not just its ends, and confirm the network label and amount before clicking Approve.
 
 ## MCP Resources
 
@@ -132,8 +140,8 @@ The server returns errors in the standard MCP shape. Each error carries a stable
 | Condition | Retryable | When |
 | --- | :---: | --- |
 | `USER_REJECTED` | No | User clicked Reject on the TronLink approval page. |
-| `TIMEOUT` | Yes | No approval within the request timeout (default 5 min). Re-issuing re-opens the prompt; do **not** auto-retry a broadcast that may already be in flight. |
-| `BROWSER_DISCONNECTED` | Yes (signing only) | Approval page was closed or lost heartbeat. Reconnect by re-issuing the call. Never re-issue a broadcast that may have already landed. |
+| `TIMEOUT` | Yes | No approval within the request timeout (default 5 min). **Nothing was signed or broadcast** — re-issuing safely re-opens the prompt. (A tx that was broadcast but not yet confirmed surfaces as `status: "pending"`, never as `TIMEOUT`.) |
+| `BROWSER_DISCONNECTED` | Reconcile first | Approval page was closed or lost heartbeat. If it dropped **before** the user approved, nothing was signed and re-issuing is safe; if it dropped **after** approval, the signed tx may already have been broadcast. The agent cannot distinguish the two from this code alone — confirm on-chain (`get_balance` / explorer) before re-issuing any write. |
 | `NETWORK_ERROR` | Yes | A TronGrid / RPC request failed. Transient. |
 | `BROADCAST_FAILED` | No | Signing succeeded but submission was rejected by the node. Inspect the message; **do not** auto-retry — the signature may already have been accepted by another node. |
 | `ON_CHAIN_FAILED` | No | Broadcast OK but on-chain execution failed (`OUT_OF_ENERGY`, Solidity revert, `FAILED`). The transaction is final; address the root cause and submit a new tx. |

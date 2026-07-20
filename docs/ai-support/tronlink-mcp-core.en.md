@@ -322,7 +322,7 @@ All tools use the `tl_` prefix. Organized into 13 categories:
 ### 11. On-Chain Operations (14)
 | Tool | Description |
 |------|-------------|
-| `tl_chain_get_address` | Get address from private key |
+| `tl_chain_get_address` | Get the active address from the encrypted local agent-wallet (plain-text private keys are never handled) |
 | `tl_chain_get_account` | Query account details |
 | `tl_chain_get_tokens` | Query TRC10/TRC20 balances |
 | `tl_chain_send` | Send TRX/TRC10/TRC20 |

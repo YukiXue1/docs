@@ -441,6 +441,8 @@ Pinned to the `package.json` of `mcp-server-tronlink@0.1.1`. Re-verify when bump
 - **Pre-checks:** all transaction tools validate (balances, reverts, resource burn) before execution.
 - **Human-in-the-loop:** write tools sign with the encrypted local `agent-wallet`; in browser-mode flows the user approves in the TronLink UI. Treat every Remote Write tool as requiring confirmation in production.
 - **Retry:** read-only tools are safe to retry; Remote Write tools must not be auto-retried unless proven idempotent.
+- **Broadcast ≠ executed ≠ final.** A returned `txId` only means the transaction was accepted for broadcast. The contract call can still fail on-chain (`REVERT`, `OUT_OF_ENERGY`) — check `ret[0].contractRet === "SUCCESS"` via `tl_chain_get_tx` — and the block is only irreversible after ~19 SR confirmations (≈ 57 s). See [Transaction lifecycle](security-model.md#transaction-lifecycle-finality).
+- **Fixed on-chain costs:** `tl_chain_setup_multisig` (accountPermissionUpdate) burns a flat **100 TRX** network fee; TRC20 transfers and swaps burn TRX for energy up to the 100 TRX `fee_limit` the server sets internally. Budget for these before executing.
 
 ### Selected tool schemas (inline mirror)
 
@@ -456,7 +458,7 @@ These are **docs-side mirrors** of the most critical tool inputs — useful when
   "required": ["to", "amount"],
   "properties": {
     "to":               { "type": "string", "description": "Recipient TRON address (T-prefix, 34 chars)" },
-    "amount":           { "type": "string", "description": "Amount to send (e.g. \"1.5\" for TRX, or token amount string)" },
+    "amount":           { "type": "string", "description": "TRX: human units (e.g. \"1.5\" TRX — converted to SUN internally). TRC10/TRC20: integer string in the token's SMALLEST unit, no decimals conversion is applied (\"10\" on 6-dp USDT = 0.00001 USDT; a decimal point is rejected). Scale by the token's decimals (from tl_chain_get_tokens) before calling." },
     "token_type":       { "type": "string", "enum": ["TRX", "TRC10", "TRC20"], "description": "Default: TRX" },
     "token_id":         { "type": "string", "description": "TRC10 token ID (required when token_type=TRC10)" },
     "contract_address": { "type": "string", "description": "TRC20 contract address (required when token_type=TRC20)" },
@@ -464,6 +466,8 @@ These are **docs-side mirrors** of the most critical tool inputs — useful when
   }
 }
 ```
+
+> **Unit trap.** `amount` switches meaning with `token_type`: human TRX for `TRX`, **raw smallest units** for `TRC10`/`TRC20`. This asymmetry is the single most expensive mistake an agent can make with this tool — on an 18-dp token (USDD, JST) a human-unit value is off by 10¹⁸. Always resolve `decimals` first and pass the scaled integer string. Note the asymmetry within this server: `tl_gasfree_send` declares **human** token units (`"10.5"`) while `tl_chain_send` and `tl_chain_swap_v3` take raw smallest units — do not generalize one convention to the other.
 
 #### `tl_chain_swap_v3` — **Remote Write** (when `action=execute`)
 
@@ -475,9 +479,9 @@ These are **docs-side mirrors** of the most critical tool inputs — useful when
     "action":           { "type": "string", "enum": ["estimate", "execute"], "description": "estimate = quote-only (Network Read); execute = sign & broadcast (Remote Write)" },
     "from_token":       { "type": "string", "description": "Source token address or 'TRX' for native" },
     "to_token":         { "type": "string", "description": "Target token address or 'TRX' for native" },
-    "amount":           { "type": "string", "description": "Input amount in token units" },
-    "fee_tier":         { "type": "number", "enum": [500, 3000, 10000], "description": "Pool fee tier in bps: 500=0.05%, 3000=0.3%, 10000=1% (default: 3000)" },
-    "slippage":         { "type": "number", "description": "Slippage tolerance percent (default: 0.5). See 'Swap safety' above — never accept an unstated default for production execution." },
+    "amount":           { "type": "string", "description": "Input amount as an integer string in the source token's SMALLEST unit (SUN when from_token is TRX); no decimals conversion is applied" },
+    "fee_tier":         { "type": "number", "description": "Pool fee tier in hundredths of a bip (1e-6 / ppm) — valid SunSwap V3 pools: 500 (0.05%), 3000 (0.3%), 10000 (1%); default 3000. Not enforced by the runtime schema (no enum): an invalid tier only fails later at pool lookup" },
+    "slippage":         { "type": "number", "description": "Slippage tolerance percent (default: 0.5). This is the ONLY output-bound control — there is no minimum-output parameter; see 'Swap safety' below" },
     "sqrt_price_limit": { "type": "string", "description": "Optional price limit for partial fills (advanced)" }
   }
 }
@@ -507,12 +511,12 @@ These are **docs-side mirrors** of the most critical tool inputs — useful when
     "address":           { "type": "string", "description": "Signer address submitting this transaction" },
     "function_selector": { "type": "string", "description": "e.g. 'transfer(address,uint256)' (optional)" },
     "expire_time":       { "type": "number", "description": "Expiration timestamp in ms (default: now + 24h)" },
-    "transaction":       { "type": "object", "description": "Signed transaction { raw_data, signature[] }. Each contract entry may carry a Permission_id." }
+    "transaction":       { "type": "object", "description": "Signed transaction { raw_data, signature[] }. Each contract entry may carry a Permission_id: 0 = owner permission, active permissions start at 2; it must match the permission whose keys produced signature[], or weight validation fails." }
   }
 }
 ```
 
-The full `transaction` shape (raw_data → contract[] → parameter, etc.) is in [`tronlink-mcp-core` `schemas.ts`](https://github.com/TronLink/tronlink-mcp-core/blob/main/src/mcp-server/schemas.ts) — too verbose to mirror inline.
+The full `transaction` shape (raw_data → contract[] → parameter, etc.) is in [`tronlink-mcp-core` `schemas.ts`](https://github.com/TronLink/tronlink-mcp-core/blob/main/src/mcp-server/schemas.ts) — too verbose to mirror inline. Two field notes the runtime schema does not express: `raw_data.fee_limit` is **required** but currently untyped in the runtime schema — it is a number in **SUN** (1 TRX = 1,000,000 SUN; `100000000` = 100 TRX max burn), and `raw_data.expiration` is a unix timestamp in ms.
 
 #### `tl_gasfree_send` — **Remote Write**
 
@@ -583,9 +587,10 @@ Reminder: `tl_evaluate` runs arbitrary JS in the controlled Playwright browser. 
 
 Swaps are **Remote Write** and execute against a public DEX router, so they are exposed to **price slippage** and **front-running / MEV** (e.g. sandwich attacks): the realized output can be worse than quoted if the pool moves between quote and execution.
 
-- **Always bound the trade with a minimum-output / slippage limit.** Inspect the `tl_chain_swap_v3` input schema via `list_tools` (the `SwapV3Params` shape) for the exact slippage / minimum-output field names — do **not** rely on an unstated default, and treat a missing or zero minimum-output as unsafe.
-- **Quote immediately before executing.** Get a fresh quote/route (e.g. Skills `tron-swap` `swap-quote` / `swap-route`), pick a tolerance you accept, and pass it explicitly.
-- **Pin the router.** `TL_SUNSWAP_V3_ROUTER` has no built-in default; a stale or wrong router can route funds unexpectedly. Set it to the current SunSwap V3 router (see Environment Variables).
+- **`slippage` is the only output bound — always pass it explicitly.** There is **no minimum-output parameter** in the schema (`sqrt_price_limit` is a V3 partial-fill price limit, not a min-out guarantee). The default tolerance is 0.5%, which is documented but **unsafe for low-liquidity pairs** — pick a tolerance per pair and pass it on every `execute` call.
+- **Quote immediately before executing.** Get a fresh quote/route (e.g. Skills `tron-swap` `swap-quote` / `swap-route`, or `action=estimate`), pick a tolerance you accept, and pass it explicitly.
+- **First-time token swaps auto-approve the router with an unlimited allowance.** When the source token's allowance is insufficient, the tool silently submits an `approve(router, MAX_UINT256)` transaction first (its own fee, up to 100 TRX fee_limit) before the swap. Unlimited allowance means a compromised or wrong router can drain that token — pin the router (below) and revoke stale allowances if you rotate routers.
+- **Pin the router.** `TL_SUNSWAP_V3_ROUTER` has no built-in default; a stale or wrong router can route funds unexpectedly — and holds the unlimited allowance granted above. Set it to the current SunSwap V3 router (see Environment Variables).
 - **No auto-retry.** A failed/uncertain swap is a Remote Write — confirm on-chain before re-issuing (`TL_CHAIN_SWAP_FAILED` is not retryable).
 
 #### Multi-sig credential hygiene (`TL_MULTISIG_SECRET_ID` / `TL_MULTISIG_SECRET_KEY`)

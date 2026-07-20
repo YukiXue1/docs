@@ -247,7 +247,7 @@ interface GasFreeCapability {
 
 所有工具使用 `tl_` 前缀，分为 13 个类别：
 
-> **Schema SSOT。** 每个工具的 `inputSchema` 都由 [`src/mcp-server/schemas.ts`](https://github.com/TronLink/tronlink-mcp-core/blob/main/src/mcp-server/schemas.ts) 中的 Zod schema 生成，运行时通过 `list_tools` 暴露。下方表格只列**工具名 + 一句话描述**；参数类型、必填字段、枚举值和默认值请对运行中的 server 调用 `list_tools`，或直接读 Zod 源码。下游 [`mcp-server-tronlink` 页面](mcp-server-tronlink.md#精选工具-schema文档侧镜像) 为 7 个高影响工具（`tl_chain_send`、`tl_chain_swap_v3`、`tl_chain_stake`、`tl_multisig_submit_tx`、`tl_gasfree_send`、`tl_chain_get_account`、`tl_evaluate`）镜像了 JSON Schema——便于 agent 在没打开 MCP 会话时写调用站点。SSOT 仍然是本包。
+> **Schema SSOT。** 每个工具的 `inputSchema` 都由 [`src/mcp-server/schemas.ts`](https://github.com/TronLink/tronlink-mcp-core/blob/main/src/mcp-server/schemas.ts) 中的 Zod schema 生成，运行时通过 `list_tools` 暴露。下方表格只列**工具名 + 一句话描述**；参数类型、必填字段、枚举值和默认值请对运行中的 server 调用 `list_tools`，或直接读 Zod 源码。下游 [`mcp-server-tronlink` 页面](mcp-server-tronlink.md#selected-tool-schemas-inline-mirror) 为 7 个高影响工具（`tl_chain_send`、`tl_chain_swap_v3`、`tl_chain_stake`、`tl_multisig_submit_tx`、`tl_gasfree_send`、`tl_chain_get_account`、`tl_evaluate`）镜像了 JSON Schema——便于 agent 在没打开 MCP 会话时写调用站点。SSOT 仍然是本包。
 
 ### 1. 会话管理（2 个）
 | 工具 | 说明 |
@@ -322,7 +322,7 @@ interface GasFreeCapability {
 ### 11. 链上操作（14 个）
 | 工具 | 说明 |
 |------|------|
-| `tl_chain_get_address` | 从私钥获取地址 |
+| `tl_chain_get_address` | 从本地加密 agent-wallet 获取当前地址（绝不接触明文私钥） |
 | `tl_chain_get_account` | 查询账户详情 |
 | `tl_chain_get_tokens` | 查询 TRC10/TRC20 余额 |
 | `tl_chain_send` | 发送 TRX/TRC10/TRC20 |

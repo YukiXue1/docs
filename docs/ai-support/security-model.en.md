@@ -22,6 +22,16 @@ This page is the single map of the security guarantees that hold across **every*
 
 **Testnet-first.** Default to `nile` / `shasta` when experimenting; use `mainnet` only for real funds. Networks, faucets, and chainIds are in [Networks & Addresses](../reference/networks.md).
 
+## Transaction lifecycle & finality {#transaction-lifecycle-finality}
+
+Every write surface shares the same three-stage lifecycle, and each stage can fail independently:
+
+1. **Broadcast** — a returned `txId` means the network accepted the transaction for inclusion, nothing more.
+2. **Execution** — the contract call can still fail on-chain (`REVERT`, `OUT_OF_ENERGY`, `FAILED`). Verify with `ret[0].contractRet === "SUCCESS"` via `tl_chain_get_tx`, `tronWeb.trx.getTransactionInfo(txId)`, or an explorer.
+3. **Finality** — TRON blocks become irreversible after confirmation by ~19 of the 27 Super Representatives (≈ 57 seconds). Before that, a reorg is theoretically possible; for high-value transfers wait for solidified state (`/walletsolidity` endpoints query only solidified blocks).
+
+Agent rules that follow: treat `txId` as "submitted", not "succeeded"; after any uncertain write (timeout, disconnect), query the chain for the transaction **before** re-issuing; and never equate a quote or estimate with an executed result.
+
 ## Where each surface documents its boundaries
 
 | Surface | Security section | Covers |
@@ -37,4 +47,4 @@ This page is the single map of the security guarantees that hold across **every*
 
 - Classify the side effect **before** calling a tool; treat anything graded Remote Write as requiring user confirmation in production.
 - After an uncertain write (timeout, transport error), query the chain for the transaction before re-issuing anything.
-- Rate-limit (`TL_RATE_LIMITED`) and wallet-locked states are retryable after backoff / unlock; user rejection is not. The [Error Code Map](../reference/error-code-map.md) is the authoritative join.
+- Rate-limit and wallet-locked states are retryable after backoff / unlock (they surface as provider `-32000`, or HTTP 429 mapped to `TL_CHAIN_QUERY_FAILED` on MCP); user rejection is not retryable. The [Error Code Map](../reference/error-code-map.md) is the authoritative join.

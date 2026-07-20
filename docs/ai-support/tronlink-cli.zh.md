@@ -43,7 +43,7 @@ npm link
 | `--timeout <ms>` | 300000 | 签名/连接超时时间（毫秒） |
 | `--port <n>` | 3386 | TronLink Signer HTTP 服务端口 |
 
-所有选项名称均**不区分大小写**（例如 `--toAddress`、`--TOADDRESS`、`--toaddress` 完全等价）。
+所有选项**名称**不区分大小写（例如 `--toAddress`、`--TOADDRESS`、`--toaddress` 完全等价），`--type` / `--network` / `--resource` 的枚举**取值**同样会做大小写归一（`--type TRC20` 也能用）。TRON base58 地址与合约地址是大小写敏感的数据——请原样传入。
 
 ## 命令
 
@@ -90,12 +90,14 @@ tronlink transfer --type trc20 --contract <contract> --toAddress <to> --amount <
 tronlink transfer --type trc721 --contract <contract> --toAddress <to> --tokenId <id> [--fee-limit 150] [--network nile]
 ```
 
+> **默认网络是 `mainnet`。** 省略 `--network` 会动真实资金。以下示例统一钉死 `--network nile`;只有确认要上主网时才去掉。
+
 示例：
 
 ```bash
-tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --amount 100
-tronlink transfer --type trc20 --contract TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --amount 50
-tronlink transfer --type trc721 --contract TContractAddr --toAddress TRecipient --tokenId 12345
+tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --amount 100 --network nile
+tronlink transfer --type trc20 --contract <trc20-contract> --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --amount 50 --network nile
+tronlink transfer --type trc721 --contract TContractAddr --toAddress TRecipient --tokenId 12345 --network nile
 ```
 
 各类型的参数校验：
@@ -117,7 +119,7 @@ tronlink trigger \
   --contract <address> \
   --method 'transfer(address,uint256)' \
   --args '["TRecipient...","1000000"]' \
-  [--call-value <trx>] [--fee-limit <trx>] [--network nile]
+  [--call-value <trx>] [--fee-limit <trx>] [--network nile]   # fee-limit 单位 TRX,默认 100
 
 # 常量（只读）调用 — 返回 constant_result 的原始 hex
 tronlink trigger \
@@ -213,7 +215,7 @@ tronlink reward
 
 取消某个命令（Ctrl+C）只会取消该笔交易，其他排队中的交易不受影响。
 
-## 交易预览
+## 交易预览 {#transaction-preview}
 
 所有写操作在签名前都会显示预览：
 
@@ -230,21 +232,25 @@ Transaction Preview
 Awaiting TronLink approval...
 ```
 
+TRC10/TRC20/TRC721 与 `trigger` 的预览还会额外显示 `Contract`、`Decimals`、`FeeLimit` 三行。`FeeLimit`(如 `100 TRX`)是能量不足时该合约调用**最多燃烧的 TRX 上限**——审批前请先核对。
+
 ## 广播
 
 默认情况下，签名后的交易由签名器（TronLink）广播。使用 `--local-broadcast` 可让 CLI 通过自身的 TronWeb 实例进行本地广播：
 
 ```bash
 # 默认：签名器签名后广播
-tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --amount 100
+tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --amount 100 --network nile
 
 # CLI 在本地广播
-tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --amount 100 --local-broadcast
+tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --amount 100 --network nile --local-broadcast
 ```
 
 **两条路径是互斥的，而不是冗余。** 加 `--local-broadcast` 后，签名器只返回已签名交易**不再广播**；CLI 用自己的 TronWeb 提交一次。同一条已签名 payload 不会被本次命令重复提交。
 
-若网络抖动导致 CLI 本地广播与签名器残留的广播都打到节点（例如断线重连、同一 nonce 的两次 CLI 调用），第二次提交会被节点拒绝——TRON 节点按交易 ID 去重，结果只会是一次入块 + 一次 `DUP_TRANSACTION_ERROR` 类失败，绝不会出现两次链上效果。已确认入块后再看到此类错误视为良性；尚未确认前出现则按退出码 `5`（网络）处理，先用区块浏览器核对再决定是否重试。
+若网络抖动导致 CLI 本地广播与签名器残留的广播都打到节点（例如断线重连时重复提交同一份已签名负载），第二次提交会被节点拒绝——TRON 节点按交易 ID 去重，结果只会是一次入块 + 一次 `DUP_TRANSACTION_ERROR` 类失败，绝不会出现两次链上效果。已确认入块后再看到此类错误视为良性；尚未确认前出现则按网络类失败处理，先用区块浏览器核对再决定是否重试。
+
+## 输入校验 {#input-validation}
 
 所有输入在连接 TronLink 前会进行校验：
 
@@ -280,36 +286,54 @@ tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --am
 }
 ```
 
-读操作在同一顶层对象下返回查询数据（余额、资源等）。字段名在同一大版本内保持稳定。
+读操作以扁平顶层对象返回查询数据（余额、资源等），例如单代币余额查询：
 
-## 退出码
+```json
+{
+  "Address": "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL",
+  "Network": "nile",
+  "TokenID": "1000587",
+  "Balance": "12.5"
+}
+```
+稳定键为:写操作的 `Status` / `TxID` / `Explorer` 与各读命令的数据键;错误输出为 stderr 上的 `status` / `error`(见[错误](#errors))。键名在同一大版本内保持稳定。
 
-CLI 以下面的稳定退出码退出，自动化脚本可据此对失败类型做分支，无需解析自然语言。`--json` 模式下，同一分类也会出现在输出中。
+## 退出码 {#exit-codes}
 
-| 退出码 | 类别 | 含义 | 可重试 |
-| :---: | --- | --- | :---: |
-| `0` | 成功 | 查询返回，或交易已签名并广播 | n/a |
-| `1` | 输入非法 | 在任何钱包交互前校验失败（见「输入校验」） | 否——修正输入 |
-| `2` | 用户拒绝 | 用户在 TronLink 审批页点击 Reject | 否——用户已拒绝 |
-| `3` | 签名超时 | 在 `--timeout <ms>` 内未审批（默认 5 分钟） | 是——但**已在途**的广播除外 |
-| `4` | 链上失败 | 广播成功但执行失败（`OUT_OF_ENERGY`、`REVERT`、`FAILED`） | 否——该交易已最终化，先解决根因 |
-| `5` | 网络错误 | TronGrid / RPC 请求失败（偶发） | 是；写命令需先确认上一笔未上链 |
+已发布的 CLI(v1.0.x)只使用**两个**退出码:
 
-> **重试策略。** 读命令（`balance` / `resource` / `--constant trigger`）始终可安全重试。写/签名命令（transfer、stake、delegate、vote、写型 trigger）在「已提交但结果未知」时**不得**自动重试——重新发起会再次弹审批，可能重复提交。仅在通过区块浏览器或 `balance` 确认上一笔未落账后再重试。
+| 退出码 | 含义 |
+| :---: | --- |
+| `0` | 成功——查询返回,或交易已签名并广播 |
+| `1` | 任何失败——校验、用户拒绝、超时、链上失败或网络错误 |
 
-## 错误
+**目前没有按失败类别细分的退出码**:脚本无法只凭退出状态区分失败类型。失败类别由 CLI 打到 **stderr** 的结构化错误行承载(见[错误](#errors))——请按"退出状态 + 该行的 `error` 消息"分支。
 
-agent 应基于上面的退出码分支。下表把 CLI 在 stderr 与 `--json` 输出中提到的具体条件映射到对应退出码：
+> **重试策略。** 读命令(`balance` / `resource` / `--constant` trigger)始终可安全重试。写/签名命令(transfer、stake、delegate、vote、写型 trigger)退出 `1` 时**无法判断**交易是否已到达网络——绝不自动重试;先通过区块浏览器或 `balance` 对账,确认上一笔未落账后再重新发起。
 
-| 条件 | 退出码 |
-| --- | :---: |
-| 参数解析 / 类型 / 取值校验失败 | `1` |
-| 用户在 TronLink 审批页点击 Reject | `2` |
-| `--timeout` 超时未审批 | `3` |
-| 节点返回 `OUT_OF_ENERGY` | `4` |
-| `REVERT`（Solidity revert） | `4` |
-| `FAILED`（其他链上失败） | `4` |
-| TronGrid / RPC 不可达、5xx 或超时 | `5` |
+## 错误 {#errors}
+
+`--json` 模式下,失败会向 **stderr** 打印一行结构化错误(stdout 保持干净,只承载成功输出):
+
+```json
+{ "status": "error", "error": "Transaction cancelled by user in TronLink" }
+```
+
+`error` 字符串来自内部分类器,每类失败有稳定措辞(v1.0.1):
+
+| 失败类别 | `error` 消息(按前缀匹配) | 可否重试 |
+| --- | --- | --- |
+| 用户拒绝 | `Transaction cancelled by user in TronLink` | 否——用户已拒绝 |
+| 审批超时 | `TronLink approval timed out. Please try again` | 仅当确认未广播——写操作先对账再重发 |
+| 余额不足 | `Insufficient balance: …` | 否——先补足资金 |
+| 地址非法 | `Invalid TRON address provided` | 否——修正输入 |
+| 签名器断连 | `Signer disconnected (browser closed?) …` | 先对账——交易可能已发出也可能未发出 |
+| 网络失败 | `Network connection failed. Check your internet connection` | 是——偶发;写操作先确认上一笔未落账 |
+| 广播失败 | `Transaction broadcast failed: …` | 否——先链上对账 |
+| 链上执行失败 | 原始消息,通常含 `OUT_OF_ENERGY` / `REVERT` / `FAILED` | 否——交易已最终化,先解决根因 |
+| 未分类 | 底层原始错误消息 | 视为未知——写操作对账后再考虑重试 |
+
+请按 `error` 字符串的**前缀**匹配——尾部可能拼接底层节点/RPC 消息。最后两类**没有稳定前缀**:没有任何已知前缀命中时,一律落入「先对账」的兜底路径(写操作在链上确认前视结果为未知)。重复提交会在原始消息中表现为节点的 `DUP_TRANSACTION_ERROR`——首笔已确认入块后出现属良性。结构化的 `error.code` / `error.retryable` 信封与按类退出码在 v1.0.x 中**尚未实现**,不要按它们写脚本。
 
 ## 安全与副作用 {#safety-side-effects}
 
@@ -318,9 +342,10 @@ agent 应基于上面的退出码分支。下表把 CLI 在 stderr 与 `--json` 
 | **只读**（Network Read，不签名） | `balance`、`resource`、常量 `trigger`（`--constant`） |
 | **远程写**（签名 + 广播） | `transfer`、`stake`、`unstake`、`withdraw`、`delegate`、`reclaim`、`vote`、`reward`、可写 `trigger` |
 
-- **人工确认（HITL）：** 每个写命令都会本地构建交易、展示「交易预览」，并要求在 TronLink 浏览器页面显式审批后才签名。私钥永不离开 TronLink。
+- **人工确认（HITL）：** 每个写命令都会本地构建交易、展示[交易预览](#transaction-preview)，并要求在 TronLink 浏览器页面显式审批后才签名。私钥永不离开 TronLink。
 - **写操作不自动重试：** 见上方重试策略。
-- **默认低风险：** 优先用测试网（`--network nile` / `shasta`）；只有动用真实资金时才用 `--network mainnet`。
+- **测试网优先：** CLI 在省略 `--network` 时默认 **mainnet**——开发阶段务必显式传 `--network nile` / `shasta`,只有动用真实资金时才用 `--network mainnet`。
+- **没有无人值守签名路径：** 每个写命令都需要一个正在运行的浏览器和用户在 TronLink 审批页上的人工点击。headless CI 或服务器环境里只有带 `--address` 的读命令可用;不存在 service-account 或密钥文件签名模式。
 
 ## 支持的网络
 
@@ -441,13 +466,13 @@ tronlink reward --json
 
 ```bash
 # 1. 先查询余额
-tronlink balance --address TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL --network mainnet --json
+tronlink balance --address TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL --network nile --json
 
 # 2. 发送 10 TRX（会打开浏览器签名，需等待返回）
-tronlink transfer --type trx --toAddress TRecipientAddress --amount 10 --network mainnet --json
+tronlink transfer --type trx --toAddress TRecipientAddress --amount 10 --network nile --json
 
-# 3. 验证结果 — 输出包含 txId 和浏览器链接
-# { "Status": "Success", "TxID": "abc...", "Explorer": "https://tronscan.org/#/transaction/abc..." }
+# 3. 验证结果 — 输出包含 TxID 和浏览器链接
+# { "Status": "Success", "TxID": "abc...", "Explorer": "https://nile.tronscan.org/#/transaction/abc..." }
 ```
 
 ### 注意事项
@@ -470,13 +495,13 @@ CLI 已进入 **v1.0.x**，适用标准 semver——只有 **major** 升级允�
 
 - **稳定契约**（minor / patch 不会动）：
     - 子命令名与其必填位置参数 / flag。
-    - **Exit code** —— Exit Codes 表中的每一条都属于公开面。minor 允许为此前的通用失败新增 code；重新分配已有数字属于 major。
-    - **`--json` 输出 key** —— 顶层 key（`ok`、`error.code`、`error.retryable`、`txid` 等）以及 `error` 下的结构。minor 允许新增可选字段；改名 / 删除属于 major。
-    - `error.code` 枚举（与 [TronLink MCP Core](tronlink-mcp-core.md#error-codes) 共享 SSOT）。
+    - **退出状态** —— 当前公开面是 `0` 成功 / `1` 失败。将 `1` 细分为按类退出码属于向后兼容的 minor 变更；脚本请把任何非零状态一律当失败。
+    - **`--json` 输出 key** —— 成功键（`Status`、`TxID`、`Explorer` 及各读命令数据键）与 stderr 错误行的 `status` / `error` 键。minor 允许新增可选字段；改名 / 删除属于 major。
+    - [错误](#errors)一节列出的分类 `error` 消息前缀。
 - **不稳定契约**（随时可能变化）：
     - 未带 `--json` 的人类可读 stdout 文本。
     - 提示、横幅、颜色码的具体文本。
     - stderr 日志行格式（自动化请用 `--json`）。
 - **`--json` 是自动化契约。** 如果脚本调用本 CLI，**必须**传 `--json` 并基于结构化字段分支；纯文本输出供人阅读，minor 之间会漂移。
 - **废弃窗口。** 被标 deprecated 的子命令 / flag 至少在 **一个 minor 周期** 内继续可用，使用时 stderr 打印 `[DEPRECATED]`；移除最早发生在下一个 major。
-- **升级后校验。** 重新 `tronlink-cli --help` + 依赖的子命令 `--help`，并对一条读操作 + 一条 preview-only 写操作的 `--json` 结构抽查一次再恢复自动化。
+- **升级后校验。** 重新 `tronlink --help` + 依赖的子命令 `--help`，并对一条读操作 + 一条 preview-only 写操作的 `--json` 结构抽查一次再恢复自动化。
