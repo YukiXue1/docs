@@ -296,7 +296,7 @@ tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --am
   "Balance": "12.5"
 }
 ```
-稳定键为:写操作的 `Status` / `TxID` / `Explorer` 与各读命令的数据键;错误输出为 stderr 上的 `status` / `error`(见[错误](#errors))。键名在同一大版本内保持稳定。
+稳定键为：写操作的 `Status` / `TxID` / `Explorer` 与各读命令的数据键；错误输出为 stderr 上的 `status` / `error`(见[错误](#errors))。键名在同一大版本内保持稳定。
 
 ## 退出码 {#exit-codes}
 
@@ -304,22 +304,22 @@ tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --am
 
 | 退出码 | 含义 |
 | :---: | --- |
-| `0` | 成功——查询返回,或交易已签名并广播 |
+| `0` | 成功——查询返回，或交易已签名并广播 |
 | `1` | 任何失败——校验、用户拒绝、超时、链上失败或网络错误 |
 
 **目前没有按失败类别细分的退出码**:脚本无法只凭退出状态区分失败类型。失败类别由 CLI 打到 **stderr** 的结构化错误行承载(见[错误](#errors))——请按"退出状态 + 该行的 `error` 消息"分支。
 
-> **重试策略。** 读命令(`balance` / `resource` / `--constant` trigger)始终可安全重试。写/签名命令(transfer、stake、delegate、vote、写型 trigger)退出 `1` 时**无法判断**交易是否已到达网络——绝不自动重试;先通过区块浏览器或 `balance` 对账,确认上一笔未落账后再重新发起。
+> **重试策略。** 读命令(`balance` / `resource` / `--constant` trigger)始终可安全重试。写/签名命令(transfer、stake、delegate、vote、写型 trigger)退出 `1` 时**无法判断**交易是否已到达网络——绝不自动重试；先通过区块浏览器或 `balance` 对账，确认上一笔未落账后再重新发起。
 
 ## 错误 {#errors}
 
-`--json` 模式下,失败会向 **stderr** 打印一行结构化错误(stdout 保持干净,只承载成功输出):
+`--json` 模式下，失败会向 **stderr** 打印一行结构化错误(stdout 保持干净，只承载成功输出):
 
 ```json
 { "status": "error", "error": "Transaction cancelled by user in TronLink" }
 ```
 
-`error` 字符串来自内部分类器,每类失败有稳定措辞(v1.0.1):
+`error` 字符串来自内部分类器，每类失败有稳定措辞(v1.0.1):
 
 | 失败类别 | `error` 消息(按前缀匹配) | 可否重试 |
 | --- | --- | --- |
@@ -328,12 +328,12 @@ tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --am
 | 余额不足 | `Insufficient balance: …` | 否——先补足资金 |
 | 地址非法 | `Invalid TRON address provided` | 否——修正输入 |
 | 签名器断连 | `Signer disconnected (browser closed?) …` | 先对账——交易可能已发出也可能未发出 |
-| 网络失败 | `Network connection failed. Check your internet connection` | 是——偶发;写操作先确认上一笔未落账 |
+| 网络失败 | `Network connection failed. Check your internet connection` | 是——偶发；写操作先确认上一笔未落账 |
 | 广播失败 | `Transaction broadcast failed: …` | 否——先链上对账 |
-| 链上执行失败 | 原始消息,通常含 `OUT_OF_ENERGY` / `REVERT` / `FAILED` | 否——交易已最终化,先解决根因 |
+| 链上执行失败 | 原始消息，通常含 `OUT_OF_ENERGY` / `REVERT` / `FAILED` | 否——交易已最终化，先解决根因 |
 | 未分类 | 底层原始错误消息 | 视为未知——写操作对账后再考虑重试 |
 
-请按 `error` 字符串的**前缀**匹配——尾部可能拼接底层节点/RPC 消息。最后两类**没有稳定前缀**:没有任何已知前缀命中时,一律落入「先对账」的兜底路径(写操作在链上确认前视结果为未知)。重复提交会在原始消息中表现为节点的 `DUP_TRANSACTION_ERROR`——首笔已确认入块后出现属良性。结构化的 `error.code` / `error.retryable` 信封与按类退出码在 v1.0.x 中**尚未实现**,不要按它们写脚本。
+请按 `error` 字符串的**前缀**匹配——尾部可能拼接底层节点/RPC 消息。最后两类**没有稳定前缀**:没有任何已知前缀命中时，一律落入「先对账」的兜底路径(写操作在链上确认前视结果为未知)。重复提交会在原始消息中表现为节点的 `DUP_TRANSACTION_ERROR`——首笔已确认入块后出现属良性。结构化的 `error.code` / `error.retryable` 信封与按类退出码在 v1.0.x 中**尚未实现**,不要按它们写脚本。
 
 ## 安全与副作用 {#safety-side-effects}
 
@@ -345,7 +345,7 @@ tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --am
 - **人工确认（HITL）：** 每个写命令都会本地构建交易、展示[交易预览](#transaction-preview)，并要求在 TronLink 浏览器页面显式审批后才签名。私钥永不离开 TronLink。
 - **写操作不自动重试：** 见上方重试策略。
 - **测试网优先：** CLI 在省略 `--network` 时默认 **mainnet**——开发阶段务必显式传 `--network nile` / `shasta`,只有动用真实资金时才用 `--network mainnet`。
-- **没有无人值守签名路径：** 每个写命令都需要一个正在运行的浏览器和用户在 TronLink 审批页上的人工点击。headless CI 或服务器环境里只有带 `--address` 的读命令可用;不存在 service-account 或密钥文件签名模式。
+- **没有无人值守签名路径：** 每个写命令都需要一个正在运行的浏览器和用户在 TronLink 审批页上的人工点击。headless CI 或服务器环境里只有带 `--address` 的读命令可用；不存在 service-account 或密钥文件签名模式。
 
 ## 支持的网络
 
@@ -482,6 +482,17 @@ tronlink transfer --type trx --toAddress TRecipientAddress --amount 10 --network
 - 取消 CLI 命令（Ctrl+C）只会取消该笔交易 — 其他排队中的交易将继续执行
 - 使用 `--timeout <ms>` 可调整签名超时时间
 - 金额内部使用基于字符串的运算 — 不存在浮点精度问题
+
+## 排错 {#troubleshooting}
+
+| 症状 | 可能原因 | 处理 |
+| --- | --- | --- |
+| `Signer disconnected (browser closed?)` | TronLink 签名审批页被关闭或连接丢失 | 会话期间保持审批页常开；重发命令——写操作先链上对账（见[错误](#errors)） |
+| 命令挂起后报 `TronLink approval timed out` | 超时窗口内（默认 5 分钟）无人点击 Approve | 及时审批，或调大 `--timeout <ms>`；未签名，重发安全 |
+| 签名器启动失败 / 端口冲突 | 端口 `3386` 被其他进程占用 | 传 `--port <n>`——CLI 与内嵌签名器通信需要钉死一个固定端口,独立 signer 的端口自动递增行为在此不适用 |
+| `Network connection failed` | 网络、TronGrid 故障或主网限流 | 退避重试；主网配 `TRON_API_KEY` 提升配额 |
+| 脚本抓不到错误输出 | 错误行在 **stderr**，成功 JSON 在 stdout | 两个流都捕获；按退出状态 + stderr `error` 前缀分支 |
+| 读正常、写从不弹审批 | CLI 所在主机没有可用的浏览器 | 写操作需要本机运行中的浏览器——见[安全与副作用](#safety-side-effects)的无人值守说明 |
 
 ## 版本与许可证
 

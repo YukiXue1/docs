@@ -2,7 +2,7 @@
 
 > TronLink is a decentralized wallet for the TRON ecosystem, available as a browser extension and a mobile app. This documentation covers integrating DApps with TronLink across the browser extension, the mobile app (via DeepLink), and AI/agent tooling (MCP servers, CLI, signer SDK).
 
-> Updated: 2026-07-21T02:32:55Z · Commit: a3a8601a97a9
+> Updated: 2026-07-24T06:58:27Z · Commit: 8403ecaf6d14
 
 How integration works: TronLink injects a `window.tron` provider into every page, exposing a `tronWeb` instance, a `request` method, and `on` / `removeListener` for events. A DApp detects the wallet via TIP-6963, requests authorization via `eth_requestAccounts` (TIP-1102), then builds, signs, and broadcasts transactions through `tronWeb`. Account/network changes arrive as passive `accountsChanged` / `chainChanged` events.
 

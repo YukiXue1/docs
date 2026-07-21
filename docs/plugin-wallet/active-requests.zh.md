@@ -40,7 +40,7 @@ try {
 > **旧版用法（不推荐）：** [兼容用法：tron_requestAccounts](#tron_requestaccounts)
 
 
-## 获取TronLink的provider TIP-6963
+## 获取TronLink的provider TIP-6963 {#get-tronlink-provider-via-tip-6963}
 
 ### 简介
 当多个钱包同时存在，会出现对 `window.tron` 对象的抢占行为。为了保证 DApp 可以获取到特定钱包的 provider，所以实现 TIP-6963 规范。
@@ -535,7 +535,7 @@ interface SwitchTronChainParameter {
 
 ### TIP-6963（provider 发现）
 
-事件机制，**不是** `request` 方法。结构定义见上方 [获取TronLink的provider TIP-6963](#trontip-6963) 的 TypeScript 接口；线上格式是两个 `CustomEvent`：
+事件机制，**不是** `request` 方法。结构定义见上方 [获取TronLink的provider TIP-6963](#get-tronlink-provider-via-tip-6963) 的 TypeScript 接口；线上格式是两个 `CustomEvent`：
 
 - `TIP6963:requestProvider` —— 由 DApp 派发，无 payload。
 - `TIP6963:announceProvider` —— 由已安装的每个钱包派发，`detail = { info: { uuid, name, icon, rdns }, provider }`。TronLink 的 `rdns = "org.tronlink.www"`、`name = "TronLink"`。

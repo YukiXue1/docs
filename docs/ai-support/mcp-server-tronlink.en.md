@@ -441,12 +441,14 @@ Pinned to the `package.json` of `mcp-server-tronlink@0.1.1`. Re-verify when bump
 - **Pre-checks:** all transaction tools validate (balances, reverts, resource burn) before execution.
 - **Human-in-the-loop:** write tools sign with the encrypted local `agent-wallet`; in browser-mode flows the user approves in the TronLink UI. Treat every Remote Write tool as requiring confirmation in production.
 - **Retry:** read-only tools are safe to retry; Remote Write tools must not be auto-retried unless proven idempotent.
-- **Broadcast ≠ executed ≠ final.** A returned `txId` only means the transaction was accepted for broadcast. The contract call can still fail on-chain (`REVERT`, `OUT_OF_ENERGY`) — check `ret[0].contractRet === "SUCCESS"` via `tl_chain_get_tx` — and the block is only irreversible after ~19 SR confirmations (≈ 57 s). See [Transaction lifecycle](security-model.md#transaction-lifecycle-finality).
+- **Broadcast ≠ executed ≠ final.** A returned transaction id (`tx_id`) only means the transaction was accepted for broadcast. The contract call can still fail on-chain (`REVERT`, `OUT_OF_ENERGY`) — check `ret[0].contractRet === "SUCCESS"` via `tl_chain_get_tx` — and the block is only irreversible after ~19 SR confirmations (≈ 57 s). See [Transaction lifecycle](security-model.md#transaction-lifecycle-finality).
 - **Fixed on-chain costs:** `tl_chain_setup_multisig` (accountPermissionUpdate) burns a flat **100 TRX** network fee; TRC20 transfers and swaps burn TRX for energy up to the 100 TRX `fee_limit` the server sets internally. Budget for these before executing.
 
 ### Selected tool schemas (inline mirror)
 
 These are **docs-side mirrors** of the most critical tool inputs — useful when an agent is writing a tool-call call site without an MCP session open. Runtime `list_tools` remains the authoritative source: the schemas there carry full Zod metadata (descriptions, `default`, etc.) plus `meta.schemaVersion`. Fields below are derived from `@tronlink/tronlink-mcp-core` `src/mcp-server/schemas.ts` and follow JSON Schema Draft 7. The full set of tool schemas is **not** reproduced inline — for a one-fetch static snapshot of every tool contract (this server plus the signer), fetch [/reference/mcp-tools.json](../../reference/mcp-tools.json), regenerated from the published npm packages by `scripts/dump_mcp_tools.py`; core remains the SSOT.
+
+**Response fields (write tools).** There is no per-tool outputSchema yet; write tools return a `ChainTxResult` payload inside the standard `{ ok, result, meta }` envelope: `{ success: boolean, tx_id: string, message?: string }`. Note the field is **`tx_id`** (snake_case), not `txId`, and `success: true` only means broadcast acceptance — verify execution via `tl_chain_get_tx` (see the lifecycle bullet above).
 
 > **Parity is enforced.** `scripts/check_doc_schema_parity.py` (run on push, PR, and daily via [`check-doc-schema-parity.yml`](https://github.com/xueyuanying/docs/blob/main/.github/workflows/check-doc-schema-parity.yml)) diffs the top-level field set + required-flag set of every block below against the live `schemas.ts`. Upstream rename or required→optional drift fails CI.
 
@@ -575,7 +577,7 @@ Reminder: `tl_evaluate` runs arbitrary JS in the controlled Playwright browser. 
 
 | Boundary | Guarantee | Agent / operator obligation |
 |---|---|---|
-| **Prompt injection** | Tool inputs are consumed verbatim as call arguments. The server never concatenates tool inputs into a prompt re-sent to an LLM. Strings retrieved from chain or third-party APIs (account memos, contract revert reasons, transaction notes) **may contain attacker-controlled text** — treat them as untrusted. | Do not let the agent auto-route Remote Write tools off prose returned from a read. Always require structured fields (`txId`, `code`, `retryable`) for branching. |
+| **Prompt injection** | Tool inputs are consumed verbatim as call arguments. The server never concatenates tool inputs into a prompt re-sent to an LLM. Strings retrieved from chain or third-party APIs (account memos, contract revert reasons, transaction notes) **may contain attacker-controlled text** — treat them as untrusted. | Do not let the agent auto-route Remote Write tools off prose returned from a read. Always require structured fields (`tx_id`, `code`, `retryable`) for branching. |
 | **Outbound host allowlist (SSRF)** | The server only originates HTTPS to the four configured endpoints: `TL_TRONGRID_URL` (TronGrid), `TL_MULTISIG_BASE_URL`, `TL_GASFREE_BASE_URL`, and SunSwap routers via TronWeb. Tools never accept user-supplied URLs that get fetched verbatim. | Pin these env vars to known hosts in production; do not let LLM input populate any `*_BASE_URL`. |
 | **API key handling (token passthrough)** | `TL_TRONGRID_API_KEY`, `TL_MULTISIG_SECRET_KEY`, `TL_GASFREE_API_SECRET` are read from env at startup and used only on the outbound leg. They are **not** returned in any tool response, error `details`, or Knowledge Store record. The server does not accept Authorization headers from MCP clients and forward them upstream. | Audit env capture in your MCP host config (some hosts log env); store secrets in the host's secret manager, not in `.mcp.json` committed to git. |
 | **Browser JS execution** | `tl_evaluate` runs arbitrary JavaScript in the controlled Playwright browser context. This is a **High-risk / Destructive** primitive — it can read DOM, click invisible elements, exfiltrate state, and bypass UI HITL. | Disable `tl_evaluate` from the MCP host's tool allowlist for any agent that does not strictly require it. Never expose it to a remote/multi-user MCP deployment. |
@@ -726,6 +728,14 @@ npm install && npm run build
 # "Send 10 TRX to TAddress..."
 # "Swap 100 TRX for USDT on SunSwap V3"
 ```
+
+## Troubleshooting
+
+- **Server starts but chain tools fail: "Wallet not available"** — no `agent-wallet` is configured. Follow either documented path: call `tl_wallet_create`, or create one manually and set `AGENT_WALLET_PASSWORD`, then restart the host.
+- **Playwright tools fail to launch** — `TRONLINK_EXTENSION_PATH` missing or wrong (the server logs a `WARNING` to stderr at startup); point it at a built TronLink extension directory. Headless hosts need `TL_HEADLESS=true` and still cannot complete UI approvals.
+- **`TL_CHAIN_QUERY_FAILED` bursts on mainnet** — TronGrid HTTP 429. Back off exponentially, add `TL_TRONGRID_API_KEY`, and watch the `X-Ratelimit-*` headers (see Environment Variables).
+- **Multisig calls fail with `TL_MULTISIG_QUERY_FAILED` / `TL_MULTISIG_SUBMIT_FAILED`** — credentials are the first suspect: verify all four `TL_MULTISIG_*` env vars and their environment (mainnet vs Nile). Note a bad credential currently surfaces under these codes (`TL_MULTISIG_QUERY_FAILED` is marked retryable, `TL_MULTISIG_SUBMIT_FAILED` is not) — do not loop on either.
+- **Verify the install** — `list_tools` must return **55 tools**; every response carries `meta.schemaVersion: "1.0"`. Compare against the static snapshot at [/reference/mcp-tools.json](../../reference/mcp-tools.json).
 
 ## Version & License
 

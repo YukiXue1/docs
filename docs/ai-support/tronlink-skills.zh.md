@@ -41,8 +41,10 @@ AI 代理 (Claude Code / Cursor / OpenCode / 自定义)
          v
 tron_api.mjs (Node.js 18+, 原生 fetch, 零依赖)
     ├── 零 npm 依赖
-    ├── TronGrid HTTP API（公共或带 API Key）
-    └── Tronscan API 用于代币元数据
+    ├── TronGrid HTTP API（公共或带 API Key）——链上状态、余额、资源
+    ├── Tronscan API（apilist.tronscanapi.com）——代币元数据、转账、行情数据
+    ├── SUN.io smart-router API——兑换报价 / 路径（按网络分端点）
+    └── CoinGecko API——USD 价格数据
          |
          v
 结构化 JSON → Agent 解读 → 自然语言回复
@@ -295,6 +297,15 @@ tron-resource（检查状态）→ tron-resource（估算成本）→ tron-resou
 
 ---
 
+## 该用哪种模式
+
+| 你的情况 | 用 | 原因 |
+| --- | --- | --- |
+| 在 Claude Code 里，想零配置 | 方式一（skills 自发现） | 33 个命令全量可用，无需注册 |
+| 在 Claude Desktop / 纯 MCP 客户端 | 方式二（MCP 服务器） | 经 MCP 提供 25 个工具；8 个 CLI-only 命令不可达 |
+| 脚本 / CI，无 agent 参与 | 方式三（直接 CLI） | 纯 `node` 调用，结构化 JSON 输出 |
+| 准备**签名或动资金** | 不用本包——[signer SDK](tronlink-signer.md)、[`mcp-server-tronlink`](mcp-server-tronlink.md) 或 [CLI](tronlink-cli.md) | Skills 严格只读 |
+
 ## 集成方式
 
 ### 方式一：Claude Code（推荐）
@@ -312,11 +323,26 @@ claude   # 自动发现 SKILL.md 文件
 
 ```bash
 # 注册为 MCP 服务器
-claude mcp add tronlink -- node ~/.tronlink-skills/scripts/mcp_server.mjs
+claude mcp add tronlink-skills -- node ~/.tronlink-skills/scripts/mcp_server.mjs
 
 # 提供 25 个 MCP 工具，可被 Claude Desktop / Claude Code 直接调用
 # （逐项对照见上文 "Skill ↔ MCP 工具映射"；剩余 8 个命令仅 CLI 可用）
 ```
+
+Claude Desktop（`claude_desktop_config.json`）的等价配置：
+
+```json
+{
+  "mcpServers": {
+    "tronlink-skills": {
+      "command": "node",
+      "args": ["/absolute/path/to/tronlink-skills/scripts/mcp_server.mjs"]
+    }
+  }
+}
+```
+
+> **MCP 模式覆盖范围。** 经 MCP 只能触达 25 个已映射命令；8 个 CLI-only 命令（`contract-info`、`trade-history`、`dex-volume`、`large-transfers`、`pool-info`、`swap-route`、`estimate-bandwidth`、`energy-rental`）需要方式一（skills）或方式三（直接 CLI）。
 
 ### 方式三：命令行直接使用
 
@@ -412,6 +438,9 @@ bash uninstall.sh
 # 可选：TronGrid API Key，获取更高请求频率
 export TRONGRID_API_KEY="your-api-key"
 
+# 可选：Tronscan API key——提升元数据/行情查询的限流额度
+export TRONSCAN_API_KEY="your-api-key"
+
 # 可选：切换网络（默认：mainnet）
 export TRON_NETWORK="mainnet"    # 或 "shasta" / "nile"
 ```
@@ -438,6 +467,10 @@ export TRON_NETWORK="mainnet"    # 或 "shasta" / "nile"
 | WIN | TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7 |
 
 ---
+
+### 凭证卫生
+
+`TRONGRID_API_KEY` / `TRONSCAN_API_KEY` 均为可选（公共端点可匿名使用，只是限流更严）。设置时请放在环境变量或 host 的 secret manager——不要提交进仓库或 agent 可读的配置；两者只作为请求头发送给各自的 API，不会出现在命令输出里。
 
 ## 项目结构
 
@@ -486,15 +519,23 @@ tronlink-skills/
 
 ---
 
+## 数据来源与时效 {#data-sources-freshness}
+
+所有数据都在**查询时实时**从上述公共 API 拉取——没有本地数据库、没有后台同步。唯一的进程内缓存是 TRC20 代币元数据（symbol/name/decimals），仅在单次脚本调用生命周期内有效。对 agent 的推论：
+
+- 价格、K 线、DEX 成交量、池 TVL/APY 的新鲜度取决于调用瞬间的上游 API（Tronscan / SUN.io / CoinGecko）——依据数字行动前**立即**重新查询，绝不把早前的回答当作当前值。
+- 不同命令可能从不同上游取同一指标，来源间的小幅差异是正常现象而非 bug。
+- 被查询的地址会作为 URL 参数发送给这些公共 API；本地不落库，但查询行为本身对这些服务可见。
+
 ## 安全模型 {#security-model}
 
 | 方面 | 实现方式 |
 |------|----------|
 | 纯只读设计 | 所有命令均为查询操作——不涉及私钥、签名或资金移动 |
-| 副作用 | 每个命令都是 **Network Read**：调用公共 API,但不改变任何状态。所有命令均可安全重试,无需人工确认（HITL） |
+| 副作用 | 每个命令都是 **Network Read**：调用公共 API,但不改变任何状态。所有命令均可安全重试，无需人工确认（HITL） |
 | 无需密钥 | 仅可选 TRONGRID_API_KEY 用于提高请求频率 |
 | 频率限制 | 公共 TronGrid API；使用 TRONGRID_API_KEY 获取更高限额 |
-| 错误处理 | 失败均为查询类错误：限流（可重试,需退避）、网络错误（可重试）、地址/参数非法（不可重试——修正输入）。如需执行交易（转账、兑换、质押）,请使用 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)——这些技能本身从不签名或广播 |
+| 错误处理 | 失败均为查询类错误：限流（可重试，需退避）、网络错误（可重试）、地址/参数非法（不可重试——修正输入）。如需执行交易（转账、兑换、质押），请使用 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)——这些技能本身从不签名或广播 |
 
 ---
 

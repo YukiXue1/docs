@@ -38,7 +38,7 @@ window.dispatchEvent(new Event("TIP6963:requestProvider"));
 
 如果派发请求后 `tronProvider` 仍为 undefined，则说明用户未安装 TronLink，可提示用户进行安装。
 
-## 请求授权
+## 请求授权 {#request-authorization}
 
 通过 `eth_requestAccounts` 请求用户授权连接钱包。用户同意时 Promise resolve 为一个仅含当前选中地址的数组；失败时 Promise reject，错误对象形如 `{ code, message }`。
 

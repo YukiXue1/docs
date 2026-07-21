@@ -123,7 +123,7 @@ A typical `send_trx` flow, from the user's prompt to the on-chain result:
 
 > "Sent 5 TRX — confirmed on-chain (tx `0a1b2c…`)."
 
-> Branch on `status` / `error.code`, never on prose. `status: "pending"` means the broadcast succeeded but confirmation timed out — reconcile with `get_balance` or an explorer lookup rather than resending (see [Errors](#errors)).
+> Branch on `status` and the message markers above — a structured `error.code` field is not implemented in v0.1.x. `status: "pending"` means the broadcast succeeded but confirmation timed out — reconcile with `get_balance` or an explorer lookup rather than resending (see [Errors](#errors)).
 
 ## Cancellation
 
@@ -135,7 +135,14 @@ When `sign_transaction` is called with `broadcast: true`, the server automatical
 
 ## Errors
 
-The server returns errors in the standard MCP shape. Each error carries a stable `code` and a `retryable` hint so an agent can branch without parsing prose. Framework-level codes follow the SSOT table in [TronLink MCP Core — Error Codes](tronlink-mcp-core.md#error-codes). Server-specific conditions are:
+On the wire (v0.1.x), a signing tool returns the serialized `BroadcastResult` as its text content — with the MCP `isError` flag set when `status` is `"failed"`:
+
+```json
+{ "txId": "0abc…", "status": "failed", "error": "REVERT: …" }
+```
+
+Unexpected failures return a plain `Error: <message>` text with `isError: true`. There is **no structured `error.code` / `retryable` field yet** — the condition names in the table below are this documentation's taxonomy for classifying failures. Only `USER_REJECTED` and `CANCELLED_BY_CALLER` appear verbatim in the wire text (plus the phrase `timed out after 5 minutes` for approval timeouts); classify other conditions from `status` plus the message. Do not script against `error.code`.
+ The **Retryable** column below is agent guidance keyed to the condition, not a wire field. Framework-level `TL_*` codes (used by `mcp-server-tronlink`, not this server) follow the SSOT table in [TronLink MCP Core — Error Codes](tronlink-mcp-core.md#error-codes). Server-specific conditions are:
 
 | Condition | Retryable | When |
 | --- | :---: | --- |
@@ -144,11 +151,11 @@ The server returns errors in the standard MCP shape. Each error carries a stable
 | `BROWSER_DISCONNECTED` | Reconcile first | Approval page was closed or lost heartbeat. If it dropped **before** the user approved, nothing was signed and re-issuing is safe; if it dropped **after** approval, the signed tx may already have been broadcast. The agent cannot distinguish the two from this code alone — confirm on-chain (`get_balance` / explorer) before re-issuing any write. |
 | `NETWORK_ERROR` | Yes | A TronGrid / RPC request failed. Transient. |
 | `BROADCAST_FAILED` | No | Signing succeeded but submission was rejected by the node. Inspect the message; **do not** auto-retry — the signature may already have been accepted by another node. |
-| `ON_CHAIN_FAILED` | No | Broadcast OK but on-chain execution failed (`OUT_OF_ENERGY`, Solidity revert, `FAILED`). The transaction is final; address the root cause and submit a new tx. |
+| `ON_CHAIN_FAILED` | No | Broadcast OK but on-chain execution failed (`OUT_OF_ENERGY`, Solidity revert, `FAILED`). The transaction is final; address the root cause and submit a new tx. This is the MCP-layer surfacing of the SDK's `status: "failed"` — at this layer `status` is only ever `success` / `pending`. |
 | `INVALID_INPUT` | No | The tool input failed validation. Fix the payload. |
-| `CANCELLED` | No | The MCP client cancelled the call (e.g., user pressed Ctrl+C). |
+| `CANCELLED_BY_CALLER` | No | The MCP client cancelled the call (e.g., user pressed Ctrl+C). Appears verbatim in the error text. |
 
-**Retry policy.** Read calls (`get_balance`) and pre-sign failures (`USER_REJECTED`, `INVALID_INPUT`, `CANCELLED`) are agent-safe to re-issue with corrected input. For any sign + broadcast path, treat the outcome as unknown the moment the request leaves the server — confirm with `get_balance` or an explorer lookup before re-issuing.
+**Retry policy.** Read calls (`get_balance`) and pre-sign failures (`USER_REJECTED`, `INVALID_INPUT`, `CANCELLED_BY_CALLER`) are agent-safe to re-issue with corrected input. For any sign + broadcast path, treat the outcome as unknown the moment the request leaves the server — confirm with `get_balance` or an explorer lookup before re-issuing.
 
 ## Security Boundaries
 
@@ -169,6 +176,14 @@ The server returns errors in the standard MCP shape. Each error carries a stable
 | `TRON_NETWORK` | Default network (mainnet/nile/shasta) | `mainnet` |
 | `TRON_HTTP_PORT` | Local HTTP server port | `3386` |
 | `TRON_API_KEY` | TronGrid API key (optional) | - |
+
+## Troubleshooting
+
+- **Approval page never opens** — the server opens the system default browser; if the port is taken it auto-increments, so re-issue the tool call rather than assuming a fixed port. Check that a desktop browser is available (headless hosts cannot sign).
+- **`BROWSER_DISCONNECTED`** — the approval tab was closed. Re-issuing reopens it; for any write, reconcile on-chain first (see [Errors](#errors)).
+- **`TIMEOUT` after 5 minutes** — nothing was signed or broadcast; re-issue and approve within the window, or raise the request timeout.
+- **Approve clicked but the tx fails** — wallet locked, wrong `network` parameter, or an expired pre-built transaction (see the raw-transaction expiry note above). Unlock TronLink, verify `network`, rebuild the raw tx just before calling.
+- **Verify the install** — `list_tools` must return the 7 tools in the table above; every response carries `meta.schemaVersion`.
 
 ## Version & License
 
@@ -198,7 +213,7 @@ Co-released with `tronlink-signer@0.1.2`. **Major UX overhaul** on the approval 
 - **Improved** — Single-page approval flow: one persistent browser tab with heartbeat-based liveness; stale tabs across server restarts are invalidated automatically.
 - **Improved** — TRC20 amount validation now uses BigInt-based decimal conversion (handles 0-decimal and >18-decimal edge cases).
 - **Improved** — `send_trx` and `sign_transaction` return real broadcast errors instead of empty messages on submission failure.
-- **Migration** — None required if you were already branching on `error.code` / `status`; if you parsed message prose, switch now (see [Errors](#errors)).
+- **Migration** — None required if you branch on `status` and the documented message markers; a structured `error.code` field, when introduced, will be additive (see [Errors](#errors)).
 
 #### v0.1.1 — 2026-04-15
 
@@ -209,8 +224,8 @@ Co-released with `tronlink-signer@0.1.2`. **Major UX overhaul** on the approval 
 
 ### Compatibility & migration policy
 
-- **Semver.** Pre-1.0: a **minor** bump (0.x → 0.y) may introduce breaking changes; a **patch** bump (0.1.x → 0.1.y) will not change MCP tool names, input schemas, or `error.code` values. Post-1.0: standard semver — major-only breaking changes.
+- **Semver.** Pre-1.0: a **minor** bump (0.x → 0.y) may introduce breaking changes; a **patch** bump (0.1.x → 0.1.y) will not change MCP tool names, input schemas, or `status` values. Post-1.0: standard semver — major-only breaking changes.
 - **Deprecation window.** When a tool or input field is deprecated, the next minor release retains the old form alongside the new one for at least one minor cycle, with a `meta.deprecated` flag in the schema; removal lands no earlier than the cycle after that.
-- **Stable contracts.** Tool names, the `error.code` enum, and `status` values (`success` / `pending`) are part of the public surface — they don't change in a patch.
+- **Stable contracts.** Tool names, the `status` values (`success` / `pending`), and the verbatim markers `USER_REJECTED` / `CANCELLED_BY_CALLER` are the public surface — they don't change in a patch.
 - **Volatile contracts.** Prose `message` text, log line formats, and the layout of the browser approval page are **not** part of the public surface and may change at any time.
 - **Verifying after upgrade.** Re-call `list_tools` and confirm the names + schemas you depend on are still present before resuming a workflow.

@@ -6,7 +6,7 @@ TronLink agents traverse up to five error-code dialects when a single user reque
 
 | Business meaning | DApp provider ([EIP-1474][provider]) | DeepLink ([5-digit][deeplink]) | MCP ([`TL_*`][mcp]) | Signer MCP ([codes][signer]) | CLI ([exit + stderr class][cli]) | Retryable? |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **User rejected / cancelled** the signing or connection prompt | `4001` | `300` (Transaction canceled) | — (HITL — re-prompt only on a fresh tool call) | `USER_REJECTED`, `CANCELLED` | `1` · `Transaction cancelled by user in TronLink` | **No** |
+| **User rejected / cancelled** the signing or connection prompt | `4001` | `300` (Transaction canceled) | — (HITL — re-prompt only on a fresh tool call) | `USER_REJECTED`, `CANCELLED_BY_CALLER` | `1` · `Transaction cancelled by user in TronLink` | **No** |
 | **Invalid input** / malformed params | thrown by `tronWeb` builder | `10001`–`10020`, `10024`, `10025` | `TL_INVALID_INPUT` | `INVALID_INPUT` | `1` · validation error (before any wallet interaction) | **No** — fix the payload |
 | **Method / capability not supported** | `4200` | `10003`, `10008`, `10009`, `10011`, `10023` | `TL_CAPABILITY_NOT_AVAILABLE` | — | — | **No** |
 | **Wallet authorization mismatch** (initiator ≠ current wallet) | provider returns empty `accounts[]` | `10021`, `10022` | — | — | — | **No** — re-authorize |
@@ -30,7 +30,8 @@ TronLink agents traverse up to five error-code dialects when a single user reque
     - **No** — auto-retry will fail or do harm. The most dangerous case is "On-chain execution failed", where the tx is already final on-chain.
     - **Yes** — transient; back off (exponential, max 3 retries) and retry the original call.
     - **Maybe** — read-only retry is OK; **never auto-retry writes** without first reconciling with on-chain state.
-3. The DeepLink and CLI columns have many gaps because those surfaces only cover a slice of the lifecycle — DeepLink is mobile-only and lives on a separate trust boundary; the CLI (v1.0.x) exits `0`/`1` only, so its class lives in the stderr `error` message prefix shown above (see [CLI Errors][cli]). Use the most specific surface available.
+3. The **Signer MCP** column is the signer documentation's condition taxonomy — in v0.1.x only `USER_REJECTED` and `CANCELLED_BY_CALLER` appear verbatim in the wire text; classify the rest from `status` + the message (see [Signer Errors][signer]).
+4. The DeepLink and CLI columns have many gaps because those surfaces only cover a slice of the lifecycle — DeepLink is mobile-only and lives on a separate trust boundary; the CLI (v1.0.x) exits `0`/`1` only, so its class lives in the stderr `error` message prefix shown above (see [CLI Errors][cli]). Use the most specific surface available.
 
 ## Notes for downstream MCP servers
 

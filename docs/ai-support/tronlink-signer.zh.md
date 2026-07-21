@@ -20,6 +20,9 @@ await signer.start();
 
 const { address, network } = await signer.connectWallet();
 const { txId, status } = await signer.sendTrx("TXxx...", 1); // status: "success" | "pending" | "failed"
+// 注意：MCP 封装层（mcp-tronlink-signer）会把 status:"failed" 转为
+// ON_CHAIN_FAILED 错误——在 MCP 层 `status` 只会是 "success" | "pending"。
+// 同一底层事件，不同层的信封不同。
 const { txId: txId2, status: s2 } = await signer.signTransaction(tx, "nile", true); // 广播 + 自动确认
 const { balance } = await signer.getBalance("TXxx...");
 
@@ -50,7 +53,7 @@ await signer.stop();
 
 ### `signer.sendTrx(to, amount, network?, options?): Promise<BroadcastResult>`
 
-向指定地址发送 TRX，会打开浏览器授权页面供用户确认。返回 `{ txId, status, error? }`，其中 `status` 为 `"success"`、`"pending"` 或 `"failed"`（参见[广播结果](#广播结果)）。
+向指定地址发送 TRX，会打开浏览器授权页面供用户确认。返回 `{ txId, status, error? }`，其中 `status` 为 `"success"`、`"pending"` 或 `"failed"`（参见[广播结果](#broadcast-result)）。
 
 | 参数 | 类型 | 说明 |
 | ---- | ---- | ---- |
@@ -61,7 +64,7 @@ await signer.stop();
 
 ### `signer.sendTrc20(contractAddress, to, amount, decimals?, network?, options?): Promise<BroadcastResult>`
 
-发送 TRC20 代币，会打开浏览器授权页面。返回 `{ txId, status, error? }` — 参见[广播结果](#广播结果)。
+发送 TRC20 代币，会打开浏览器授权页面。返回 `{ txId, status, error? }` — 参见[广播结果](#broadcast-result)。
 
 | 参数 | 类型 | 说明 |
 | ---- | ---- | ---- |
@@ -93,7 +96,7 @@ const { signature } = await signer.signTypedData({
 
 ### `signer.signTransaction(transaction, network?, broadcast?, options?): Promise<{ signedTransaction; txId?; status?; error? }>`
 
-对原始交易进行签名。当 `broadcast` 为 `true` 时，签名后的交易会通过 TronLink 广播到链上，且 SDK 会自动轮询链上确认状态 — 可能的 `status` 取值参见[广播结果](#广播结果)。
+对原始交易进行签名。当 `broadcast` 为 `true` 时，签名后的交易会通过 TronLink 广播到链上，且 SDK 会自动轮询链上确认状态 — 可能的 `status` 取值参见[广播结果](#broadcast-result)。
 
 | 参数 | 类型 | 说明 |
 | ---- | ---- | ---- |
@@ -121,7 +124,7 @@ const result = await signer.signTransaction(tx, "nile", true, {
 });
 ```
 
-### 广播结果
+### 广播结果 {#broadcast-result}
 
 广播类方法（`sendTrx`、`sendTrc20`、以及 `broadcast: true` 时的 `signTransaction`）均返回 `BroadcastResult`：
 
@@ -302,7 +305,7 @@ export type {
 
 - **包：** `tronlink-signer` v0.1.4
 - **许可证：** MIT —— `SPDX-License-Identifier: MIT`
-- **变更记录 / 发布：** [https://github.com/TronLink/mcp-tronlink-signer/releases](https://github.com/TronLink/mcp-tronlink-signer/releases) —— 与 `mcp-tronlink-signer` 共用版本线；已发布 GitHub release：**v0.1.1、v0.1.2**（2026-04-15）。v0.1.3 / v0.1.4 截至当前仅 npm —— MCP 可见变更详见 [`mcp-tronlink-signer` 的内联 changelog](mcp-tronlink-signer.md#内联-changelog)，SDK 层跟随同一波次。
+- **变更记录 / 发布：** [https://github.com/TronLink/mcp-tronlink-signer/releases](https://github.com/TronLink/mcp-tronlink-signer/releases) —— 与 `mcp-tronlink-signer` 共用版本线；已发布 GitHub release：**v0.1.1、v0.1.2**（2026-04-15）。v0.1.3 / v0.1.4 截至当前仅 npm —— MCP 可见变更详见 [`mcp-tronlink-signer` 的内联 changelog](mcp-tronlink-signer.md#inline-changelog)，SDK 层跟随同一波次。
 
 ### 兼容性与迁移策略
 

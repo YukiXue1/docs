@@ -421,7 +421,7 @@ mcp-server-tronlink/
 
 **输入/输出 schema 与错误契约。** 每个工具的输入/输出 schema 及结构化错误信封由底层框架定义——见 [TronLink MCP Core](tronlink-mcp-core.md#error-codes) 的 SSOT 错误码表（`code` / `retryable` / `hint` / 典型触发）。每个响应均带 `meta.schemaVersion`，major 版本内字段含义稳定。Agent 应基于 `error.code` 与 `error.retryable` 分支，**不要**解析人类可读的 `message`。
 
-**逐工具输入 schema 可在运行时发现。** 每个工具的参数都由 core 用 Zod 校验,并通过 MCP `list_tools` 方法以 JSON `inputSchema` 形式暴露,因此客户端无需阅读本页即可枚举参数名、类型和必填项。下方表格按能力归纳工具;`list_tools` 才是权威的机器可读来源。
+**逐工具输入 schema 可在运行时发现。** 每个工具的参数都由 core 用 Zod 校验，并通过 MCP `list_tools` 方法以 JSON `inputSchema` 形式暴露，因此客户端无需阅读本页即可枚举参数名、类型和必填项。下方表格按能力归纳工具;`list_tools` 才是权威的机器可读来源。
 
 **副作用分级。** 调用前先分类；对结果未知的写操作绝不自动重试。
 
@@ -433,12 +433,14 @@ mcp-server-tronlink/
 - **预检查：** 所有交易类工具在执行前会校验（余额、回滚、资源消耗）。
 - **人工确认（HITL）：** 写操作工具使用加密的本地 `agent-wallet` 签名；浏览器模式下由用户在 TronLink UI 审批。生产环境应将每个「远程写」工具视为需要确认。
 - **重试：** 只读工具可安全重试；「远程写」工具除非证明幂等，否则不得自动重试。
-- **广播 ≠ 执行成功 ≠ 最终。** 返回 `txId` 只代表交易被接受广播。合约调用仍可能在链上失败（`REVERT`、`OUT_OF_ENERGY`）——用 `tl_chain_get_tx` 核对 `ret[0].contractRet === "SUCCESS"`；区块需约 19 个 SR 确认（≈ 57 秒）后才不可逆。见[交易生命周期](security-model.md#transaction-lifecycle-finality)。
+- **广播 ≠ 执行成功 ≠ 最终。** 返回交易 id（`tx_id`）只代表交易被接受广播。合约调用仍可能在链上失败（`REVERT`、`OUT_OF_ENERGY`）——用 `tl_chain_get_tx` 核对 `ret[0].contractRet === "SUCCESS"`；区块需约 19 个 SR 确认（≈ 57 秒）后才不可逆。见[交易生命周期](security-model.md#transaction-lifecycle-finality)。
 - **固定链上成本：** `tl_chain_setup_multisig`（accountPermissionUpdate）固定燃烧 **100 TRX** 网络费；TRC20 转账与兑换按 server 内部设定的 100 TRX `fee_limit` 上限燃烧 TRX 抵能量。执行前先纳入预算。
 
 ### 精选工具 schema（文档侧镜像） {#selected-tool-schemas-inline-mirror}
 
 以下是最关键工具输入的**文档侧镜像**——当 agent 需要在没有打开 MCP 会话的情况下写工具调用站点时使用。运行时 `list_tools` 仍是权威源：那里有完整的 Zod 元信息（描述、`default` 等）以及 `meta.schemaVersion`。下方字段抄自 `@tronlink/tronlink-mcp-core` `src/mcp-server/schemas.ts`，遵循 JSON Schema Draft 7。**未**内联镜像全部工具——需要一次抓取全部工具契约（本 server + signer）时，请取 [/reference/mcp-tools.json](../../../reference/mcp-tools.json)，它由 `scripts/dump_mcp_tools.py` 从 npm 已发布包重新生成；SSOT 仍是 core 仓库。
+
+**响应字段（写工具）。** 目前尚无逐工具 outputSchema；写工具在标准 `{ ok, result, meta }` 信封内返回 `ChainTxResult`：`{ success: boolean, tx_id: string, message?: string }`。注意字段名是 **`tx_id`**（snake_case）而非 `txId`，且 `success: true` 只代表广播被接受——执行结果请用 `tl_chain_get_tx` 核对（见上方生命周期条目）。
 
 > **平价由 CI 强制。** `scripts/check_doc_schema_parity.py`（在 push、PR 及每日定时通过 [`check-doc-schema-parity.yml`](https://github.com/xueyuanying/docs/blob/main/.github/workflows/check-doc-schema-parity.yml) 触发）会对下方每个块的顶层字段集 + required 标记与上游 `schemas.ts` 做 diff——上游改名或 required ↔ optional 漂移都会让 CI 失败。
 
@@ -567,7 +569,7 @@ mcp-server-tronlink/
 
 | 边界 | 保证 | Agent / 运维方义务 |
 |---|---|---|
-| **Prompt 注入** | 工具输入按原始值作为调用参数使用，server 不会把工具输入拼接进任何向 LLM 二次提交的 prompt。**但**从链上或第三方 API 拿回来的字符串（账户备注、合约 revert 原因、交易 note 等）**可能含攻击者控制内容**，必须视为不可信。 | 不要让 agent 基于 read 工具返回的 prose 自动路由到 Remote Write。分支必须基于结构化字段（`txId`、`code`、`retryable`）。 |
+| **Prompt 注入** | 工具输入按原始值作为调用参数使用，server 不会把工具输入拼接进任何向 LLM 二次提交的 prompt。**但**从链上或第三方 API 拿回来的字符串（账户备注、合约 revert 原因、交易 note 等）**可能含攻击者控制内容**，必须视为不可信。 | 不要让 agent 基于 read 工具返回的 prose 自动路由到 Remote Write。分支必须基于结构化字段（`tx_id`、`code`、`retryable`）。 |
 | **出站 host 白名单（SSRF）** | server 只向 4 个配置端点发起 HTTPS：`TL_TRONGRID_URL`、`TL_MULTISIG_BASE_URL`、`TL_GASFREE_BASE_URL`，以及通过 TronWeb 访问的 SunSwap router。工具不接收会被原样请求的用户 URL。 | 生产环境把这些 env 钉死到已知 host；禁止 LLM 输入回填任何 `*_BASE_URL`。 |
 | **API key 处理（token passthrough）** | `TL_TRONGRID_API_KEY`、`TL_MULTISIG_SECRET_KEY`、`TL_GASFREE_API_SECRET` 仅在启动时从 env 读取，仅用于出站；**不**会出现在任何工具响应、错误 `details` 或 Knowledge Store 记录中。server 不接受 MCP 客户端传入的 Authorization header 并转发到上游。 | 审计 MCP host 配置对 env 的捕获（部分 host 会落日志）；secret 放进 host 的 secret manager，不要写进会提交 git 的 `.mcp.json`。 |
 | **浏览器 JS 执行** | `tl_evaluate` 会在受控 Playwright 浏览器上下文中执行任意 JS。这是 **High-risk / Destructive** 原语——可读 DOM、点击隐藏元素、外泄状态、绕过 UI 上的 HITL。 | 严格不需要时，从 MCP host 的工具白名单中禁用 `tl_evaluate`。绝不要把它暴露给远程/多用户 MCP 部署。 |
@@ -579,9 +581,9 @@ mcp-server-tronlink/
 
 兑换属于 **远程写**，且对接公开 DEX 路由器，因此暴露在 **价格滑点** 与 **三明治攻击 / MEV** 之下：在报价和执行之间池子价格变动时，实际成交可能比报价更差。
 
-- **`slippage` 是唯一的产出下限——每次都要显式传入。** schema 中**不存在 minimum-output 参数**（`sqrt_price_limit` 是 V3 的 partial-fill 价格上限,不是最小产出保证）。默认容忍度 0.5% 虽有声明,但对低流动性交易对**不安全**——按交易对选定容忍度,每次 `execute` 显式传入。
+- **`slippage` 是唯一的产出下限——每次都要显式传入。** schema 中**不存在 minimum-output 参数**（`sqrt_price_limit` 是 V3 的 partial-fill 价格上限，不是最小产出保证）。默认容忍度 0.5% 虽有声明，但对低流动性交易对**不安全**——按交易对选定容忍度，每次 `execute` 显式传入。
 - **执行前现取报价。** 通过 Skills `tron-swap` 的 `swap-quote` / `swap-route`（或 `action=estimate`）取最新报价/路径，选定可接受的滑点容忍度并显式传入。
-- **首次兑换某代币会自动给 router 无限额度授权。** 源代币 allowance 不足时,工具会先静默提交一笔 `approve(router, MAX_UINT256)` 交易（独立收费,fee_limit 上限 100 TRX）再执行兑换。无限授权意味着被攻破或配错的 router 可以掏空该代币——务必钉死 router（见下条）,更换 router 后撤销旧授权。
+- **首次兑换某代币会自动给 router 无限额度授权。** 源代币 allowance 不足时，工具会先静默提交一笔 `approve(router, MAX_UINT256)` 交易（独立收费,fee_limit 上限 100 TRX）再执行兑换。无限授权意味着被攻破或配错的 router 可以掏空该代币——务必钉死 router（见下条），更换 router 后撤销旧授权。
 - **钉死 router。** `TL_SUNSWAP_V3_ROUTER` 没有内置默认值；过期或错误的 router 会把资金路由到非预期目标——而且持有上一条授予的无限额度。请按当前 SunSwap V3 router 地址设置（见环境变量）。
 - **不可自动重试。** swap 失败或结果未知都属于远程写——先在链上确认再决定是否重发（`TL_CHAIN_SWAP_FAILED` 不可重试）。
 
@@ -719,6 +721,14 @@ export TL_TRONGRID_URL="https://nile.trongrid.io"
 # "给 TAddress... 转 10 个 TRX"
 # "在 SunSwap V3 上用 100 TRX 兑换 USDT"
 ```
+
+## 排错 {#troubleshooting}
+
+- **server 启动了但链上工具报 "Wallet not available"**——尚未配置 `agent-wallet`。按文档两条路径之一处理：调用 `tl_wallet_create`，或手动创建后设置 `AGENT_WALLET_PASSWORD` 并重启 host。
+- **Playwright 工具启动失败**——`TRONLINK_EXTENSION_PATH` 缺失或路径错误（启动时 server 会向 stderr 打 `WARNING`）；指向已构建的 TronLink 扩展目录。headless 主机需 `TL_HEADLESS=true`，且依然无法完成 UI 审批。
+- **主网上 `TL_CHAIN_QUERY_FAILED` 密集出现**——TronGrid HTTP 429。指数退避，配置 `TL_TRONGRID_API_KEY`，并关注 `X-Ratelimit-*` 响应头（见环境变量）。
+- **多签调用报 `TL_MULTISIG_QUERY_FAILED` / `TL_MULTISIG_SUBMIT_FAILED`**——先查凭证：核对四个 `TL_MULTISIG_*` 环境变量及其环境（主网 vs Nile）。注意凭证错误目前也落在这两个码下（`TL_MULTISIG_QUERY_FAILED` 标记为可重试，`TL_MULTISIG_SUBMIT_FAILED` 不可重试）——都不要无限循环。
+- **验证安装**——`list_tools` 应返回 **55 个工具**；每个响应都带 `meta.schemaVersion: "1.0"`。可与静态快照 [/reference/mcp-tools.json](../../../reference/mcp-tools.json) 对照。
 
 ## 版本与许可证
 

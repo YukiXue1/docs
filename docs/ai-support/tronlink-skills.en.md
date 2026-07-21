@@ -41,8 +41,10 @@ AI Agent (Claude Code / Cursor / OpenCode / Custom)
          v
 tron_api.mjs (Node.js 18+, native fetch, zero dependencies)
     ├── Zero npm dependencies
-    ├── TronGrid HTTP API (public or with API key)
-    └── Tronscan API for token metadata
+    ├── TronGrid HTTP API (public or with API key) — chain state, balances, resources
+    ├── Tronscan API (apilist.tronscanapi.com) — token metadata, transfers, market rows
+    ├── SUN.io smart-router API — swap quotes / routes (per-network endpoints)
+    └── CoinGecko API — USD price data
          |
          v
 Structured JSON → Agent interprets → Natural language response
@@ -295,6 +297,15 @@ tron-resource (check status) → tron-resource (estimate cost) → tron-resource
 
 ---
 
+## Which Mode to Use
+
+| You are… | Use | Why |
+| --- | --- | --- |
+| In Claude Code, want zero setup | Method 1 (skills auto-discovery) | Full 33-command surface, no registration |
+| In Claude Desktop / an MCP-only client | Method 2 (MCP server) | 25 tools over MCP; 8 CLI-only commands unavailable |
+| Scripting / CI, no agent involved | Method 3 (direct CLI) | Plain `node` invocations, `--json`-style structured output |
+| About to **sign or move funds** | Not this package — [signer SDK](tronlink-signer.md), [`mcp-server-tronlink`](mcp-server-tronlink.md), or [CLI](tronlink-cli.md) | Skills are strictly read-only |
+
 ## Integration Methods
 
 ### Method 1: Claude Code (Recommended)
@@ -312,11 +323,26 @@ No `npm install` needed for read-only operations.
 
 ```bash
 # Register as MCP server
-claude mcp add tronlink -- node ~/.tronlink-skills/scripts/mcp_server.mjs
+claude mcp add tronlink-skills -- node ~/.tronlink-skills/scripts/mcp_server.mjs
 
 # Provides 25 MCP tools callable by Claude Desktop / Claude Code
 # (see "Skill ↔ MCP Tool Map" above for the per-command mapping; 8 commands are CLI-only)
 ```
+
+Claude Desktop (`claude_desktop_config.json`) equivalent:
+
+```json
+{
+  "mcpServers": {
+    "tronlink-skills": {
+      "command": "node",
+      "args": ["/absolute/path/to/tronlink-skills/scripts/mcp_server.mjs"]
+    }
+  }
+}
+```
+
+> **MCP-mode coverage.** Only the 25 mapped commands are reachable over MCP; the 8 CLI-only commands (`contract-info`, `trade-history`, `dex-volume`, `large-transfers`, `pool-info`, `swap-route`, `estimate-bandwidth`, `energy-rental`) require Method 1 (skills) or Method 3 (direct CLI).
 
 ### Method 3: Manual CLI
 
@@ -412,6 +438,9 @@ bash uninstall.sh
 # Optional: TronGrid API key for higher rate limits
 export TRONGRID_API_KEY="your-api-key"
 
+# Optional: Tronscan API key — higher rate limits for metadata/market queries
+export TRONSCAN_API_KEY="your-api-key"
+
 # Optional: Switch network (default: mainnet)
 export TRON_NETWORK="mainnet"    # or "shasta" / "nile"
 ```
@@ -438,6 +467,10 @@ export TRON_NETWORK="mainnet"    # or "shasta" / "nile"
 | WIN | TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7 |
 
 ---
+
+### Credential hygiene
+
+`TRONGRID_API_KEY` / `TRONSCAN_API_KEY` are optional (public endpoints work unauthenticated at lower rate limits). When set, keep them in the environment or the host's secret manager — never commit them to a repo or an agent-readable config; both are sent only as request headers to their respective APIs and are never echoed in command output.
 
 ## Project Structure
 
@@ -485,6 +518,14 @@ tronlink-skills/
 | npm install | Not needed | All operations work without any npm dependencies |
 
 ---
+
+## Data Sources & Freshness
+
+All data is fetched **live at query time** from the public APIs above — there is no local database and no background sync. The only in-process cache is TRC20 token metadata (symbol/name/decimals), held for the lifetime of one script invocation. Consequences for agents:
+
+- Prices, K-lines, DEX volume, and pool TVL/APY are as fresh as the upstream API (Tronscan / SUN.io / CoinGecko) at call time — quote **immediately** before acting on a number, and never treat an earlier answer as current.
+- Different commands may draw the same figure from different upstreams; small discrepancies between sources are normal, not a bug.
+- Queried addresses are sent to these public APIs as URL parameters; nothing is persisted locally, but treat the query itself as visible to those services.
 
 ## Security Model
 

@@ -20,6 +20,9 @@ await signer.start();
 
 const { address, network } = await signer.connectWallet();
 const { txId, status } = await signer.sendTrx("TXxx...", 1); // status: "success" | "pending" | "failed"
+// NOTE: the MCP wrapper (mcp-tronlink-signer) surfaces status:"failed" as an
+// ON_CHAIN_FAILED error instead — at the MCP layer, `status` is only ever
+// "success" | "pending". Same underlying event, different envelope per layer.
 const { txId: txId2, status: s2 } = await signer.signTransaction(tx, "nile", true); // broadcast + auto-confirm
 const { balance } = await signer.getBalance("TXxx...");
 
