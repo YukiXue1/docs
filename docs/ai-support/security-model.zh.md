@@ -43,6 +43,10 @@
 | [TronLink Skills](tronlink-skills.md#security-model) | 安全模型 | 只读保证——完全没有签名能力 |
 | [错误码对照表](../reference/error-code-map.md) | 整页 | 以业务含义为主轴的跨面 `retryable` 语义 |
 
+## 漏洞报告 {#reporting-a-vulnerability}
+
+安全漏洞请**私下**报告至 **tronlink@tronlink.org**(主题加 `[SECURITY]` 前缀),不要提交公开的 GitHub issue。机器可读指针见 [`/.well-known/security.txt`](https://docs.tronlink.org/.well-known/security.txt)(RFC 9116),完整政策见文档仓库的 [SECURITY.md](https://github.com/TronLink/docs/blob/main/SECURITY.md)。该渠道覆盖文档站本身;在各上游仓库补齐自己的安全政策之前,本站记录的 MCP 服务、CLI、签名 SDK 与 Skills 包同样适用。
+
 ## 给智能体的说明
 
 - 调用工具**之前**先分类副作用；生产环境中把所有 Remote Write 级工具视为需要用户确认。

@@ -43,6 +43,10 @@ Agent rules that follow: treat the returned transaction id as "submitted", not "
 | [TronLink Skills](tronlink-skills.md#security-model) | Security Model | Read-only guarantee — no signing capability at all |
 | [Error Code Map](../reference/error-code-map.md) | Full page | Cross-surface `retryable` semantics keyed by business meaning |
 
+## Reporting a vulnerability {#reporting-a-vulnerability}
+
+Report security vulnerabilities privately to **tronlink@tronlink.org** (subject prefixed `[SECURITY]`) — never through a public GitHub issue. The machine-readable pointer lives at [`/.well-known/security.txt`](https://docs.tronlink.org/.well-known/security.txt) (RFC 9116), and the full policy in the documentation repository's [SECURITY.md](https://github.com/TronLink/docs/blob/main/SECURITY.md). This channel covers the documentation site and — until the upstream repositories ship their own policies — the MCP servers, CLI, signer SDK, and Skills packages documented here.
+
 ## Notes for agents
 
 - Classify the side effect **before** calling a tool; treat anything graded Remote Write as requiring user confirmation in production.

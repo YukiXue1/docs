@@ -18,6 +18,8 @@ TronLink's developer documentation is published in machine-readable form so AI a
 | [/llms-full.txt](../../llms-full.txt) | Every English page concatenated for single-fetch ingestion (built from `docs/llms-full.en.txt`) |
 | [/zh/llms-full.txt](../../zh/llms-full.txt) | Every Chinese page concatenated for single-fetch ingestion (built from `docs/llms-full.zh.txt`) |
 | [/reference/mcp-tools.json](../../reference/mcp-tools.json) | Static machine-readable snapshot of every MCP tool contract — name, description, `inputSchema`, annotations — captured from the published npm servers via `tools/list` |
+| [/AGENTS.txt](https://docs.tronlink.org/AGENTS.txt) | Orientation file for AI agents — entry points, topic map, SSOT boundaries (mirrored at `/AGENTS.md` and `/CLAUDE.md`) |
+| [/.well-known/security.txt](https://docs.tronlink.org/.well-known/security.txt) | RFC 9116 vulnerability-disclosure pointer (also served at `/security.txt`) |
 
 Production URLs: `https://docs.tronlink.org/llms.txt`, `https://docs.tronlink.org/zh/llms.txt`, and the matching `llms-full.txt` bundles under each locale root.
 

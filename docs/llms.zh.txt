@@ -2,7 +2,7 @@
 
 > TronLink 是 TRON 生态的去中心化钱包，提供浏览器扩展和移动 App。本文档涵盖 DApp 通过浏览器扩展、移动端（DeepLink）以及 AI/智能体工具链（MCP 服务、CLI、签名 SDK）与 TronLink 集成。
 
-> Updated: 2026-07-24T06:58:27Z · Commit: 8403ecaf6d14
+> Updated: 2026-07-30T04:55:59Z · Commit: 0133c9c58fa9
 
 集成原理：TronLink 向页面注入 `window.tron` provider，暴露 `tronWeb` 实例、`request` 方法以及 `on` / `removeListener` 事件订阅。DApp 通过 TIP-6963 检测钱包，用 `eth_requestAccounts`（TIP-1102）请求授权，再经 `tronWeb` 构建、签名并广播交易。账户/网络变化以 `accountsChanged` / `chainChanged` 被动事件送达。
 
@@ -38,7 +38,7 @@
 ## AI 支持
 
 - [AI / LLMs](ai-support/ai-llms/)：TronLink AI/智能体工具链与机器可读资源入口
-- [安全模型](ai-support/security-model/)：跨面安全不变式——HITL 签名、写操作不自动重试、prompt-injection 立场、SSRF 白名单、confused-deputy 收敛、密钥处理、`tl_evaluate` 风险分级、测试网优先——并索引各面自己的安全章节
+- [安全模型](ai-support/security-model/)：跨面安全不变式——HITL 签名、写操作不自动重试、prompt-injection 立场、SSRF 白名单、confused-deputy 收敛、密钥处理、`tl_evaluate` 风险分级、测试网优先——以及漏洞披露渠道，并索引各面自己的安全章节
 - [MCP Server TronLink](ai-support/mcp-server-tronlink/)：链上、多签、GasFree 工具的 MCP 服务
 - [TronLink MCP Core](ai-support/tronlink-mcp-core/)：框架库——会话管理、能力接口、工具定义、流程配方
 - [TronLink Skills](ai-support/tronlink-skills/)：钱包、代币、行情、兑换、资源、质押命令的智能体技能集

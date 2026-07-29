@@ -4,7 +4,7 @@ This is the **public documentation site** for TronLink developer integrations, d
 
 If you are an AI coding agent or an autonomous tool reading this for orientation, start with the curated index, not by enumerating pages.
 
-> You are reading the HTTP-served variant (`/AGENTS.txt`); every link below is an absolute URL you can fetch directly. The source repository ships the same file at its root as `AGENTS.md` with repository-relative links.
+> You are reading the HTTP-served variant (`/AGENTS.txt`, also mirrored at `/AGENTS.md` and `/CLAUDE.md`); every link below is an absolute URL you can fetch directly. The source repository ships the same file at its root as `AGENTS.md` with repository-relative links.
 
 ## Entry points for AI agents
 
@@ -20,6 +20,7 @@ If you are an AI coding agent or an autonomous tool reading this for orientation
 | DApp integration in the browser (TIP-6963 / `eth_requestAccounts` / `tronWeb`) | https://docs.tronlink.org/dapp/getting-started/ + https://docs.tronlink.org/plugin-wallet/active-requests/ |
 | Mobile DeepLink (`tronlinkoutside://`) | https://docs.tronlink.org/mobile/deeplink/ |
 | AI-agent tooling overview | https://docs.tronlink.org/ai-support/ai-llms/ |
+| Cross-surface security invariants & vulnerability disclosure | https://docs.tronlink.org/ai-support/security-model/ |
 | MCP server (production) | https://docs.tronlink.org/ai-support/mcp-server-tronlink/ |
 | MCP framework / SSOT error codes | https://docs.tronlink.org/ai-support/tronlink-mcp-core/ |
 | MCP signer wrapper (HITL signing) | https://docs.tronlink.org/ai-support/mcp-tronlink-signer/ |
@@ -38,7 +39,11 @@ If you are an AI coding agent or an autonomous tool reading this for orientation
 ## Continuous verification (enforced in CI)
 
 - **Doc ↔ schema parity:** `scripts/check_doc_schema_parity.py` runs on every push and PR and daily on a schedule. It diffs the inline JSON Schema mirrors in the MCP server doc against the upstream Zod schemas (`tronlink-mcp-core` `src/mcp-server/schemas.ts`); an upstream rename or required/optional drift fails the build, so published schema mirrors cannot silently rot. Runtime schemas additionally carry `meta.schemaVersion`.
-- **Post-deploy link check:** every deploy ends with `scripts/gen_llms_full.py --verify`, probing the four llms endpoints plus sampled index links for HTTP 200.
+- **Post-deploy link check:** every deploy ends with `scripts/gen_llms_full.py --verify`, probing the llms endpoints, the agent-entry mirrors, the `security.txt` pointer, and sampled index links for HTTP 200.
+
+## Security disclosures
+
+Report vulnerabilities privately to tronlink@tronlink.org with a `[SECURITY]` subject prefix — never in a public issue. Machine-readable pointer: https://docs.tronlink.org/.well-known/security.txt (RFC 9116); full policy: https://github.com/TronLink/docs/blob/main/SECURITY.md.
 
 ## Upstream code repositories (not in this repo)
 

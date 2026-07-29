@@ -2,7 +2,7 @@
 
 > TronLink is a decentralized wallet for the TRON ecosystem, available as a browser extension and a mobile app. This documentation covers integrating DApps with TronLink across the browser extension, the mobile app (via DeepLink), and AI/agent tooling (MCP servers, CLI, signer SDK).
 
-> Updated: 2026-07-24T06:58:27Z · Commit: 8403ecaf6d14
+> Updated: 2026-07-30T04:55:59Z · Commit: 0133c9c58fa9
 
 How integration works: TronLink injects a `window.tron` provider into every page, exposing a `tronWeb` instance, a `request` method, and `on` / `removeListener` for events. A DApp detects the wallet via TIP-6963, requests authorization via `eth_requestAccounts` (TIP-1102), then builds, signs, and broadcasts transactions through `tronWeb`. Account/network changes arrive as passive `accountsChanged` / `chainChanged` events.
 
@@ -36,7 +36,7 @@ Networks: Mainnet `chainId` `0x2b6653dc` (EVM `728126428`), Shasta testnet `0x94
 ## AI Support
 
 - [AI Support Overview](ai-support/ai-llms/): Entry point to TronLink's AI/agent tooling and machine-readable resources
-- [Security Model](ai-support/security-model/): Cross-surface security invariants — HITL signing, no auto-retry on writes, prompt-injection stance, SSRF allowlist, confused-deputy containment, secret handling, `tl_evaluate` risk grading, testnet-first — with links into each surface's own boundary section
+- [Security Model](ai-support/security-model/): Cross-surface security invariants — HITL signing, no auto-retry on writes, prompt-injection stance, SSRF allowlist, confused-deputy containment, secret handling, `tl_evaluate` risk grading, testnet-first — plus the vulnerability-disclosure channel, with links into each surface's own boundary section
 - [MCP Server TronLink](ai-support/mcp-server-tronlink/): MCP server exposing on-chain, multi-sig, and GasFree tools
 - [TronLink MCP Core](ai-support/tronlink-mcp-core/): Framework library — session manager, capability interfaces, tool definitions, flow recipes
 - [TronLink Skills](ai-support/tronlink-skills/): Agent skill set for wallet, token, market, swap, resource, and staking commands

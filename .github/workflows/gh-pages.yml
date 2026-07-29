@@ -36,7 +36,21 @@ jobs:
       run: mkdocs build
 
     - name: Add CNAME file
-      run: echo 'docs.tronlink.org' > site/CNAME  
+      run: echo 'docs.tronlink.org' > site/CNAME
+
+    # Agents probe several filename conventions for the same entry file, so
+    # mirror AGENTS.txt at the .md paths. docs/security.txt deploys to
+    # /security.txt (legacy RFC 9116 location); copy it to /.well-known/
+    # (canonical) here because mkdocs skips dot-directories under docs/.
+    # .nojekyll disables Jekyll processing on the gh-pages branch — without
+    # it, Pages drops dot-directories like .well-known from the served site.
+    - name: Publish agent-entry variants and security.txt
+      run: |
+        cp site/AGENTS.txt site/AGENTS.md
+        cp site/AGENTS.txt site/CLAUDE.md
+        mkdir -p site/.well-known
+        cp site/security.txt site/.well-known/security.txt
+        touch site/.nojekyll
 
     - name: Build and Deploy
       uses: JamesIves/github-pages-deploy-action@v4
@@ -48,14 +62,19 @@ jobs:
     - name: Verify deployed links
       run: |
         BASE=https://docs.tronlink.org
-        for i in $(seq 1 30); do
-          if curl -sf -o /dev/null "$BASE/llms.txt"; then
-            echo "Site live, running sample verify"
+        WANT="${GITHUB_SHA::12}"
+        # A plain 200 on llms.txt only proves the PREVIOUS deployment is
+        # alive (origin or CDN cache) — endpoints new in this deploy would
+        # still 404. Gate on the llms.txt Commit stamp instead, with a
+        # cache-busting query so Fastly can't serve a stale copy.
+        for i in $(seq 1 90); do
+          if curl -sf "$BASE/llms.txt?fresh=$i" | grep -q "Commit: $WANT"; then
+            echo "Deploy $WANT live, running sample verify"
             python3 scripts/gen_llms_full.py --verify "$BASE"
             exit $?
           fi
-          echo "Waiting for deploy to propagate ($i/30)..."
+          echo "Waiting for deploy $WANT to propagate ($i/90)..."
           sleep 10
         done
-        echo "Timeout (5 min) waiting for $BASE/llms.txt to come up"
+        echo "Timeout (15 min) waiting for $BASE/llms.txt to serve commit $WANT"
         exit 1

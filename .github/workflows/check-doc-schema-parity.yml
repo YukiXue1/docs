@@ -39,3 +39,9 @@ jobs:
         env:
           SCHEMAS_PIN: ${{ github.event.inputs.schemas_pin || 'main' }}
         run: python3 scripts/check_doc_schema_parity.py
+
+      # Piggybacks on the daily cron: an RFC 9116 security.txt whose
+      # Expires has lapsed is treated as invalid by consumers, and a
+      # dormant repo would never notice via the deploy-time check alone.
+      - name: Check security.txt freshness
+        run: python3 scripts/gen_llms_full.py --check-security-expiry

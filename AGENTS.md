@@ -4,7 +4,7 @@ This repository is the **public documentation site** for TronLink developer inte
 
 If you are an AI coding agent or an autonomous tool reading this for orientation, start with the curated index, not by enumerating files.
 
-> This is the repository-root variant with repository-relative links. The deployed site serves the same file at [https://docs.tronlink.org/AGENTS.txt](https://docs.tronlink.org/AGENTS.txt) (source: `docs/AGENTS.txt`) with absolute URLs so links survive HTTP fetching. Keep the two in sync when editing either.
+> This is the repository-root variant with repository-relative links. The deployed site serves the same file at [https://docs.tronlink.org/AGENTS.txt](https://docs.tronlink.org/AGENTS.txt) (source: `docs/AGENTS.txt`; mirrored at `/AGENTS.md` and `/CLAUDE.md` at deploy time) with absolute URLs so links survive HTTP fetching. Keep the two in sync when editing either.
 
 ## Entry points for AI agents
 
@@ -20,6 +20,7 @@ If you are an AI coding agent or an autonomous tool reading this for orientation
 | DApp integration in the browser (TIP-6963 / `eth_requestAccounts` / `tronWeb`) | [docs/dapp/getting-started.en.md](docs/dapp/getting-started.en.md) + [docs/plugin-wallet/*](docs/plugin-wallet/) |
 | Mobile DeepLink (`tronlinkoutside://`) | [docs/mobile/deeplink.en.md](docs/mobile/deeplink.en.md) |
 | AI-agent tooling overview | [docs/ai-support/ai-llms.en.md](docs/ai-support/ai-llms.en.md) |
+| Cross-surface security invariants & vulnerability disclosure | [docs/ai-support/security-model.en.md](docs/ai-support/security-model.en.md) |
 | MCP server (production) | [docs/ai-support/mcp-server-tronlink.en.md](docs/ai-support/mcp-server-tronlink.en.md) |
 | MCP framework / SSOT error codes | [docs/ai-support/tronlink-mcp-core.en.md](docs/ai-support/tronlink-mcp-core.en.md) |
 | MCP signer wrapper (HITL signing) | [docs/ai-support/mcp-tronlink-signer.en.md](docs/ai-support/mcp-tronlink-signer.en.md) |
@@ -37,7 +38,11 @@ If you are an AI coding agent or an autonomous tool reading this for orientation
 ## Continuous verification (enforced in CI)
 
 - **Doc ↔ schema parity:** [scripts/check_doc_schema_parity.py](scripts/check_doc_schema_parity.py) runs on every push and PR and daily on a schedule ([.github/workflows/check-doc-schema-parity.yml](.github/workflows/check-doc-schema-parity.yml)). It diffs the inline JSON Schema mirrors in the MCP server doc against the upstream Zod schemas (`tronlink-mcp-core` `src/mcp-server/schemas.ts`); an upstream rename or required/optional drift fails the build, so published schema mirrors cannot silently rot. Runtime schemas additionally carry `meta.schemaVersion`.
-- **Post-deploy link check:** every deploy ends with `scripts/gen_llms_full.py --verify`, probing the four llms endpoints plus sampled index links for HTTP 200.
+- **Post-deploy link check:** every deploy ends with `scripts/gen_llms_full.py --verify`, probing the llms endpoints, the agent-entry mirrors, the `security.txt` pointer, and sampled index links for HTTP 200.
+
+## Security disclosures
+
+Report vulnerabilities privately to tronlink@tronlink.org with a `[SECURITY]` subject prefix — never in a public issue. Machine-readable pointer: [https://docs.tronlink.org/.well-known/security.txt](https://docs.tronlink.org/.well-known/security.txt) (RFC 9116); full policy: [SECURITY.md](SECURITY.md).
 
 ## Upstream code repositories (not in this repo)
 
