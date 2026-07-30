@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feature/ai-fix
   workflow_dispatch: # 仍保留手动触发的功能
 
 # Serialize deploys: without this, a slow older run can finish after a
