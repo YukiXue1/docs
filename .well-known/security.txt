@@ -1,0 +1,10 @@
+# TronLink security contact — covers docs.tronlink.org and the TronLink
+# developer tooling documented here (MCP servers, CLI, signer SDK, Skills).
+# Canonical location per RFC 9116 is /.well-known/security.txt; this file is
+# also served at /security.txt for legacy probes.
+Contact: mailto:tronlink@tronlink.org
+Expires: 2027-07-01T00:00:00Z
+Preferred-Languages: en, zh
+Canonical: https://docs.tronlink.org/.well-known/security.txt
+Canonical: https://docs.tronlink.org/security.txt
+Policy: https://github.com/TronLink/docs/blob/main/SECURITY.md
