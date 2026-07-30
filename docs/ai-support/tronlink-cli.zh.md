@@ -488,7 +488,7 @@ tronlink transfer --type trx --toAddress TRecipientAddress --amount 10 --network
 | 症状 | 可能原因 | 处理 |
 | --- | --- | --- |
 | `Signer disconnected (browser closed?)` | TronLink 签名审批页被关闭或连接丢失 | 会话期间保持审批页常开；重发命令——写操作先链上对账（见[错误](#errors)） |
-| 命令挂起后报 `TronLink approval timed out` | 超时窗口内（默认 5 分钟）无人点击 Approve | 及时审批，或调大 `--timeout <ms>`；未签名，重发安全 |
+| 命令挂起后报 `TronLink approval timed out` | 超时窗口内（默认 5 分钟；env `TRONLINK_TIMEOUT` / 旗标 `--timeout <ms>`）无人点击 Approve | 通常什么都没签——但计时器不会中止浏览器流程，临近截止的 Approve 仍可能在 CLI 退出后完成广播（与 signer SDK 同一竞态）。写操作先上链查这笔交易再重跑；然后再考虑及时审批或调大 `--timeout` |
 | 签名器启动失败 / 端口冲突 | 端口 `3386` 被其他进程占用 | 传 `--port <n>`——CLI 与内嵌签名器通信需要钉死一个固定端口,独立 signer 的端口自动递增行为在此不适用 |
 | `Network connection failed` | 网络、TronGrid 故障或主网限流 | 退避重试；主网配 `TRON_API_KEY` 提升配额 |
 | 脚本抓不到错误输出 | 错误行在 **stderr**，成功 JSON 在 stdout | 两个流都捕获；按退出状态 + stderr `error` 前缀分支 |

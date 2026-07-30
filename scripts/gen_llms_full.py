@@ -286,6 +286,11 @@ def check_security_txt_expiry(min_days: int = 30) -> int:
     except ValueError:
         print(f"security.txt Expires is not ISO 8601: {m.group(1)}", file=sys.stderr)
         return 1
+    if expires.tzinfo is None:
+        # RFC 9116 requires an offset; tolerate a missing one as UTC rather
+        # than crashing on naive-vs-aware datetime arithmetic below.
+        print(f"security.txt Expires lacks a timezone offset ({m.group(1)}); assuming UTC", file=sys.stderr)
+        expires = expires.replace(tzinfo=timezone.utc)
     days_left = (expires - datetime.now(timezone.utc)).days
     if days_left < min_days:
         print(
@@ -298,7 +303,7 @@ def check_security_txt_expiry(min_days: int = 30) -> int:
     return 0
 
 
-def verify_live(base_url: str, sample_size: int = 5) -> int:
+def verify_live(base_url: str, sample_size: int = 15) -> int:
     """Sample-check curated index links against `base_url`.
 
     Always probes the fixed endpoints (the four llms bundles, the
@@ -400,8 +405,8 @@ def main() -> None:
     parser.add_argument(
         "--sample-size",
         type=int,
-        default=5,
-        help="Random links per locale to probe in --verify mode (default: 5).",
+        default=15,
+        help="Random links per locale to probe in --verify mode (default: 15).",
     )
     parser.add_argument(
         "--check-security-expiry",

@@ -490,7 +490,7 @@ tronlink transfer --type trx --toAddress TRecipientAddress --amount 10 --network
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
 | `Signer disconnected (browser closed?)` | The TronLink signer approval tab was closed or lost its connection | Keep the approval tab open for the whole session; re-issue the command — for a write, reconcile on-chain first (see [Errors](#errors)) |
-| Command hangs, then `TronLink approval timed out` | Nobody clicked Approve within the window (default 5 min) | Approve faster, or raise `--timeout <ms>`; nothing was signed, re-issuing is safe |
+| Command hangs, then `TronLink approval timed out` | Nobody clicked Approve within the window (default 5 min; env `TRONLINK_TIMEOUT` / flag `--timeout <ms>`) | Usually nothing was signed — but the timer does not abort the browser flow, so a near-deadline Approve can still broadcast after the CLI exits (same race as the signer SDK). For a write, check the transaction on-chain before re-running; then approve faster or raise `--timeout` |
 | Signer fails to start / port clash | Another process occupies port `3386` | Pass `--port <n>` — the CLI pins one fixed port to talk to its embedded signer, so the standalone signer's auto-increment behavior does not apply here |
 | `Network connection failed` | Connectivity, TronGrid outage, or mainnet rate limiting | Retry with backoff; set `TRON_API_KEY` for mainnet quota |
 | Script captures no error output | The error line goes to **stderr**, success JSON to stdout | Capture both streams; branch on exit status + the stderr `error` prefix |

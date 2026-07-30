@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feature/ai-readability-p0
   workflow_dispatch: # 仍保留手动触发的功能
 
 # Serialize deploys: without this, a slow older run can finish after a
@@ -79,7 +78,7 @@ jobs:
         # still 404. Gate on the llms.txt Commit stamp instead, with a
         # cache-busting query so Fastly can't serve a stale copy.
         for i in $(seq 1 90); do
-          if curl -sf "$BASE/llms.txt?fresh=$i" | grep -q "Commit: $WANT"; then
+          if curl -sf "$BASE/llms.txt?fresh=$WANT-$i" | grep -q "Commit: $WANT"; then
             echo "Deploy $WANT live, running sample verify"
             python3 scripts/gen_llms_full.py --verify "$BASE"
             exit $?

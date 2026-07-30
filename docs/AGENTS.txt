@@ -25,7 +25,7 @@ If you are an AI coding agent or an autonomous tool reading this for orientation
 | MCP framework / SSOT error codes | https://docs.tronlink.org/ai-support/tronlink-mcp-core/ |
 | MCP signer wrapper (HITL signing) | https://docs.tronlink.org/ai-support/mcp-tronlink-signer/ |
 | Signer SDK (browser-approval signing) | https://docs.tronlink.org/ai-support/tronlink-signer/ |
-| Skills package (read-only MCP tools; CLI adds raw-key write commands) | https://docs.tronlink.org/ai-support/tronlink-skills/ |
+| Read-only Skills package | https://docs.tronlink.org/ai-support/tronlink-skills/ |
 | CLI (transactions via browser approval) | https://docs.tronlink.org/ai-support/tronlink-cli/ |
 | Cross-surface error-code map (DApp / DeepLink / MCP / CLI, with retryable flags) | https://docs.tronlink.org/reference/error-code-map/ |
 | Networks, glossary, FAQ | https://docs.tronlink.org/reference/networks/ · https://docs.tronlink.org/reference/glossary/ · https://docs.tronlink.org/reference/faq/ |
@@ -59,7 +59,7 @@ If you need to change runtime behavior (tool schemas, error codes, transaction l
 
 ```bash
 python3 scripts/gen_llms_full.py     # llms-full bundles + index header stamps
-python3 scripts/dump_mcp_tools.py    # static MCP tool contracts (reference/mcp-tools.json)
+python3 scripts/dump_mcp_tools.py    # static MCP tool contracts (docs/reference/mcp-tools.json)
 ```
 
 Run the first after any change under `docs/`; run the second when an upstream npm package publishes a new version. Keep this file and the repository-root `AGENTS.md` in sync when editing either.

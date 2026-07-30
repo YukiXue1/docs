@@ -1,8 +1,8 @@
 {
   "title": "TronLink MCP tool contracts — static snapshot",
-  "description": "Full tool definitions (name, description, inputSchema) captured from the published npm MCP servers via the MCP tools/list endpoint. Tool annotations would be captured too, but the current servers publish none. The running server's tools/list remains the source of truth; this file is a stamped snapshot for one-fetch consumption.",
-  "generated": "2026-07-30T05:34:41Z",
-  "commit": "a5c4b4838893",
+  "description": "Full tool definitions (name, description, inputSchema) captured from the published npm MCP servers via the MCP tools/list endpoint. Tool annotations would be captured too, but the current servers publish none. The running server's tools/list remains the source of truth; this file is a stamped snapshot for one-fetch consumption. The commit field records the repo HEAD at generation time — it can trail the commit that ships the file by one, and deployed copies are not restamped.",
+  "generated": "2026-07-30T06:06:48Z",
+  "commit": "d0c1e8c57be7",
   "generator": "scripts/dump_mcp_tools.py",
   "errorCodes": "https://docs.tronlink.org/reference/error-code-map/",
   "servers": [

@@ -315,8 +315,6 @@ Claude Code 自动检测：
         "TL_HEADLESS": "false",
         "TL_TRONGRID_URL": "https://nile.trongrid.io",
         "AGENT_WALLET_PASSWORD": "your-wallet-password",
-        "TL_SUNSWAP_ROUTER": "TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax",
-        "TL_SUNSWAP_V3_ROUTER": "TB6xBCixqRPUSKiXb45ky1GhChFJ7qrfFj",
         "TL_MULTISIG_BASE_URL": "https://apinile.walletadapter.org",
         "TL_MULTISIG_SECRET_ID": "TEST",
         "TL_MULTISIG_SECRET_KEY": "TESTTESTTEST",
@@ -419,7 +417,7 @@ mcp-server-tronlink/
 
 ## 工具契约与副作用 {#tool-contract-side-effects}
 
-**输入/输出 schema 与错误契约。** 每个工具的输入/输出 schema 及结构化错误信封由底层框架定义——见 [TronLink MCP Core](tronlink-mcp-core.md#error-codes) 的 SSOT 错误码表（`code` / `retryable` / `hint` / 典型触发）。每个响应均带 `meta.schemaVersion`，major 版本内字段含义稳定。Agent 应基于 `error.code` 与 `error.retryable` 分支，**不要**解析人类可读的 `message`。
+**输入/输出 schema 与错误契约。** 每个工具的输入/输出 schema 及结构化错误信封由底层框架定义——见 [TronLink MCP Core](tronlink-mcp-core.md#error-codes) 的 SSOT 错误码表（`code` / `retryable` / `hint` / 典型触发；其中 **Retryable** 列是对照表的归类，不是线上字段）。0.1.1 的线上响应没有 schema 版本标记——请钉定 npm 版本并依赖 doc↔schema parity CI。Agent 应基于 `error.code` 加[错误码对照表](../reference/error-code-map.md)的 retryable 归类分支，**不要**解析人类可读的 `message`。
 
 **逐工具输入 schema 可在运行时发现。** 每个工具的参数都由 core 用 Zod 校验，并通过 MCP `list_tools` 方法以 JSON `inputSchema` 形式暴露，因此客户端无需阅读本页即可枚举参数名、类型和必填项。下方表格按能力归纳工具;`list_tools` 才是权威的机器可读来源。
 
@@ -438,11 +436,11 @@ mcp-server-tronlink/
 
 ### 精选工具 schema（文档侧镜像） {#selected-tool-schemas-inline-mirror}
 
-以下是最关键工具输入的**文档侧镜像**——当 agent 需要在没有打开 MCP 会话的情况下写工具调用站点时使用。运行时 `list_tools` 仍是权威源：那里有完整的 Zod 元信息（描述、`default` 等）以及 `meta.schemaVersion`。下方字段抄自 `@tronlink/tronlink-mcp-core` `src/mcp-server/schemas.ts`，遵循 JSON Schema Draft 7。**未**内联镜像全部工具——需要一次抓取全部工具契约（本 server + signer）时，请取 [/reference/mcp-tools.json](../../../reference/mcp-tools.json)，它由 `scripts/dump_mcp_tools.py` 从 npm 已发布包重新生成；SSOT 仍是 core 仓库。
+以下是最关键工具输入的**文档侧镜像**——当 agent 需要在没有打开 MCP 会话的情况下写工具调用站点时使用。运行时 `list_tools` 仍是权威源：那里有完整的 Zod 元信息（描述、`default` 等）。下方字段抄自 `@tronlink/tronlink-mcp-core` `src/mcp-server/schemas.ts`，遵循 JSON Schema Draft 7。**未**内联镜像全部工具——需要一次抓取全部工具契约（本 server + signer）时，请取 [/reference/mcp-tools.json](../../../reference/mcp-tools.json)，它由 `scripts/dump_mcp_tools.py` 从 npm 已发布包重新生成；SSOT 仍是 core 仓库。
 
 **响应字段（写工具）。** 目前尚无逐工具 outputSchema；写工具在标准 `{ ok, result, meta }` 信封内返回 `ChainTxResult`：`{ success: boolean, tx_id: string, message?: string }`。注意字段名是 **`tx_id`**（snake_case）而非 `txId`，且 `success: true` 只代表广播被接受——执行结果请用 `tl_chain_get_tx` 核对（见上方生命周期条目）。
 
-> **平价由 CI 强制。** `scripts/check_doc_schema_parity.py`（在 push、PR 及每日定时通过 [`check-doc-schema-parity.yml`](https://github.com/xueyuanying/docs/blob/main/.github/workflows/check-doc-schema-parity.yml) 触发）会对下方每个块的顶层字段集 + required 标记与上游 `schemas.ts` 做 diff——上游改名或 required ↔ optional 漂移都会让 CI 失败。
+> **平价由 CI 强制。** `scripts/check_doc_schema_parity.py`（在 push、PR 及每日定时通过 [`check-doc-schema-parity.yml`](https://github.com/TronLink/docs/blob/main/.github/workflows/check-doc-schema-parity.yml) 触发）会对下方每个块的顶层字段集 + required 标记与上游 `schemas.ts` 做 diff——上游改名或 required ↔ optional 漂移都会让 CI 失败。
 
 #### `tl_chain_send` —— **Remote Write**
 
@@ -569,8 +567,8 @@ mcp-server-tronlink/
 
 | 边界 | 保证 | Agent / 运维方义务 |
 |---|---|---|
-| **Prompt 注入** | 工具输入按原始值作为调用参数使用，server 不会把工具输入拼接进任何向 LLM 二次提交的 prompt。**但**从链上或第三方 API 拿回来的字符串（账户备注、合约 revert 原因、交易 note 等）**可能含攻击者控制内容**，必须视为不可信。 | 不要让 agent 基于 read 工具返回的 prose 自动路由到 Remote Write。分支必须基于结构化字段（`tx_id`、`code`、`retryable`）。 |
-| **出站 host 白名单（SSRF）** | server 只向 4 个配置端点发起 HTTPS：`TL_TRONGRID_URL`、`TL_MULTISIG_BASE_URL`、`TL_GASFREE_BASE_URL`，以及通过 TronWeb 访问的 SunSwap router。工具不接收会被原样请求的用户 URL。 | 生产环境把这些 env 钉死到已知 host；禁止 LLM 输入回填任何 `*_BASE_URL`。 |
+| **Prompt 注入** | 工具输入按原始值作为调用参数使用，server 不会把工具输入拼接进任何向 LLM 二次提交的 prompt。**但**从链上或第三方 API 拿回来的字符串（账户备注、合约 revert 原因、交易 note 等）**可能含攻击者控制内容**，必须视为不可信。 | 不要让 agent 基于 read 工具返回的 prose 自动路由到 Remote Write。分支必须基于结构化字段（`tx_id`、`code`，以及错误码对照表的 retryable 归类）。 |
+| **出站 host 白名单（SSRF）** | 链上/API 能力只向配置端点发起 HTTPS：`TL_TRONGRID_URL`、`TL_MULTISIG_BASE_URL`、`TL_GASFREE_BASE_URL`，以及通过 TronWeb 访问的 SunSwap router——没有任何 API 工具会抓取调用方 URL。**例外：** 浏览器工具（`tl_navigate`）会在受控钱包浏览器中打开调用方给出的任意 URL，该浏览器可达 `localhost` 与内网。 | 把 env 钉死到已知 host；绝不让 LLM 输入回填 `*_BASE_URL` 或导航目标；不需要浏览器工具的部署直接禁用它们。 |
 | **API key 处理（token passthrough）** | `TL_TRONGRID_API_KEY`、`TL_MULTISIG_SECRET_KEY`、`TL_GASFREE_API_SECRET` 仅在启动时从 env 读取，仅用于出站；**不**会出现在任何工具响应、错误 `details` 或 Knowledge Store 记录中。server 不接受 MCP 客户端传入的 Authorization header 并转发到上游。 | 审计 MCP host 配置对 env 的捕获（部分 host 会落日志）；secret 放进 host 的 secret manager，不要写进会提交 git 的 `.mcp.json`。 |
 | **浏览器 JS 执行** | `tl_evaluate` 会在受控 Playwright 浏览器上下文中执行任意 JS。这是 **High-risk / Destructive** 原语——可读 DOM、点击隐藏元素、外泄状态、绕过 UI 上的 HITL。 | 严格不需要时，从 MCP host 的工具白名单中禁用 `tl_evaluate`。绝不要把它暴露给远程/多用户 MCP 部署。 |
 | **HITL 绕过** | Direct-API 工具（`tl_chain_send`、`tl_chain_swap_v3` 等）使用本地加密 `agent-wallet` 签名并直接广播，**不**经过 TronLink 浏览器审批。`agent-wallet` 密码是唯一屏障。 | 把 `AGENT_WALLET_PASSWORD` 保管在 agent 不可达处。生产环境涉及资金转移的工具，优先用 `mcp-tronlink-signer`（浏览器审批），而非 Direct-API。 |
@@ -740,16 +738,15 @@ export TL_TRONGRID_URL="https://nile.trongrid.io"
 
 ### 兼容性与迁移策略
 
-- **语义化版本。** 1.0 之前：**minor** 升级（0.x → 0.y）允许破坏性变更；**patch** 升级（0.1.x → 0.1.y）不变更工具名、输入 schema、`error.code` 值或 `meta.schemaVersion` 语义。1.0 之后：标准 semver，仅 major 允许破坏。
+- **语义化版本。** 1.0 之前：**minor** 升级（0.x → 0.y）允许破坏性变更；**patch** 升级（0.1.x → 0.1.y）不变更工具名、输入 schema 或 `error.code` 值。1.0 之后：标准 semver，仅 major 允许破坏。
 - **稳定契约**（patch 不会动）：
     - 工具名（`tl_chain_send`、`tl_chain_swap_v3`、`tl_multisig_*`、`tl_gasfree_*`、`tl_evaluate` 等）
     - `error.code` 枚举（SSOT：[TronLink MCP Core 错误码](tronlink-mcp-core.md#error-codes)）
     - `error.retryable` 语义
-    - `meta.schemaVersion` 的 major 分量
     - 必需环境变量名（`TL_TRONGRID_URL`、`TL_MULTISIG_SECRET_KEY`、`AGENT_WALLET_PASSWORD` 等）
 - **不稳定契约**（随时可能变化）：
     - `message` 自然语言文本、日志行格式、stderr 输出
     - 内部 Knowledge Store key（消费者不应解析）
     - 预检查的错误 detail 文本（分支用 `code`，别用 `details.reason`）
 - **废弃窗口。** 工具或入参字段被废弃时，下一 minor 至少保留旧形式与新形式并存 **一个 minor 周期**，`list_tools` 会带 `meta.deprecated` 标记；移除最早在再下一周期。
-- **升级后校验。** 重新 `list_tools` 确认依赖的工具名 + `inputSchema` 仍在，再继续工作流；将 `meta.schemaVersion` 与会话开始时缓存的值对比。
+- **升级后校验。** 重新 `list_tools` 确认依赖的工具名 + `inputSchema` 仍在，再继续工作流；0.1.1 线上没有 schema 版本标记——请核对钉定的 npm 版本。

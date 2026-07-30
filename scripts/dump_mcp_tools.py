@@ -242,7 +242,9 @@ def main() -> None:
             "endpoint. Tool annotations would be captured too, but the "
             "current servers publish none. The running server's tools/list "
             "remains the source of truth; this file is a stamped snapshot "
-            "for one-fetch consumption."
+            "for one-fetch consumption. The commit field records the repo "
+            "HEAD at generation time — it can trail the commit that ships "
+            "the file by one, and deployed copies are not restamped."
         ),
         "generated": generated_at,
         "commit": git_short_sha(),

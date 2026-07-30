@@ -25,7 +25,7 @@ If you are an AI coding agent or an autonomous tool reading this for orientation
 | MCP framework / SSOT error codes | [docs/ai-support/tronlink-mcp-core.en.md](docs/ai-support/tronlink-mcp-core.en.md) |
 | MCP signer wrapper (HITL signing) | [docs/ai-support/mcp-tronlink-signer.en.md](docs/ai-support/mcp-tronlink-signer.en.md) |
 | Signer SDK (browser-approval signing) | [docs/ai-support/tronlink-signer.en.md](docs/ai-support/tronlink-signer.en.md) |
-| Skills package (read-only MCP tools; CLI adds raw-key write commands) | [docs/ai-support/tronlink-skills.en.md](docs/ai-support/tronlink-skills.en.md) |
+| Read-only Skills package | [docs/ai-support/tronlink-skills.en.md](docs/ai-support/tronlink-skills.en.md) |
 | CLI (transactions via browser approval) | [docs/ai-support/tronlink-cli.en.md](docs/ai-support/tronlink-cli.en.md) |
 | Cross-surface error-code map (DApp / DeepLink / MCP / CLI, with retryable flags) | [docs/reference/error-code-map.en.md](docs/reference/error-code-map.en.md) |
 | Networks, addresses, glossary, FAQ | [docs/reference/](docs/reference/) |
