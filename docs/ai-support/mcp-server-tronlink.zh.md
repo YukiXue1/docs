@@ -240,8 +240,8 @@ hexToAddress()             0x41... → T 地址
 |------|------|
 | `TL_TRONGRID_URL` | 全节点 API 地址 |
 | `TL_TRONGRID_API_KEY` | API 密钥（主网必需）。免费档约 100k 请求/日 + ~5 QPS；付费档提高 QPS、日配额并按用量计费。具体配额与响应 header 会变——请查 [TronGrid Pricing](https://www.trongrid.io/pricing) 与控制台当前值，并在运行时读 `X-Ratelimit-*` header。触发限流返回 HTTP 429（映射到 `TL_CHAIN_QUERY_FAILED`，可重试）。长期跑批的 agent 请在 50% / 80% / 95% 设置消费告警。 |
-| `TL_SUNSWAP_ROUTER` | SunSwap V2 路由地址。**没有内置默认**——请钉到当前 router；下方示例中的值**截至 2026-05** 适用于主网。来源：[docs.sun.io](https://docs.sun.io)。SunSwap 升级新 router 时，请直接在此 env 改值，不要等文档/代码同步。 |
-| `TL_SUNSWAP_V3_ROUTER` | SunSwap V3 智能路由地址。规则同 V2。 |
+| `TL_SUNSWAP_ROUTER` | SunSwap V2 路由地址。**覆盖内置默认值**（0.1.1 内置主网 `TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax`、nile `TMn1qrmYUMSTXo9babrJLzepKZoPC7M6Sy`）——不配置不会禁用 V2 兑换。请钉到当前 router；下方示例中的值**截至 2026-05** 适用于主网。来源：[docs.sun.io](https://docs.sun.io)。SunSwap 升级新 router 时，请直接在此 env 改值，不要等文档/代码同步。 |
+| `TL_SUNSWAP_V3_ROUTER` | SunSwap V3 智能路由地址。**覆盖内置默认值**（0.1.1 中主网与 nile 均为 `TQAvWQpT9H916GckwWDJNhYZvQMkuRL7PN`）；不配置不会禁用 V3 兑换。内置默认已与 2026-05 的示例值不同——务必显式钉死（见「兑换安全」的「钉死 router」）。 |
 | `TL_WTRX_ADDRESS` | WTRX 合约地址。主网 WTRX 为 `TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR`。数据截至 2026-05。 |
 
 **钱包（agent-wallet）：**
@@ -434,7 +434,7 @@ mcp-server-tronlink/
 - **人工确认（HITL）：** 写操作工具使用加密的本地 `agent-wallet` 签名；浏览器模式下由用户在 TronLink UI 审批。生产环境应将每个「远程写」工具视为需要确认。
 - **重试：** 只读工具可安全重试；「远程写」工具除非证明幂等，否则不得自动重试。
 - **广播 ≠ 执行成功 ≠ 最终。** 返回交易 id（`tx_id`）只代表交易被接受广播。合约调用仍可能在链上失败（`REVERT`、`OUT_OF_ENERGY`）——用 `tl_chain_get_tx` 核对 `ret[0].contractRet === "SUCCESS"`；区块需约 19 个 SR 确认（≈ 57 秒）后才不可逆。见[交易生命周期](security-model.md#transaction-lifecycle-finality)。
-- **固定链上成本：** `tl_chain_setup_multisig`（accountPermissionUpdate）固定燃烧 **100 TRX** 网络费；TRC20 转账与兑换按 server 内部设定的 100 TRX `fee_limit` 上限燃烧 TRX 抵能量。执行前先纳入预算。
+- **固定链上成本：** `tl_chain_setup_multisig`（accountPermissionUpdate）固定燃烧 **100 TRX** 网络费。server 内部设定的 `fee_limit` 上限为：TRC20 转账与自动授权各 **100 TRX**、V2 兑换（`tl_chain_swap`）**150 TRX**、V3 兑换（`tl_chain_swap_v3`）**200 TRX**——代币入金的首次兑换最坏情况是授权 + 兑换两笔上限相加。执行前先纳入预算。
 
 ### 精选工具 schema（文档侧镜像） {#selected-tool-schemas-inline-mirror}
 
@@ -473,7 +473,7 @@ mcp-server-tronlink/
     "action":           { "type": "string", "enum": ["estimate", "execute"], "description": "estimate = 仅报价（Network Read）；execute = 签名 + 广播（Remote Write）" },
     "from_token":       { "type": "string", "description": "源代币地址，或 'TRX' 表示原生 TRX" },
     "to_token":         { "type": "string", "description": "目标代币地址，或 'TRX'" },
-    "amount":           { "type": "string", "description": "输入金额：源代币**最小单位**的整数字符串（from_token 为 TRX 时即 SUN），不做 decimals 换算" },
+    "amount":           { "type": "string", "description": "输入金额：源代币**最小单位**的整数字符串（from_token 为 TRX 时即 SUN），不做 decimals 换算。警告：0.1.1 中 TRX 入金兑换不可用——见「兑换安全」的已知 bug 说明" },
     "fee_tier":         { "type": "number", "description": "池费率，单位为百分之一 bip（1e-6 / ppm）——SunSwap V3 有效池：500（0.05%）、3000（0.3%）、10000（1%），默认 3000。运行时 schema 未做 enum 约束：非法费率不会被入参拦截，只会在池查找时失败" },
     "slippage":         { "type": "number", "description": "滑点容忍百分比（默认 0.5）。这是**唯一**的产出下限控制——schema 中不存在 minimum-output 参数；见下方「兑换安全」" },
     "sqrt_price_limit": { "type": "string", "description": "可选 partial-fill 价格上限（进阶）" }
@@ -581,10 +581,11 @@ mcp-server-tronlink/
 
 兑换属于 **远程写**，且对接公开 DEX 路由器，因此暴露在 **价格滑点** 与 **三明治攻击 / MEV** 之下：在报价和执行之间池子价格变动时，实际成交可能比报价更差。
 
+- **已知上游 BUG——0.1.1（core 0.1.0）中 TRX 入金兑换不可用。** 余额预检查把 `amount` 乘以 1e6 后按整 TRX 比较，而执行层按 SUN 原样使用。把 1 TRX 传成 `"1000000"` 会被预检查以 `Insufficient TRX balance` 拦下（除非钱包里有 100 万 TRX）；传 `"1"` 能过预检查，但实际只兑换 **1 SUN**。上游修复落地前，不要用 `from_token: "TRX"` 调用 `tl_chain_swap` / `tl_chain_swap_v3`——改用 TRC20 作为源代币（代币入金的金额在两层均为一致的裸最小单位）。
 - **`slippage` 是唯一的产出下限——每次都要显式传入。** schema 中**不存在 minimum-output 参数**（`sqrt_price_limit` 是 V3 的 partial-fill 价格上限，不是最小产出保证）。默认容忍度 0.5% 虽有声明，但对低流动性交易对**不安全**——按交易对选定容忍度，每次 `execute` 显式传入。
 - **执行前现取报价。** 通过 Skills `tron-swap` 的 `swap-quote` / `swap-route`（或 `action=estimate`）取最新报价/路径，选定可接受的滑点容忍度并显式传入。
 - **首次兑换某代币会自动给 router 无限额度授权。** 源代币 allowance 不足时，工具会先静默提交一笔 `approve(router, MAX_UINT256)` 交易（独立收费,fee_limit 上限 100 TRX）再执行兑换。无限授权意味着被攻破或配错的 router 可以掏空该代币——务必钉死 router（见下条），更换 router 后撤销旧授权。
-- **钉死 router。** `TL_SUNSWAP_V3_ROUTER` 没有内置默认值；过期或错误的 router 会把资金路由到非预期目标——而且持有上一条授予的无限额度。请按当前 SunSwap V3 router 地址设置（见环境变量）。
+- **钉死 router。** `TL_SUNSWAP_V3_ROUTER` 只是**覆盖**内置默认值（0.1.1 中主网与 nile 均为 `TQAvWQpT9H916GckwWDJNhYZvQMkuRL7PN`）——不配置**不会**禁用 V3 兑换，兑换会直接对内置地址执行，且上一条授予的无限额度也会给到它。内置默认可能过期（它已经与示例配置里 2026-05 的 router 不同），务必显式钉到当前 SunSwap V3 router（见环境变量），并在更换 router 后撤销旧授权。
 - **不可自动重试。** swap 失败或结果未知都属于远程写——先在链上确认再决定是否重发（`TL_CHAIN_SWAP_FAILED` 不可重试）。
 
 #### 多签凭证管理（`TL_MULTISIG_SECRET_ID` / `TL_MULTISIG_SECRET_KEY`）
@@ -719,7 +720,8 @@ export TL_TRONGRID_URL="https://nile.trongrid.io"
 # 配置好 .mcp.json 后自然语言使用：
 # "查看我的 TRX 余额"
 # "给 TAddress... 转 10 个 TRX"
-# "在 SunSwap V3 上用 100 TRX 兑换 USDT"
+# "在 SunSwap V3 上用 100 USDT 兑换 TRX"
+#   （TRX 入金兑换受 0.1.1 已知 bug 影响不可用——见「兑换安全」）
 ```
 
 ## 排错 {#troubleshooting}
@@ -728,7 +730,7 @@ export TL_TRONGRID_URL="https://nile.trongrid.io"
 - **Playwright 工具启动失败**——`TRONLINK_EXTENSION_PATH` 缺失或路径错误（启动时 server 会向 stderr 打 `WARNING`）；指向已构建的 TronLink 扩展目录。headless 主机需 `TL_HEADLESS=true`，且依然无法完成 UI 审批。
 - **主网上 `TL_CHAIN_QUERY_FAILED` 密集出现**——TronGrid HTTP 429。指数退避，配置 `TL_TRONGRID_API_KEY`，并关注 `X-Ratelimit-*` 响应头（见环境变量）。
 - **多签调用报 `TL_MULTISIG_QUERY_FAILED` / `TL_MULTISIG_SUBMIT_FAILED`**——先查凭证：核对四个 `TL_MULTISIG_*` 环境变量及其环境（主网 vs Nile）。注意凭证错误目前也落在这两个码下（`TL_MULTISIG_QUERY_FAILED` 标记为可重试，`TL_MULTISIG_SUBMIT_FAILED` 不可重试）——都不要无限循环。
-- **验证安装**——`list_tools` 应返回 **55 个工具**；每个响应都带 `meta.schemaVersion: "1.0"`。可与静态快照 [/reference/mcp-tools.json](../../../reference/mcp-tools.json) 对照。
+- **验证安装**——`list_tools` 应返回 **55 个工具**。可与静态快照 [/reference/mcp-tools.json](../../../reference/mcp-tools.json) 对照。（0.1.1 的响应不带 `meta.schemaVersion`；响应 `meta` 为 `{timestamp, sessionId, durationMs}`——不要以版本字段作为安装判据。）
 
 ## 版本与许可证
 

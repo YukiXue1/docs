@@ -4,15 +4,15 @@
 
 ## 跨面不变式
 
-**人在回路(HITL)签名。** 走浏览器审批路径时(`mcp-tronlink-signer`、`tronlink-signer`、`tronlink-cli`),每次签名都会打开 TronLink 审批页——用户不点 Approve,智能体就无法签名，私钥永不离开钱包。走 Direct-API 路径时(`mcp-server-tronlink`),写操作由本地加密的 `agent-wallet` 签名，钱包密码是唯一屏障——请把 `AGENT_WALLET_PASSWORD` 放在智能体接触不到的地方；生产环境中任何动资金的操作，优先选浏览器审批路径。
+**人在回路(HITL)签名。** 走浏览器审批路径时(`mcp-tronlink-signer`、`tronlink-signer`、`tronlink-cli`),每次签名都会打开 TronLink 审批页——用户不点 Approve,智能体就无法签名，私钥永不离开钱包。走 Direct-API 路径时(`mcp-server-tronlink`),写操作由本地加密的 `agent-wallet` 签名，钱包密码是唯一屏障——请把 `AGENT_WALLET_PASSWORD` 放在智能体接触不到的地方；生产环境中任何动资金的操作，优先选浏览器审批路径。Skills 包仅 CLI 的写命令（其 1.0.0 新增）是第三种模式：直接用环境变量里的裸 `TRON_PRIVATE_KEY` 签名——没有审批界面、没有钱包存储。绝不要把该私钥交给智能体；agent 驱动的交易请走上述两条路径。
 
-**写操作永不自动重试。** 已广播的交易即使结果不确定也视为最终态——重发之前先上链确认。读操作可以安全重试。每个错误码都带 `retryable` 旗标；请按它分支，不要解析人类可读的 message。见[错误码对照表](../reference/error-code-map.md)。
+**写操作永不自动重试。** 已广播的交易即使结果不确定也视为最终态——重发之前先上链确认。读操作可以安全重试。[错误码对照表](../reference/error-code-map.md)为每个失败条件给出 retryable 归类——请按该归类(以及有结构化 `TL_*` 码的面按码)分支,不要解析人类可读的 message。注意签名 MCP 与 CLI 线上不带结构化 `retryable` 字段;这些面请对照对照表归类。
 
 **副作用分级。** 工具按副作用分级——Read-only(Network Read)、Remote Write(签名/改远端状态)、High-risk / Destructive(`tl_evaluate`)——便于调用前先分类。分级表见 [MCP Server TronLink](mcp-server-tronlink.md#tool-contract-side-effects);工具 schema 的描述中也标注了分级。
 
-**Prompt injection 立场。** 工具输入按字面作为调用参数消费——server 不会把它们拼进 prompt 再喂给 LLM。从链上或第三方 API 返回的字符串(账户备注、revert 原因、交易 note)**可能包含攻击者可控文本**:视为不可信，绝不要因为一次读操作返回的文字就自动触发 Remote Write。只按结构化字段(交易 id、`code`、`retryable`)分支。
+**Prompt injection 立场。** 工具输入按字面作为调用参数消费——server 不会把它们拼进 prompt 再喂给 LLM。从链上或第三方 API 返回的字符串(账户备注、revert 原因、交易 note)**可能包含攻击者可控文本**:视为不可信，绝不要因为一次读操作返回的文字就自动触发 Remote Write。只按结构化字段(交易 id、以及有结构化码的面的 `code`)与错误码对照表的归类分支,绝不按返回文本。
 
-**出站主机白名单(SSRF)。** server 只向环境变量钉死的端点发起 HTTPS(`TL_TRONGRID_URL`、`TL_MULTISIG_BASE_URL`、`TL_GASFREE_BASE_URL`、SunSwap 路由、TronGrid 网络)。没有任何工具接受用户提供的 URL 并直接抓取。生产环境请把这些 env 钉到已知主机；绝不允许 LLM 输入填充任何 `*_BASE_URL`。
+**出站主机白名单(SSRF)。** 链上与 API 能力只向环境变量钉死的端点发起 HTTPS(`TL_TRONGRID_URL`、`TL_MULTISIG_BASE_URL`、`TL_GASFREE_BASE_URL`、SunSwap 路由、TronGrid 网络)——没有任何 API 工具会抓取调用方提供的 URL。**浏览器自动化工具是例外**:`tl_navigate` 接受任意 URL 并在受控钱包浏览器中打开它,而该浏览器可以访问 `localhost` 与内网主机。请把导航目标当作高危输入——绝不要传入 LLM 生成或链上读到的 URL;不需要浏览器工具的部署应直接禁用它们。生产环境请把 env 钉到已知主机;绝不允许 LLM 输入填充任何 `*_BASE_URL`。
 
 **Confused-deputy 收敛。** 工具在单一本地身份下行动(`agent-wallet` 或已连接的 TronLink 账户),没有按调用粒度的授权范围。一个会话 = 一个身份；不要让多个终端用户复用同一个 server 实例。
 
@@ -40,7 +40,7 @@
 | [MCP TronLink Signer](mcp-tronlink-signer.md#security-boundaries) | 安全边界 | 浏览器审批 HITL、取消语义、`USER_REJECTED` / `TIMEOUT` 重试规则 |
 | [TronLink Signer](tronlink-signer.md#safety-side-effects) | 安全与副作用 | SDK 层审批流程与副作用 |
 | [TronLink CLI](tronlink-cli.md#safety-side-effects) | 安全与副作用 | 命令行 HITL 签名、`--json` 脚本化 |
-| [TronLink Skills](tronlink-skills.md#security-model) | 安全模型 | 只读保证——完全没有签名能力 |
+| [TronLink Skills](tronlink-skills.md#security-model) | 安全模型 | MCP 工具只读；仅 CLI 的裸私钥写命令（无 HITL）及其密钥卫生规则 |
 | [错误码对照表](../reference/error-code-map.md) | 整页 | 以业务含义为主轴的跨面 `retryable` 语义 |
 
 ## 漏洞报告 {#reporting-a-vulnerability}

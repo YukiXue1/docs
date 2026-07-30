@@ -10,7 +10,7 @@ If you are an AI coding agent or an autonomous tool reading this for orientation
 
 - **Curated index:** https://docs.tronlink.org/llms.txt — short, link-only map of the documentation, following the https://llmstxt.org/ format. Use this first.
 - **Single-fetch full text:** https://docs.tronlink.org/llms-full.txt — every English page concatenated for one-shot ingestion (Chinese: https://docs.tronlink.org/zh/llms-full.txt). The header records the generating commit SHA, UTC timestamp, page count, and a rough token estimate; check those before relying on the content.
-- **Static MCP tool contracts:** https://docs.tronlink.org/reference/mcp-tools.json — every MCP tool definition (name, description, `inputSchema`, annotations) captured from the published npm servers via `tools/list`, for agents that need the full contract without spawning a server.
+- **Static MCP tool contracts:** https://docs.tronlink.org/reference/mcp-tools.json — every MCP tool definition (name, description, `inputSchema`) captured from the published npm servers via `tools/list`, for agents that need the full contract without spawning a server. (MCP `annotations` would be captured too; the current servers publish none.)
 - **Human-readable site:** https://docs.tronlink.org/
 
 ## Topic map
@@ -25,7 +25,7 @@ If you are an AI coding agent or an autonomous tool reading this for orientation
 | MCP framework / SSOT error codes | https://docs.tronlink.org/ai-support/tronlink-mcp-core/ |
 | MCP signer wrapper (HITL signing) | https://docs.tronlink.org/ai-support/mcp-tronlink-signer/ |
 | Signer SDK (browser-approval signing) | https://docs.tronlink.org/ai-support/tronlink-signer/ |
-| Read-only Skills package | https://docs.tronlink.org/ai-support/tronlink-skills/ |
+| Skills package (read-only MCP tools; CLI adds raw-key write commands) | https://docs.tronlink.org/ai-support/tronlink-skills/ |
 | CLI (transactions via browser approval) | https://docs.tronlink.org/ai-support/tronlink-cli/ |
 | Cross-surface error-code map (DApp / DeepLink / MCP / CLI, with retryable flags) | https://docs.tronlink.org/reference/error-code-map/ |
 | Networks, glossary, FAQ | https://docs.tronlink.org/reference/networks/ · https://docs.tronlink.org/reference/glossary/ · https://docs.tronlink.org/reference/faq/ |
@@ -38,7 +38,7 @@ If you are an AI coding agent or an autonomous tool reading this for orientation
 
 ## Continuous verification (enforced in CI)
 
-- **Doc ↔ schema parity:** `scripts/check_doc_schema_parity.py` runs on every push and PR and daily on a schedule. It diffs the inline JSON Schema mirrors in the MCP server doc against the upstream Zod schemas (`tronlink-mcp-core` `src/mcp-server/schemas.ts`); an upstream rename or required/optional drift fails the build, so published schema mirrors cannot silently rot. Runtime schemas additionally carry `meta.schemaVersion`.
+- **Doc ↔ schema parity:** `scripts/check_doc_schema_parity.py` runs on every push and PR and daily on a schedule. It diffs the inline JSON Schema mirrors in the MCP server doc against the upstream Zod schemas (`tronlink-mcp-core` `src/mcp-server/schemas.ts`); an upstream rename or required/optional drift fails the build, so published schema mirrors cannot silently rot. (The published servers emit no schema-version marker on the wire; this CI check is the guard.)
 - **Post-deploy link check:** every deploy ends with `scripts/gen_llms_full.py --verify`, probing the llms endpoints, the agent-entry mirrors, the `security.txt` pointer, and sampled index links for HTTP 200.
 
 ## Security disclosures

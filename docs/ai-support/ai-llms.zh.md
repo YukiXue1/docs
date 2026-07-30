@@ -17,7 +17,7 @@ TronLink 的开发者文档以机器可读形式发布，便于 AI 智能体和�
 | [/zh/llms.txt](../../llms.txt) | 中文版精选索引——同样版式，链接指向 `/zh/` 下的中文页面 |
 | [/llms-full.txt](../../../llms-full.txt) | 所有英文页面全文聚合，便于单次抓取（由 `docs/llms-full.en.txt` 构建） |
 | [/zh/llms-full.txt](../../llms-full.txt) | 所有中文页面全文聚合，便于单次抓取（由 `docs/llms-full.zh.txt` 构建） |
-| [/reference/mcp-tools.json](../../../reference/mcp-tools.json) | 机器可读的 MCP 工具契约静态快照——name、description、`inputSchema`、annotations，经 `tools/list` 从 npm 已发布 server 抓取 |
+| [/reference/mcp-tools.json](../../../reference/mcp-tools.json) | 机器可读的 MCP 工具契约静态快照——name、description、`inputSchema`，经 `tools/list` 从 npm 已发布 server 抓取 |
 | [/AGENTS.txt](https://docs.tronlink.org/AGENTS.txt) | AI 智能体定向文件——入口、主题地图、SSOT 边界（镜像于 `/AGENTS.md` 与 `/CLAUDE.md`） |
 | [/.well-known/security.txt](https://docs.tronlink.org/.well-known/security.txt) | RFC 9116 漏洞披露指针（同时在 `/security.txt` 提供） |
 

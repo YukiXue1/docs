@@ -7,11 +7,11 @@
 **TronLink Wallet Skills** 是一套 AI Agent 技能集，通过自然语言提供完整的 TRON 区块链钱包和 DeFi 功能。专为 Claude Code、Cursor、OpenCode、Codex CLI 及其他 AI 代理设计。
 
 **核心亮点：**
-- **6 大技能，33 个命令**，涵盖钱包、代币研究、市场数据、兑换、资源和质押
-- **零 npm 依赖**：使用原生 Node.js 18+ `fetch` 和 `crypto`；`crypto` 仅用于 Base58Check 地址编码/校验——**不接触私钥、不做签名**
+- **6 大技能，43 个命令**，涵盖钱包、代币研究、市场数据、兑换、资源和质押——其中 1.0.0 起新增 10 个仅 CLI 的**写命令**（转账、兑换执行、质押、投票），用裸私钥签名
+- **零 npm 依赖**：使用原生 Node.js 18+ `fetch` 和 `crypto`。对 25 个 MCP 工具与全部已映射命令，`crypto` 仅用于 Base58Check 地址编码/校验；1.0.0 新增的仅 CLI 写命令**会用 `TRON_PRIVATE_KEY` 本地签名**——见[安全模型](#security-model)
 - **TRON 专属领域知识** — 专门处理能量 + 带宽资源模型
 - **多平台支持** — Claude Code、Cursor、OpenCode、Codex CLI、LangChain/CrewAI
-- **纯只读安全设计**：所有命令均为查询操作，不涉及私钥或签名
+- **只读的 MCP 面**：25 个 MCP 工具与全部已映射命令均为查询操作；只有 10 个仅 CLI 写命令会接触私钥（绝不要把该私钥暴露给 agent）
 - **MCP 服务封装**：为结构化 AI 代理集成提供标准接口
 
 ---
@@ -54,7 +54,9 @@ tron_api.mjs (Node.js 18+, 原生 fetch, 零依赖)
 
 ## 6 大技能详解
 
-### 1. tron-wallet（6 个命令）
+### 1. tron-wallet（8 个命令）
+
+> 1.0.0 新增（仅 CLI，**签名**）：`send-trx`、`send-token`——用 `TRON_PRIVATE_KEY` 动资金；见[安全模型](#security-model)。
 
 钱包查询与账户信息。
 
@@ -69,7 +71,7 @@ tron_api.mjs (Node.js 18+, 原生 fetch, 零依赖)
 
 **特点：** 同时支持 Base58Check（T...）和 hex 地址格式，内置常用代币符号，自动转换精度。
 
-**何时不要用：** 发送 TRX / 代币——这些命令是只读的，请走 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)。代币层面的深度分析（rug-pull / 流动性锁定）请用 `tron-token`。
+**何时不要用：** 在 **agent** 流程中发送 TRX / 代币——`send-trx` / `send-token` 仅 CLI 可用且用裸私钥签名；agent 驱动的转账请走 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)。代币层面的深度分析（rug-pull / 流动性锁定）请用 `tron-token`。
 
 ### 2. tron-token（7 个命令）
 
@@ -108,7 +110,9 @@ tron_api.mjs (Node.js 18+, 原生 fetch, 零依赖)
 
 **何时不要用：** 立刻执行 swap 报价或路径——那是 `tron-swap`（会算上滑点）；静态代币元数据——`tron-token`。
 
-### 4. tron-swap（3 个命令）
+### 4. tron-swap（5 个命令）
+
+> 1.0.0 新增（仅 CLI，**签名**）：`swap-approve`（授予额度）、`swap-execute`（动资金）——见[安全模型](#security-model)。
 
 DEX 兑换报价与路由优化。
 
@@ -120,9 +124,11 @@ DEX 兑换报价与路由优化。
 
 **特点：** 聚合多源流动性、估算能量成本、处理多跳路由。
 
-**何时不要用：** 真正执行 swap——报价是只读的，实际兑换走 [MCP Server TronLink](mcp-server-tronlink.md)（`tl_chain_swap_v3`）或 signer SDK；历史成交数据——`tron-market`。
+**何时不要用：** 在 **agent** 流程中执行 swap——`swap-execute` 仅 CLI 可用且用裸私钥签名；agent 驱动的兑换走 [MCP Server TronLink](mcp-server-tronlink.md)（`tl_chain_swap_v3`）或 signer SDK；历史成交数据——`tron-market`。
 
-### 5. tron-resource（6 个命令）
+### 5. tron-resource（7 个命令）
+
+> 1.0.0 新增（仅 CLI，**签名**）：`delegate-resource`——见[安全模型](#security-model)。
 
 能量与带宽管理 — TRON 专属。
 
@@ -139,7 +145,9 @@ DEX 兑换报价与路由优化。
 
 **何时不要用：** 真正冻结 TRX 获取能量/带宽——那是 Remote Write，请走 signer SDK / MCP Server；冻结后的 SR 投票策略——见 `tron-staking`。
 
-### 6. tron-staking（3 个命令）
+### 6. tron-staking（8 个命令）
+
+> 1.0.0 新增（仅 CLI，**签名**）：`stake-freeze`、`stake-unfreeze`、`stake-withdraw`、`vote`、`claim-rewards`——见[安全模型](#security-model)。
 
 Stake 2.0 查询与 SR 信息。
 
@@ -157,7 +165,7 @@ Stake 2.0 查询与 SR 信息。
 
 ## Skill ↔ MCP 工具映射 {#skill-mcp-tool-map}
 
-`scripts/mcp_server.mjs`（即[方式二](#mcp)的封装）将 **33 个 CLI 命令中的 25 个** 暴露为 MCP 工具——签名、输入字段、输出结构都由同一份 `tron_api.mjs` 实现派生，因此 CLI 与 MCP 工具保证等价。剩余 8 个 CLI-only 命令仍可通过方式一（skill 提示词）和方式三（直接 CLI）使用。需要按用户提问路由到具体工具，或核对 `tools/list` 输出时，请用下表。
+`scripts/mcp_server.mjs`（即[方式二](#mcp)的封装）将 **43 个 CLI 命令中的 25 个** 暴露为 MCP 工具——签名、输入字段、输出结构都由同一份 `tron_api.mjs` 实现派生，因此 CLI 与 MCP 工具保证等价。剩余 18 个 CLI-only 命令仍可通过方式一（skill 提示词）和方式三（直接 CLI）使用。需要按用户提问路由到具体工具，或核对 `tools/list` 输出时，请用下表。
 
 | Skill | CLI 命令 | MCP 工具名 | 副作用 | 可重试 |
 |---|---|---|---|:---:|
@@ -195,7 +203,7 @@ Stake 2.0 查询与 SR 信息。
 | `tron-staking` | `staking-info` | `tron_staking_info` | Network Read | 可 |
 | `tron-staking` | `staking-apy` | `tron_staking_apy` | Network Read | 可 |
 
-**汇总。** 33 个 CLI 命令 · 25 个 MCP 工具 · 8 个仅 CLI 命令。所有命令都是只读——不签名、不广播、不动资金。若需执行交易，请路由到 [MCP Server TronLink](mcp-server-tronlink.md)（`tl_chain_*`）或 [signer SDK](tronlink-signer.md)（`sendTrx`、`sendTrc20`、`sign*`）。
+**汇总。** 43 个 CLI 命令 · 25 个 MCP 工具 · 18 个仅 CLI 命令。25 个 MCP 工具与全部已映射命令均为只读。1.0.0 新增的仅 CLI 命令（`send-trx`、`send-token`、`swap-approve`、`swap-execute`、`delegate-resource`、`stake-freeze`、`stake-unfreeze`、`stake-withdraw`、`vote`、`claim-rewards`）是**用 `TRON_PRIVATE_KEY` 本地签名的写命令**——没有审批界面。agent 驱动的交易请路由到 [MCP Server TronLink](mcp-server-tronlink.md)（`tl_chain_*`）或 [signer SDK](tronlink-signer.md)（`sendTrx`、`sendTrc20`、`sign*`）；见[安全模型](#security-model)。
 
 ### 用户提问 → Skill → 工具路由
 
@@ -229,7 +237,7 @@ Stake 2.0 查询与 SR 信息。
 
 ### ❌ 不要走这里（反例）
 
-Skills 是**只读**的。如果用户意图涉及签名或 Remote Write，**不要**派发到 skill——底层命令会成功，但只是做了查询/估算，用户真正的目标并没有完成。这种意图请改路由到 signer SDK 或 `mcp-server-tronlink`：
+此处路由的 skill/MCP 面是**只读**的。如果用户意图涉及签名或 Remote Write，**不要**派发到 skill——已映射命令只会查询/估算；而 1.0.0 起仅 CLI 的写命令会直接用环境变量里的裸私钥签名，没有任何审批界面。签名类意图请改路由到 signer SDK 或 `mcp-server-tronlink`：
 
 | 用户提问（意图） | ❌ 误路由（看起来合理，但只读） | ✅ 正确路由 |
 |---|---|---|
@@ -301,10 +309,10 @@ tron-resource（检查状态）→ tron-resource（估算成本）→ tron-resou
 
 | 你的情况 | 用 | 原因 |
 | --- | --- | --- |
-| 在 Claude Code 里，想零配置 | 方式一（skills 自发现） | 33 个命令全量可用，无需注册 |
-| 在 Claude Desktop / 纯 MCP 客户端 | 方式二（MCP 服务器） | 经 MCP 提供 25 个工具；8 个 CLI-only 命令不可达 |
+| 在 Claude Code 里，想零配置 | 方式一（skills 自发现） | 43 个命令全量可用，无需注册 |
+| 在 Claude Desktop / 纯 MCP 客户端 | 方式二（MCP 服务器） | 经 MCP 提供 25 个工具；18 个 CLI-only 命令不可达 |
 | 脚本 / CI，无 agent 参与 | 方式三（直接 CLI） | 纯 `node` 调用，结构化 JSON 输出 |
-| 准备**签名或动资金** | 不用本包——[signer SDK](tronlink-signer.md)、[`mcp-server-tronlink`](mcp-server-tronlink.md) 或 [CLI](tronlink-cli.md) | Skills 严格只读 |
+| 准备**签名或动资金** | 优先 [signer SDK](tronlink-signer.md)、[`mcp-server-tronlink`](mcp-server-tronlink.md) 或 [CLI](tronlink-cli.md) | MCP 面只读；本包仅 CLI 的写命令用裸私钥签名、无审批界面——见[安全模型](#security-model) |
 
 ## 集成方式
 
@@ -326,7 +334,7 @@ claude   # 自动发现 SKILL.md 文件
 claude mcp add tronlink-skills -- node ~/.tronlink-skills/scripts/mcp_server.mjs
 
 # 提供 25 个 MCP 工具，可被 Claude Desktop / Claude Code 直接调用
-# （逐项对照见上文 "Skill ↔ MCP 工具映射"；剩余 8 个命令仅 CLI 可用）
+# （逐项对照见上文 "Skill ↔ MCP 工具映射"；剩余 18 个命令仅 CLI 可用）
 ```
 
 Claude Desktop（`claude_desktop_config.json`）的等价配置：
@@ -342,7 +350,7 @@ Claude Desktop（`claude_desktop_config.json`）的等价配置：
 }
 ```
 
-> **MCP 模式覆盖范围。** 经 MCP 只能触达 25 个已映射命令；8 个 CLI-only 命令（`contract-info`、`trade-history`、`dex-volume`、`large-transfers`、`pool-info`、`swap-route`、`estimate-bandwidth`、`energy-rental`）需要方式一（skills）或方式三（直接 CLI）。
+> **MCP 模式覆盖范围。** 经 MCP 只能触达 25 个已映射命令；18 个 CLI-only 命令（`contract-info`、`trade-history`、`dex-volume`、`large-transfers`、`pool-info`、`swap-route`、`estimate-bandwidth`、`energy-rental`，以及 1.0.0 新增的写命令 `send-trx`、`send-token`、`swap-approve`、`swap-execute`、`delegate-resource`、`stake-freeze`、`stake-unfreeze`、`stake-withdraw`、`vote`、`claim-rewards`）需要方式一（skills）或方式三（直接 CLI）。
 
 ### 方式三：命令行直接使用
 
@@ -482,7 +490,7 @@ tronlink-skills/
 ├── uninstall.sh                       # 清洁卸载脚本
 │
 ├── scripts/
-│   ├── tron_api.mjs                   # 主 CLI（33 个命令，零依赖）
+│   ├── tron_api.mjs                   # 主 CLI（43 个命令，零依赖）
 │   └── mcp_server.mjs                 # MCP 协议服务封装
 │
 ├── skills/                            # 技能定义（自动发现）
@@ -531,11 +539,11 @@ tronlink-skills/
 
 | 方面 | 实现方式 |
 |------|----------|
-| 纯只读设计 | 所有命令均为查询操作——不涉及私钥、签名或资金移动 |
-| 副作用 | 每个命令都是 **Network Read**：调用公共 API,但不改变任何状态。所有命令均可安全重试，无需人工确认（HITL） |
-| 无需密钥 | 仅可选 TRONGRID_API_KEY 用于提高请求频率 |
+| 只读的 MCP 面 | 25 个 MCP 工具与全部已映射命令均为查询——不涉及私钥或签名。1.0.0 新增的 10 个仅 CLI 写命令是例外：它们用 `TRON_PRIVATE_KEY` 本地签名 |
+| 副作用 | 25 个 MCP 工具均为 **Network Read**：调用公共 API、不改变状态、可安全重试。仅 CLI 的写命令属于 **Remote Write**——签名、广播、动资金，且**没有任何 HITL 审批** |
+| 密钥 | 读路径仅需可选的 `TRONGRID_API_KEY`。写命令要求 `TRON_PRIVATE_KEY` / `TRON_PRIVATE_KEY_FILE`——**绝不要把该私钥暴露给 agent**；只放实验预算内的小额资金，生产动资金请用 HITL 面 |
 | 频率限制 | 公共 TronGrid API；使用 TRONGRID_API_KEY 获取更高限额 |
-| 错误处理 | 失败均为查询类错误：限流（可重试，需退避）、网络错误（可重试）、地址/参数非法（不可重试——修正输入）。如需执行交易（转账、兑换、质押），请使用 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)——这些技能本身从不签名或广播 |
+| 错误处理 | 失败均为查询类错误：限流（可重试，需退避）、网络错误（可重试）、地址/参数非法（不可重试——修正输入）。agent 流程中如需执行交易（转账、兑换、质押），请使用 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)——不要让 agent 走裸私钥的 CLI 写命令 |
 
 ---
 
@@ -584,7 +592,7 @@ node scripts/tron_api.mjs optimize-cost --address T地址...
 
 ## 版本与许可证
 
-- **包：** `tronlink-skills` v1.0.1
+- **包：** `tronlink-skills` v1.0.0——仓库 `package.json`；未发布到 npm，从仓库安装。文档核对于 commit `d26c02e8`。
 - **许可证：** MIT —— `SPDX-License-Identifier: MIT`
 - **变更记录 / 发布：** [https://github.com/TronLink/tronlink-skills/releases](https://github.com/TronLink/tronlink-skills/releases) —— 截至当前 v1.0.x 尚无 GitHub tag 发布；打 tag 之前请直接看 commit 历史。
 
@@ -593,14 +601,14 @@ node scripts/tron_api.mjs optimize-cost --address T地址...
 Skills 已进入 **v1.0.x**，适用标准 semver——只有 **major** 升级允许破坏公开面。
 
 - **稳定契约**（minor / patch 不会动）：
-    - 33 个 CLI 命令名与其必填 / 可选 flag（`tron_api.mjs <command> [...]`）。
+    - 43 个 CLI 命令名与其必填 / 可选 flag（`tron_api.mjs <command> [...]`）。
     - [Skill ↔ MCP 工具映射](#skill-mcp-tool-map) 列出的 25 个 MCP 工具名（`tron_*` 形式）及其 `inputSchema` 字段名。
     - Exit code：`0` 成功，`1` 查询错误 / 参数非法，`2` 未支持 / 未知命令。
-    - `Network Read` 副作用分级——任何命令未经 major 升级都不会变成 Remote Write。
+    - 25 个 MCP 工具的 **Network Read** 分级——任何 MCP 工具未经 major 升级都不会变成 Remote Write。（CLI 层自 1.0.0 起已包含裸私钥写命令；该承诺仅覆盖 MCP 面。）
 - **不稳定契约**（minor 允许变化）：
     - JSON `stdout` 输出的具体字段——新增字段任意 minor 都允许；改名或删除属于 major。请用宽容解析。
     - 内置代币 symbol 快捷表（`USDT`、`USDC`、`WTRX`…）——minor 允许新增 symbol；已存在的映射 minor 不会重指。
     - 启发式与阈值（`whale-transfers` 默认阈值、`optimize-cost` 决策树权重等）。
-- **子集关系。** MCP 工具子集（目前 25 / 33）可能在 minor 中 **扩大**（CLI-only 命令被新增为 MCP 工具）；不会在 minor 中 **缩小**。
+- **子集关系。** MCP 工具子集（目前 25 / 43）可能在 minor 中 **扩大**（CLI-only 命令被新增为 MCP 工具）；不会在 minor 中 **缩小**。
 - **废弃窗口。** 被标 deprecated 的命令 / 工具至少在 **一个 minor 周期** 内继续可用，runtime 会在 stderr 打印 `[DEPRECATED]` 警告；移除最早发生在下一个 major。
 - **升级后校验。** 重新 `tron_api.mjs --help`，使用 MCP 时再跑 `tools/list`，确认依赖的名字仍在。MCP `initialize` 阶段返回的 `serverInfo.version` 应与升级后的 `package.json` 版本一致。

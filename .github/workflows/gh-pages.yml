@@ -7,6 +7,12 @@ on:
       - feature/ai-readability-p0
   workflow_dispatch: # 仍保留手动触发的功能
 
+# Serialize deploys: without this, a slow older run can finish after a
+# newer one and silently roll the live site back to stale content.
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,6 +31,11 @@ jobs:
         sudo pip3 install jieba==0.42.1
         sudo pip3 install mkdocs-minify-plugin
         sudo pip3 install mkdocs-static-i18n
+
+    # Gate BEFORE building: an expired security.txt must never deploy
+    # (the post-deploy --verify would only catch it after it went live).
+    - name: Check security.txt freshness
+      run: python3 scripts/gen_llms_full.py --check-security-expiry
 
     # Regenerate the llms bundles at deploy time so the deployed
     # commit SHA / timestamp headers can never drift from the content,

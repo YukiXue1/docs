@@ -3,8 +3,9 @@
 
 Spawns the published npm MCP servers over stdio, performs the MCP
 `initialize` handshake, calls `tools/list` (following pagination), and
-writes every tool definition — name, description, inputSchema,
-annotations — to docs/reference/mcp-tools.json.
+writes every tool definition — name, description, inputSchema, plus
+`annotations` whenever a server publishes them (none do today) — to
+docs/reference/mcp-tools.json.
 
 The running server's `tools/list` remains the source of truth (see
 AGENTS.md, "Source-of-truth boundaries"); this artifact is a stamped
@@ -100,50 +101,62 @@ class McpStdioClient:
     """Minimal newline-delimited JSON-RPC client for MCP stdio servers."""
 
     def __init__(self, argv: list[str], env: dict[str, str]):
+        # Binary pipes + os.read below: buffered readline() would swallow a
+        # chunk carrying "notification\nresponse\n" whole, return only the
+        # first line, and leave select() waiting on an fd that never fires
+        # again — a guaranteed spurious timeout.
         self.proc = subprocess.Popen(
             argv,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             env={**os.environ, **env},
-            text=True,
-            bufsize=1,
         )
         self._next_id = 0
+        self._rx = b""
 
     def _send(self, message: dict) -> None:
         assert self.proc.stdin is not None
-        self.proc.stdin.write(json.dumps(message) + "\n")
+        self.proc.stdin.write((json.dumps(message) + "\n").encode("utf-8"))
         self.proc.stdin.flush()
 
     def _read_until(self, want_id: int, timeout: float) -> dict:
         """Read lines until the response with `want_id` arrives.
 
         Skips notifications and any non-JSON noise a server may emit on
-        stdout. select() keeps us from blocking past the deadline.
+        stdout. select() keeps us from blocking past the deadline; lines
+        are assembled from raw os.read chunks so a response that arrives
+        in the same chunk as a notification is never lost.
         """
         assert self.proc.stdout is not None
+        fd = self.proc.stdout.fileno()
         deadline = time.monotonic() + timeout
         while True:
+            # Drain complete lines already buffered before touching select().
+            newline = self._rx.find(b"\n")
+            if newline != -1:
+                line, self._rx = self._rx[:newline], self._rx[newline + 1 :]
+                try:
+                    message = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if message.get("id") == want_id:
+                    if "error" in message:
+                        raise RuntimeError(f"JSON-RPC error: {message['error']}")
+                    return message["result"]
+                continue
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError(f"no response with id={want_id} within {timeout}s")
             if self.proc.poll() is not None:
                 raise RuntimeError(f"server exited early (code {self.proc.returncode})")
-            ready, _, _ = select.select([self.proc.stdout], [], [], min(remaining, 1.0))
+            ready, _, _ = select.select([fd], [], [], min(remaining, 1.0))
             if not ready:
                 continue
-            line = self.proc.stdout.readline()
-            if not line:
+            chunk = os.read(fd, 65536)
+            if not chunk:
                 raise RuntimeError("server closed stdout")
-            try:
-                message = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if message.get("id") == want_id:
-                if "error" in message:
-                    raise RuntimeError(f"JSON-RPC error: {message['error']}")
-                return message["result"]
+            self._rx += chunk
 
     def request(self, method: str, params: dict | None = None, timeout: float = 60.0) -> dict:
         self._next_id += 1
@@ -224,10 +237,12 @@ def main() -> None:
     artifact = {
         "title": "TronLink MCP tool contracts — static snapshot",
         "description": (
-            "Full tool definitions (name, description, inputSchema, annotations) "
-            "captured from the published npm MCP servers via the MCP tools/list "
-            "endpoint. The running server's tools/list remains the source of "
-            "truth; this file is a stamped snapshot for one-fetch consumption."
+            "Full tool definitions (name, description, inputSchema) captured "
+            "from the published npm MCP servers via the MCP tools/list "
+            "endpoint. Tool annotations would be captured too, but the "
+            "current servers publish none. The running server's tools/list "
+            "remains the source of truth; this file is a stamped snapshot "
+            "for one-fetch consumption."
         ),
         "generated": generated_at,
         "commit": git_short_sha(),

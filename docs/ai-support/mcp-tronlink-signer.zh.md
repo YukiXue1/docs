@@ -148,7 +148,7 @@ claude mcp add -s user tronlink-signer -- node /path/to/packages/mcp-tronlink-si
 | 条件 | Retryable | 何时发生 |
 | --- | :---: | --- |
 | `USER_REJECTED` | 否 | 用户在 TronLink 审批页点击 Reject。 |
-| `TIMEOUT` | 是 | 在超时时间内未审批（默认 5 分钟）。**未签名、未广播**——重发是安全的，会重新弹审批。（已广播但未确认的交易会以 `status: "pending"` 返回，绝不会是 `TIMEOUT`。） |
+| `TIMEOUT` | 先对账 | 5 分钟窗口内未收到完成回执（0.1.4 写死，不可配置）。通常是用户从未审批、什么都没签——但计时器包住**整个**往返、用户点击 Approve 时并不取消，临近截止的审批仍可能完成签名与广播，而调用方收到 `TIMEOUT`（迟到的结果被丢弃）。请按 `BROWSER_DISCONNECTED` 同样处理：任何写操作先上链确认再决定是否重发。 |
 | `BROWSER_DISCONNECTED` | 先对账 | 审批页被关闭或心跳丢失。若断在用户审批**之前**,未签名，重发安全；若断在审批**之后**,已签名交易可能已被广播。仅凭该错误码无法区分两种情况——写操作先用 `get_balance` / 区块浏览器对账后再重发。 |
 | `NETWORK_ERROR` | 是 | TronGrid / RPC 请求失败，偶发性故障。 |
 | `BROADCAST_FAILED` | 否 | 签名成功但节点拒绝提交。**禁止**自动重试——签名可能已被其他节点接受。 |
@@ -182,9 +182,9 @@ claude mcp add -s user tronlink-signer -- node /path/to/packages/mcp-tronlink-si
 
 - **审批页始终打不开**——server 会打开系统默认浏览器；端口被占用时会自动递增，因此重发工具调用即可，不要假设固定端口。确认主机有桌面浏览器（headless 主机无法签名）。
 - **`BROWSER_DISCONNECTED`**——审批页被关闭。重发即可重新打开；写操作先链上对账（见[错误](#errors)）。
-- **5 分钟后 `TIMEOUT`**——未签名、未广播；重发并在窗口内审批，或调大请求超时。
+- **5 分钟后 `TIMEOUT`**——多数情况是从未审批；但临近截止的 Approve 仍可能已广播（见错误表），重发写操作前先上链查这笔交易。5 分钟窗口在 0.1.4 中写死，没有任何选项或环境变量可调。
 - **点了 Approve 但交易失败**——钱包锁定、`network` 参数配错，或预构建交易已过期（见上方原始交易过期说明）。解锁 TronLink、核对 `network`、在调用前才构建原始交易。
-- **验证安装**——`list_tools` 应返回上表 7 个工具；每个响应都带 `meta.schemaVersion`。
+- **验证安装**——`list_tools` 应返回上表 7 个工具。（0.1.4 的响应不带 `meta.schemaVersion` 等 meta 字段——不要以此作为安装判据。）
 
 ## 版本与许可证
 

@@ -7,11 +7,15 @@ on:
     paths:
       - "docs/ai-support/mcp-server-tronlink.*.md"
       - "scripts/check_doc_schema_parity.py"
+      - "scripts/gen_llms_full.py"
+      - "docs/security.txt"
       - ".github/workflows/check-doc-schema-parity.yml"
   pull_request:
     paths:
       - "docs/ai-support/mcp-server-tronlink.*.md"
       - "scripts/check_doc_schema_parity.py"
+      - "scripts/gen_llms_full.py"
+      - "docs/security.txt"
       - ".github/workflows/check-doc-schema-parity.yml"
   schedule:
     # Daily — catches upstream Zod schema drift even if our docs are unchanged.

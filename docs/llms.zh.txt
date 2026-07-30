@@ -2,7 +2,7 @@
 
 > TronLink 是 TRON 生态的去中心化钱包，提供浏览器扩展和移动 App。本文档涵盖 DApp 通过浏览器扩展、移动端（DeepLink）以及 AI/智能体工具链（MCP 服务、CLI、签名 SDK）与 TronLink 集成。
 
-> Updated: 2026-07-30T04:55:59Z · Commit: 0133c9c58fa9
+> Updated: 2026-07-30T05:35:02Z · Commit: a5c4b4838893
 
 集成原理：TronLink 向页面注入 `window.tron` provider，暴露 `tronWeb` 实例、`request` 方法以及 `on` / `removeListener` 事件订阅。DApp 通过 TIP-6963 检测钱包，用 `eth_requestAccounts`（TIP-1102）请求授权，再经 `tronWeb` 构建、签名并广播交易。账户/网络变化以 `accountsChanged` / `chainChanged` 被动事件送达。
 
@@ -51,7 +51,7 @@
 - [网络与地址](reference/networks/)：chainId（主网/Shasta/Nile）、RPC 端点、浏览器、水龙头、地址格式、单位、常用代币合约
 - [术语表](reference/glossary/)：TRX/SUN、TRC 标准、能量/带宽、TIP/EIP 标准、ABI、chainId、钱包对象等释义
 - [错误码对照表](reference/error-code-map/)：以业务含义为主轴，横向 join DApp provider（EIP-1474）、DeepLink（5 位码）、MCP（`TL_*`）、CLI exit code,带 retryable 列
-- [MCP 工具契约（JSON）](../reference/mcp-tools.json)：机器可读的 MCP 工具定义静态快照——name、description、`inputSchema`、annotations,经 `tools/list` 从 npm 已发布 server 抓取；运行中 server 的 `tools/list` 仍是 SSOT
+- [MCP 工具契约（JSON）](../reference/mcp-tools.json)：机器可读的 MCP 工具定义静态快照——name、description、`inputSchema`,经 `tools/list` 从 npm 已发布 server 抓取；运行中 server 的 `tools/list` 仍是 SSOT
 - [常见问题](reference/faq/)：集成高频问题——钱包检测、连接拒绝、tronWeb 就绪、网络切换、资源
 
 ## 可选

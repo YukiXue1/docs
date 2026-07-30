@@ -14,7 +14,7 @@ TronLink 智能体在一次用户请求里跨 DApp provider → DeepLink → MCP
 | **限流 / 钱包锁定** | `-32000`(20 秒内重复 `eth_requestAccounts` 且钱包锁定) | — | `TL_CHAIN_QUERY_FAILED`(TronGrid HTTP 429) | — | — | **是**——等一会儿再试 |
 | **网络 / RPC 抖动**(TronGrid、RPC 错) | `tronWeb` 调用里的 TronGrid HTTP 错 | — | `TL_CHAIN_QUERY_FAILED`、`TL_GASFREE_QUERY_FAILED`、`TL_MULTISIG_QUERY_FAILED` | `NETWORK_ERROR` | `1` · `Network connection failed` | **是** |
 | **链上执行失败**(广播后:`REVERT`、`OUT_OF_ENERGY`、`FAILED`) | `sendRawTransaction` 抛错或经 `getTransactionInfo` 暴露 | — | `TL_CHAIN_SEND_FAILED`、`TL_CHAIN_SWAP_FAILED`、`TL_GASFREE_SEND_FAILED`、`TL_MULTISIG_SUBMIT_FAILED` | `BROADCAST_FAILED`、`ON_CHAIN_FAILED` | `1` · 原始节点消息(`OUT_OF_ENERGY` / `REVERT`)或 `Transaction broadcast failed:` | **否**——交易已 final;查根因;**永远不要**自动重试写操作 |
-| **超时**(用户没及时签 / 元素找不到) | 调用解析慢，无规范化的码 | — | `TL_WAIT_TIMEOUT`、`TL_NAVIGATION_FAILED` | `TIMEOUT`(仅审批窗口——尚未签名) | `1` · `TronLink approval timed out` | **视情况**——读操作可以;**可能已被广播的写操作**先用 `tronWeb.trx.getTransactionInfo` / `tl_chain_get_tx` 对账后再决定。(Signer 的 `TIMEOUT` 恒为审批前超时，重发是安全的) |
+| **超时**(用户没及时签 / 元素找不到) | 调用解析慢，无规范化的码 | — | `TL_WAIT_TIMEOUT`、`TL_NAVIGATION_FAILED` | `TIMEOUT`(5 分钟整程计时) | `1` · `TronLink approval timed out` | **视情况**——读操作可以;**可能已被广播的写操作**先用 `tronWeb.trx.getTransactionInfo` / `tl_chain_get_tx` 对账后再决定。(Signer 的 `TIMEOUT` 同样适用:计时器在用户点击 Approve 时不会取消,临近截止的审批仍可能在超时后完成广播——先对账) |
 | **内部 / 未知** | `-32603`(Internal error) | — | `TL_INTERNAL_ERROR`、`TL_LAUNCH_FAILED` | — | `1` · 未分类的原始消息 | **可重试一次**——再失败带 log 上报 |
 
 [provider]: ../dapp/getting-started.md#request-authorization

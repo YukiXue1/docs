@@ -2,7 +2,7 @@
 
 > TronLink is a decentralized wallet for the TRON ecosystem, available as a browser extension and a mobile app. This documentation covers integrating DApps with TronLink across the browser extension, the mobile app (via DeepLink), and AI/agent tooling (MCP servers, CLI, signer SDK).
 
-> Updated: 2026-07-30T04:55:59Z · Commit: 0133c9c58fa9
+> Updated: 2026-07-30T05:35:02Z · Commit: a5c4b4838893
 
 How integration works: TronLink injects a `window.tron` provider into every page, exposing a `tronWeb` instance, a `request` method, and `on` / `removeListener` for events. A DApp detects the wallet via TIP-6963, requests authorization via `eth_requestAccounts` (TIP-1102), then builds, signs, and broadcasts transactions through `tronWeb`. Account/network changes arrive as passive `accountsChanged` / `chainChanged` events.
 
@@ -49,7 +49,7 @@ Networks: Mainnet `chainId` `0x2b6653dc` (EVM `728126428`), Shasta testnet `0x94
 - [Networks & Addresses](reference/networks/): chainIds (mainnet/Shasta/Nile), RPC endpoints, explorers, faucets, address formats, units, and common token contracts
 - [Glossary](reference/glossary/): Definitions of TRX/SUN, TRC standards, Energy/Bandwidth, TIP/EIP standards, ABI, chainId, and wallet objects
 - [Error Code Map](reference/error-code-map/): Horizontal join of DApp provider (EIP-1474), DeepLink (5-digit), MCP (`TL_*`), and CLI exit codes keyed by business meaning, with retryable flags
-- [MCP Tool Contracts (JSON)](reference/mcp-tools.json): Static machine-readable snapshot of every MCP tool definition — name, description, `inputSchema`, annotations — captured from the published npm servers via `tools/list`; the running server's `tools/list` remains the SSOT
+- [MCP Tool Contracts (JSON)](reference/mcp-tools.json): Static machine-readable snapshot of every MCP tool definition — name, description, `inputSchema` — captured from the published npm servers via `tools/list`; the running server's `tools/list` remains the SSOT
 - [FAQ](reference/faq/): Common integration questions — wallet detection, connection rejection, tronWeb readiness, network switching, resources
 
 ## Localized

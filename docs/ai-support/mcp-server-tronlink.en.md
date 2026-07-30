@@ -240,8 +240,8 @@ Pre-configured multi-step workflows with dependency checks and parameter templat
 |----------|-------------|
 | `TL_TRONGRID_URL` | Full-node API URL |
 | `TL_TRONGRID_API_KEY` | API key (required for Mainnet). Free tier ≈ 100k requests/day at ~5 QPS; paid tiers raise QPS, daily quota, and add billing. Quotas and headers change over time — see [TronGrid Pricing](https://www.trongrid.io/pricing) and the dashboard for current values, and inspect `X-Ratelimit-*` response headers in your own runtime. Hitting the limit returns HTTP 429 (mapped to `TL_CHAIN_QUERY_FAILED`, retryable). For long-running agents, set up billing alerts at 50% / 80% / 95% of your plan. |
-| `TL_SUNSWAP_ROUTER` | SunSwap V2 router address. **No built-in default** — pin to the current router; the value in the example below is **effective as of 2026-05** (Mainnet). Source: [docs.sun.io](https://docs.sun.io). When SunSwap publishes a new router, set this env var rather than waiting on a docs/code change. |
-| `TL_SUNSWAP_V3_ROUTER` | SunSwap V3 smart router address. Same rules as V2. |
+| `TL_SUNSWAP_ROUTER` | SunSwap V2 router address. **Overrides a built-in default** (0.1.1 ships mainnet `TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax`, nile `TMn1qrmYUMSTXo9babrJLzepKZoPC7M6Sy`) — omitting it does not disable V2 swaps. Pin to the current router; the value in the example below is **effective as of 2026-05** (Mainnet). Source: [docs.sun.io](https://docs.sun.io). When SunSwap publishes a new router, set this env var rather than waiting on a docs/code change. |
+| `TL_SUNSWAP_V3_ROUTER` | SunSwap V3 smart router address. **Overrides a built-in default** (`TQAvWQpT9H916GckwWDJNhYZvQMkuRL7PN` on mainnet and nile in 0.1.1); omitting it does not disable V3 swaps. The built-in default already differs from the 2026-05 example value — pin explicitly (see "Pin the router" under Swap safety). |
 | `TL_WTRX_ADDRESS` | WTRX contract address. Mainnet WTRX is `TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR`. Effective as of 2026-05. |
 
 **Wallet (`agent-wallet`):**
@@ -442,7 +442,7 @@ Pinned to the `package.json` of `mcp-server-tronlink@0.1.1`. Re-verify when bump
 - **Human-in-the-loop:** write tools sign with the encrypted local `agent-wallet`; in browser-mode flows the user approves in the TronLink UI. Treat every Remote Write tool as requiring confirmation in production.
 - **Retry:** read-only tools are safe to retry; Remote Write tools must not be auto-retried unless proven idempotent.
 - **Broadcast ≠ executed ≠ final.** A returned transaction id (`tx_id`) only means the transaction was accepted for broadcast. The contract call can still fail on-chain (`REVERT`, `OUT_OF_ENERGY`) — check `ret[0].contractRet === "SUCCESS"` via `tl_chain_get_tx` — and the block is only irreversible after ~19 SR confirmations (≈ 57 s). See [Transaction lifecycle](security-model.md#transaction-lifecycle-finality).
-- **Fixed on-chain costs:** `tl_chain_setup_multisig` (accountPermissionUpdate) burns a flat **100 TRX** network fee; TRC20 transfers and swaps burn TRX for energy up to the 100 TRX `fee_limit` the server sets internally. Budget for these before executing.
+- **Fixed on-chain costs:** `tl_chain_setup_multisig` (accountPermissionUpdate) burns a flat **100 TRX** network fee. The `fee_limit` ceilings the server sets internally are: **100 TRX** for TRC20 transfers and for the auto-approve transaction, **150 TRX** for V2 swaps (`tl_chain_swap`), **200 TRX** for V3 swaps (`tl_chain_swap_v3`) — a first-time token-input swap can burn up to approve + swap combined. Budget for these before executing.
 
 ### Selected tool schemas (inline mirror)
 
@@ -481,7 +481,7 @@ These are **docs-side mirrors** of the most critical tool inputs — useful when
     "action":           { "type": "string", "enum": ["estimate", "execute"], "description": "estimate = quote-only (Network Read); execute = sign & broadcast (Remote Write)" },
     "from_token":       { "type": "string", "description": "Source token address or 'TRX' for native" },
     "to_token":         { "type": "string", "description": "Target token address or 'TRX' for native" },
-    "amount":           { "type": "string", "description": "Input amount as an integer string in the source token's SMALLEST unit (SUN when from_token is TRX); no decimals conversion is applied" },
+    "amount":           { "type": "string", "description": "Input amount as an integer string in the source token's SMALLEST unit (SUN when from_token is TRX); no decimals conversion is applied. WARNING: TRX-input swaps are broken in 0.1.1 — see the known-bug note under 'Swap safety'" },
     "fee_tier":         { "type": "number", "description": "Pool fee tier in hundredths of a bip (1e-6 / ppm) — valid SunSwap V3 pools: 500 (0.05%), 3000 (0.3%), 10000 (1%); default 3000. Not enforced by the runtime schema (no enum): an invalid tier only fails later at pool lookup" },
     "slippage":         { "type": "number", "description": "Slippage tolerance percent (default: 0.5). This is the ONLY output-bound control — there is no minimum-output parameter; see 'Swap safety' below" },
     "sqrt_price_limit": { "type": "string", "description": "Optional price limit for partial fills (advanced)" }
@@ -589,10 +589,11 @@ Reminder: `tl_evaluate` runs arbitrary JS in the controlled Playwright browser. 
 
 Swaps are **Remote Write** and execute against a public DEX router, so they are exposed to **price slippage** and **front-running / MEV** (e.g. sandwich attacks): the realized output can be worse than quoted if the pool moves between quote and execution.
 
+- **KNOWN UPSTREAM BUG — TRX-input swaps are unusable in 0.1.1 (core 0.1.0).** The balance precheck multiplies `amount` by 1e6 and compares it as whole TRX, while execution passes it raw as SUN. Passing 1 TRX as `"1000000"` fails the precheck with `Insufficient TRX balance` (unless the wallet holds 1,000,000 TRX); passing `"1"` passes the precheck but swaps **1 SUN**. Until the upstream fix lands, do not call `tl_chain_swap` / `tl_chain_swap_v3` with `from_token: "TRX"` — swap from a TRC20 source instead (token-input amounts are consistent raw smallest units on both layers).
 - **`slippage` is the only output bound — always pass it explicitly.** There is **no minimum-output parameter** in the schema (`sqrt_price_limit` is a V3 partial-fill price limit, not a min-out guarantee). The default tolerance is 0.5%, which is documented but **unsafe for low-liquidity pairs** — pick a tolerance per pair and pass it on every `execute` call.
 - **Quote immediately before executing.** Get a fresh quote/route (e.g. Skills `tron-swap` `swap-quote` / `swap-route`, or `action=estimate`), pick a tolerance you accept, and pass it explicitly.
 - **First-time token swaps auto-approve the router with an unlimited allowance.** When the source token's allowance is insufficient, the tool silently submits an `approve(router, MAX_UINT256)` transaction first (its own fee, up to 100 TRX fee_limit) before the swap. Unlimited allowance means a compromised or wrong router can drain that token — pin the router (below) and revoke stale allowances if you rotate routers.
-- **Pin the router.** `TL_SUNSWAP_V3_ROUTER` has no built-in default; a stale or wrong router can route funds unexpectedly — and holds the unlimited allowance granted above. Set it to the current SunSwap V3 router (see Environment Variables).
+- **Pin the router.** `TL_SUNSWAP_V3_ROUTER` only **overrides** a built-in default (`TQAvWQpT9H916GckwWDJNhYZvQMkuRL7PN` on both mainnet and nile in 0.1.1) — omitting it does **not** disable V3 swaps; they execute against the built-in address, which then also receives the unlimited allowance granted above. The built-in default can go stale (it already differs from the 2026-05 router in the example config), so always pin the env var to the current SunSwap V3 router (see Environment Variables) and revoke allowances when rotating.
 - **No auto-retry.** A failed/uncertain swap is a Remote Write — confirm on-chain before re-issuing (`TL_CHAIN_SWAP_FAILED` is not retryable).
 
 #### Multi-sig credential hygiene (`TL_MULTISIG_SECRET_ID` / `TL_MULTISIG_SECRET_KEY`)
@@ -726,7 +727,8 @@ npm install && npm run build
 # 4. Use with Claude Code
 # "Check my TRX balance"
 # "Send 10 TRX to TAddress..."
-# "Swap 100 TRX for USDT on SunSwap V3"
+# "Swap 100 USDT for TRX on SunSwap V3"
+#   (TRX-input swaps are blocked by a known 0.1.1 bug — see Swap safety)
 ```
 
 ## Troubleshooting
@@ -735,7 +737,7 @@ npm install && npm run build
 - **Playwright tools fail to launch** — `TRONLINK_EXTENSION_PATH` missing or wrong (the server logs a `WARNING` to stderr at startup); point it at a built TronLink extension directory. Headless hosts need `TL_HEADLESS=true` and still cannot complete UI approvals.
 - **`TL_CHAIN_QUERY_FAILED` bursts on mainnet** — TronGrid HTTP 429. Back off exponentially, add `TL_TRONGRID_API_KEY`, and watch the `X-Ratelimit-*` headers (see Environment Variables).
 - **Multisig calls fail with `TL_MULTISIG_QUERY_FAILED` / `TL_MULTISIG_SUBMIT_FAILED`** — credentials are the first suspect: verify all four `TL_MULTISIG_*` env vars and their environment (mainnet vs Nile). Note a bad credential currently surfaces under these codes (`TL_MULTISIG_QUERY_FAILED` is marked retryable, `TL_MULTISIG_SUBMIT_FAILED` is not) — do not loop on either.
-- **Verify the install** — `list_tools` must return **55 tools**; every response carries `meta.schemaVersion: "1.0"`. Compare against the static snapshot at [/reference/mcp-tools.json](../../reference/mcp-tools.json).
+- **Verify the install** — `list_tools` must return **55 tools**. Compare against the static snapshot at [/reference/mcp-tools.json](../../reference/mcp-tools.json). (Responses carry no `meta.schemaVersion`; response `meta` is `{timestamp, sessionId, durationMs}` in 0.1.1 — do not gate install checks on a version field.)
 
 ## Version & License
 

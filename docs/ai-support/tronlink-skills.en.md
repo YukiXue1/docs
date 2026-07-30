@@ -7,11 +7,11 @@
 **TronLink Wallet Skills** is an AI Agent skill set that provides complete TRON blockchain wallet and DeFi functionality through natural language. Designed for Claude Code, Cursor, OpenCode, Codex CLI, and other AI agents.
 
 **Key Highlights:**
-- **6 skills, 33 commands** covering wallet, token research, market data, swaps, resources, and staking
-- **Zero npm dependencies** — uses native Node.js 18+ `fetch` and `crypto`; the `crypto` usage is limited to Base58Check address encoding/validation — **no key handling, no signing**
+- **6 skills, 43 commands** covering wallet, token research, market data, swaps, resources, and staking — including, since 1.0.0, ten CLI-only **write commands** (transfers, swap execution, staking, voting) that sign with a raw private key
+- **Zero npm dependencies** — uses native Node.js 18+ `fetch` and `crypto`. For the 25 MCP tools and all mapped commands, `crypto` is limited to Base58Check address encoding/validation; the CLI-only write commands added in 1.0.0 **do sign locally with `TRON_PRIVATE_KEY`** — see [Security Model](#security-model)
 - **TRON-specific domain knowledge** — dedicated handling of Energy + Bandwidth resource model
 - **Multi-platform support** — Claude Code, Cursor, OpenCode, Codex CLI, LangChain/CrewAI
-- **Read-only & safe** — all commands are query-only, no private keys or signing involved
+- **Read-only MCP surface** — the 25 MCP tools and all mapped commands are query-only; only the ten CLI-only write commands touch a key (never expose that key to an agent)
 - **MCP server wrapper** for structured AI agent integration
 
 ---
@@ -54,7 +54,9 @@ Structured JSON → Agent interprets → Natural language response
 
 ## The 6 Skills
 
-### 1. tron-wallet (6 commands)
+### 1. tron-wallet (8 commands)
+
+> Added in 1.0.0, CLI-only, **signing**: `send-trx`, `send-token` — they move funds with `TRON_PRIVATE_KEY`; see [Security Model](#security-model).
 
 Wallet queries and account information.
 
@@ -69,7 +71,7 @@ Wallet queries and account information.
 
 **Features:** Handles both Base58Check (T...) and hex address formats, supports known token symbols, auto-converts decimals.
 
-**When NOT to use:** Sending TRX/tokens — these are read-only; use the [signer SDK](tronlink-signer.md) or [MCP Server TronLink](mcp-server-tronlink.md). For deep token-level analytics (rug-pull / liquidity locks), prefer `tron-token`.
+**When NOT to use:** Sending TRX/tokens from an **agent** — `send-trx` / `send-token` are CLI-only and sign with a raw env key; agent-driven transfers go through the [signer SDK](tronlink-signer.md) or [MCP Server TronLink](mcp-server-tronlink.md). For deep token-level analytics (rug-pull / liquidity locks), prefer `tron-token`.
 
 ### 2. tron-token (7 commands)
 
@@ -108,7 +110,9 @@ Real-time market data and whale monitoring.
 
 **When NOT to use:** Quotes or routes for swapping right now — that's `tron-swap` (which factors in slippage). Static token metadata — `tron-token`.
 
-### 4. tron-swap (3 commands)
+### 4. tron-swap (5 commands)
+
+> Added in 1.0.0, CLI-only, **signing**: `swap-approve` (grants allowance), `swap-execute` (moves funds) — see [Security Model](#security-model).
 
 DEX swap quotes and route optimization.
 
@@ -120,9 +124,11 @@ DEX swap quotes and route optimization.
 
 **Features:** Aggregates liquidity from multiple sources, estimates Energy cost, handles multi-hop routes.
 
-**When NOT to use:** Executing the swap — quotes are read-only; the swap itself goes through [MCP Server TronLink](mcp-server-tronlink.md) (`tl_chain_swap_v3`) or the signer SDK. Historical trade data — `tron-market`.
+**When NOT to use:** Executing the swap from an **agent** — `swap-execute` is CLI-only and signs with a raw env key; agent-driven swaps go through [MCP Server TronLink](mcp-server-tronlink.md) (`tl_chain_swap_v3`) or the signer SDK. Historical trade data — `tron-market`.
 
-### 5. tron-resource (6 commands)
+### 5. tron-resource (7 commands)
+
+> Added in 1.0.0, CLI-only, **signing**: `delegate-resource` — see [Security Model](#security-model).
 
 Energy & Bandwidth management — TRON-specific.
 
@@ -139,7 +145,9 @@ Energy & Bandwidth management — TRON-specific.
 
 **When NOT to use:** Actually freezing TRX to acquire Energy/Bandwidth — that's a Remote Write; use the signer SDK / MCP Server. SR voting strategy after freezing — see `tron-staking`.
 
-### 6. tron-staking (3 commands)
+### 6. tron-staking (8 commands)
+
+> Added in 1.0.0, CLI-only, **signing**: `stake-freeze`, `stake-unfreeze`, `stake-withdraw`, `vote`, `claim-rewards` — see [Security Model](#security-model).
 
 Stake 2.0 queries and SR information.
 
@@ -157,7 +165,7 @@ Stake 2.0 queries and SR information.
 
 ## Skill ↔ MCP Tool Map
 
-`scripts/mcp_server.mjs` (the wrapper from [Method 2](#method-2-mcp-server)) exposes **25 of the 33 commands** as MCP tools — every signature, every input field, every output shape is generated from the same `tron_api.mjs` implementation, so the CLI and the MCP tool are guaranteed equivalent. The 8 CLI-only commands stay reachable through Method 1 (skill prompt) and Method 3 (direct CLI). Use this table when an agent needs to route a user request to a specific tool or when you're inspecting `tools/list` output.
+`scripts/mcp_server.mjs` (the wrapper from [Method 2](#method-2-mcp-server)) exposes **25 of the 43 commands** as MCP tools — every signature, every input field, every output shape is generated from the same `tron_api.mjs` implementation, so the CLI and the MCP tool are guaranteed equivalent. The 18 CLI-only commands stay reachable through Method 1 (skill prompt) and Method 3 (direct CLI). Use this table when an agent needs to route a user request to a specific tool or when you're inspecting `tools/list` output.
 
 | Skill | CLI command | MCP tool name | Side effect | Retryable |
 |---|---|---|---|:---:|
@@ -195,7 +203,7 @@ Stake 2.0 queries and SR information.
 | `tron-staking` | `staking-info` | `tron_staking_info` | Network Read | Yes |
 | `tron-staking` | `staking-apy` | `tron_staking_apy` | Network Read | Yes |
 
-**Totals.** 33 CLI commands · 25 MCP tools · 8 CLI-only commands. Every command is read-only — no signing, no broadcast, no fund movement. To execute a transaction, route to [MCP Server TronLink](mcp-server-tronlink.md) (`tl_chain_*`) or [signer SDK](tronlink-signer.md) (`sendTrx`, `sendTrc20`, `sign*`).
+**Totals.** 43 CLI commands · 25 MCP tools · 18 CLI-only commands. The 25 MCP tools and all mapped commands are read-only. The 1.0.0 CLI-only additions (`send-trx`, `send-token`, `swap-approve`, `swap-execute`, `delegate-resource`, `stake-freeze`, `stake-unfreeze`, `stake-withdraw`, `vote`, `claim-rewards`) are **write commands that sign locally with `TRON_PRIVATE_KEY`** — no approval UI. For agent-driven transactions route to [MCP Server TronLink](mcp-server-tronlink.md) (`tl_chain_*`) or the [signer SDK](tronlink-signer.md) (`sendTrx`, `sendTrc20`, `sign*`); see [Security Model](#security-model).
 
 ### Intent → Skill → Tool Routing
 
@@ -229,7 +237,7 @@ If the request implies **changing on-chain state** (transfer, swap execution, fr
 
 ### ❌ When NOT to route here (negative examples)
 
-Skills are **read-only**. If the user intent implies a signed / Remote Write action, do **not** dispatch to a skill — the underlying command will succeed but only as a query/estimate, and the user's actual goal will go unfulfilled. Route to the signer SDK or `mcp-server-tronlink` instead:
+The skill/MCP surface routed here is **read-only**. If the user intent implies a signed / Remote Write action, do **not** dispatch to a skill — a mapped command only queries/estimates, while the 1.0.0 CLI-only write commands would actually sign with the raw env key and no approval UI. Route signing intents to the signer SDK or `mcp-server-tronlink` instead:
 
 | User says (intent) | ❌ Wrong route (looks plausible, but read-only) | ✅ Correct route |
 |---|---|---|
@@ -301,10 +309,10 @@ tron-resource (check status) → tron-resource (estimate cost) → tron-resource
 
 | You are… | Use | Why |
 | --- | --- | --- |
-| In Claude Code, want zero setup | Method 1 (skills auto-discovery) | Full 33-command surface, no registration |
-| In Claude Desktop / an MCP-only client | Method 2 (MCP server) | 25 tools over MCP; 8 CLI-only commands unavailable |
+| In Claude Code, want zero setup | Method 1 (skills auto-discovery) | Full 43-command surface, no registration |
+| In Claude Desktop / an MCP-only client | Method 2 (MCP server) | 25 tools over MCP; 18 CLI-only commands unavailable |
 | Scripting / CI, no agent involved | Method 3 (direct CLI) | Plain `node` invocations, `--json`-style structured output |
-| About to **sign or move funds** | Not this package — [signer SDK](tronlink-signer.md), [`mcp-server-tronlink`](mcp-server-tronlink.md), or [CLI](tronlink-cli.md) | Skills are strictly read-only |
+| About to **sign or move funds** | Prefer [signer SDK](tronlink-signer.md), [`mcp-server-tronlink`](mcp-server-tronlink.md), or [CLI](tronlink-cli.md) | The MCP surface is read-only; Skills' CLI-only write commands sign with a raw env key and no approval UI — see [Security Model](#security-model) |
 
 ## Integration Methods
 
@@ -326,7 +334,7 @@ No `npm install` needed for read-only operations.
 claude mcp add tronlink-skills -- node ~/.tronlink-skills/scripts/mcp_server.mjs
 
 # Provides 25 MCP tools callable by Claude Desktop / Claude Code
-# (see "Skill ↔ MCP Tool Map" above for the per-command mapping; 8 commands are CLI-only)
+# (see "Skill ↔ MCP Tool Map" above for the per-command mapping; 18 commands are CLI-only)
 ```
 
 Claude Desktop (`claude_desktop_config.json`) equivalent:
@@ -342,7 +350,7 @@ Claude Desktop (`claude_desktop_config.json`) equivalent:
 }
 ```
 
-> **MCP-mode coverage.** Only the 25 mapped commands are reachable over MCP; the 8 CLI-only commands (`contract-info`, `trade-history`, `dex-volume`, `large-transfers`, `pool-info`, `swap-route`, `estimate-bandwidth`, `energy-rental`) require Method 1 (skills) or Method 3 (direct CLI).
+> **MCP-mode coverage.** Only the 25 mapped commands are reachable over MCP; the 18 CLI-only commands (`contract-info`, `trade-history`, `dex-volume`, `large-transfers`, `pool-info`, `swap-route`, `estimate-bandwidth`, `energy-rental`, plus the 1.0.0 write commands `send-trx`, `send-token`, `swap-approve`, `swap-execute`, `delegate-resource`, `stake-freeze`, `stake-unfreeze`, `stake-withdraw`, `vote`, `claim-rewards`) require Method 1 (skills) or Method 3 (direct CLI).
 
 ### Method 3: Manual CLI
 
@@ -482,7 +490,7 @@ tronlink-skills/
 ├── uninstall.sh                       # Clean uninstall
 │
 ├── scripts/
-│   ├── tron_api.mjs                   # Main CLI (33 commands, zero dependencies)
+│   ├── tron_api.mjs                   # Main CLI (43 commands, zero dependencies)
 │   └── mcp_server.mjs                 # MCP protocol server wrapper
 │
 ├── skills/                            # Skill definitions (auto-discovered)
@@ -531,11 +539,11 @@ All data is fetched **live at query time** from the public APIs above — there 
 
 | Aspect | Implementation |
 |--------|----------------|
-| Read-only design | All commands are queries — no private keys, no signing, no fund movements |
-| Side effects | Every command is **Network Read**: it calls public APIs but changes no state. All commands are safe to retry; no human-in-the-loop confirmation is needed |
-| No secrets required | Only optional TRONGRID_API_KEY for higher rate limits |
+| Read-only MCP surface | The 25 MCP tools and all mapped commands are queries — no keys, no signing. The ten 1.0.0 CLI-only write commands are the exception: they sign locally with `TRON_PRIVATE_KEY` |
+| Side effects | The 25 MCP tools are **Network Read**: they call public APIs, change no state, and are safe to retry. The CLI-only write commands are **Remote Write** — they sign, broadcast, and move funds with **no human-in-the-loop approval** |
+| Secrets | Read paths need only the optional `TRONGRID_API_KEY`. Write commands require `TRON_PRIVATE_KEY` / `TRON_PRIVATE_KEY_FILE` — **never expose that key to an agent**; fund it only with an experiment budget, and use the HITL surfaces for production funds |
 | Rate limits | Public TronGrid API; use TRONGRID_API_KEY for higher limits |
-| Error handling | Failures are query errors: rate limit (retryable, back off), network errors (retryable), invalid address/parameters (not retryable — fix the input). To execute a transaction (transfer, swap, stake), use the [signer SDK](tronlink-signer.md) or [MCP Server TronLink](mcp-server-tronlink.md) — these skills never sign or broadcast |
+| Error handling | Failures are query errors: rate limit (retryable, back off), network errors (retryable), invalid address/parameters (not retryable — fix the input). For agent-driven transactions (transfer, swap, stake), use the [signer SDK](tronlink-signer.md) or [MCP Server TronLink](mcp-server-tronlink.md) — do not route agents at the raw-key CLI write commands |
 
 ---
 
@@ -584,7 +592,7 @@ node scripts/tron_api.mjs optimize-cost --address TAddress...
 
 ## Version & License
 
-- **Package:** `tronlink-skills` v1.0.1
+- **Package:** `tronlink-skills` v1.0.0 — repo `package.json`; not published to npm, install from the repository. Docs verified against commit `d26c02e8`.
 - **License:** MIT — `SPDX-License-Identifier: MIT`
 - **Changelog / releases:** [https://github.com/TronLink/tronlink-skills/releases](https://github.com/TronLink/tronlink-skills/releases) — no GitHub-tagged releases yet for v1.0.x; track changes by commit until the first tag.
 
@@ -593,14 +601,14 @@ node scripts/tron_api.mjs optimize-cost --address TAddress...
 Skills are at **v1.0.x**, so standard semver applies — only **major** bumps may break the public surface.
 
 - **Stable contracts** (won't change in a minor or patch):
-    - The 33 CLI command names and their required / optional flags (`tron_api.mjs <command> [...]`).
+    - The 43 CLI command names and their required / optional flags (`tron_api.mjs <command> [...]`).
     - The 25 MCP tool names listed in [Skill ↔ MCP Tool Map](#skill-mcp-tool-map) (`tron_*` form) and their `inputSchema` keys.
     - Exit codes: `0` success, `1` query error / invalid input, `2` unsupported / unknown command.
-    - The `Network Read` side-effect classification — no command will ever become a Remote Write without a major bump.
+    - The **Network Read** classification of the 25 MCP tools — no MCP tool will become a Remote Write without a major bump. (The CLI layer already ships raw-key write commands as of 1.0.0; this promise covers the MCP surface only.)
 - **Volatile contracts** (may change in a minor):
     - The exact field layout of JSON `stdout` payloads — new fields can be added in any minor; renames or removals are major. Use a tolerant parser.
     - Built-in token-symbol shortcut list (`USDT`, `USDC`, `WTRX`, …) — symbols may be added in any minor; existing mappings won't be repointed in a minor.
     - Heuristics and thresholds (`whale-transfers` default cutoff, `optimize-cost` decision tree weights, etc.).
-- **Subset relationship.** The MCP tool subset (currently 25 of 33) may **grow** in a minor (a previously CLI-only command exposed as an MCP tool); it will not **shrink** in a minor.
+- **Subset relationship.** The MCP tool subset (currently 25 of 43) may **grow** in a minor (a previously CLI-only command exposed as an MCP tool); it will not **shrink** in a minor.
 - **Deprecation window.** A command / tool marked deprecated continues to work for at least one minor cycle; the runtime prints a `STDERR: [DEPRECATED]` warning. Removal lands no earlier than the next major.
 - **Verifying after upgrade.** Re-run `tron_api.mjs --help` and (if using MCP) `tools/list` to confirm the names you depend on are still present. The MCP `serverInfo.version` exposed during `initialize` should match the bumped `package.json` version.

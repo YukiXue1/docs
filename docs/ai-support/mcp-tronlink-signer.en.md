@@ -147,7 +147,7 @@ Unexpected failures return a plain `Error: <message>` text with `isError: true`.
 | Condition | Retryable | When |
 | --- | :---: | --- |
 | `USER_REJECTED` | No | User clicked Reject on the TronLink approval page. |
-| `TIMEOUT` | Yes | No approval within the request timeout (default 5 min). **Nothing was signed or broadcast** — re-issuing safely re-opens the prompt. (A tx that was broadcast but not yet confirmed surfaces as `status: "pending"`, never as `TIMEOUT`.) |
+| `TIMEOUT` | Reconcile first | No completion within the 5-minute window (hardcoded in 0.1.4 — not configurable). Usually the user never approved and nothing was signed — but the timer wraps the **whole** round trip and is not cancelled when the user clicks Approve, so a near-deadline approval can still sign and broadcast while the caller receives `TIMEOUT` (the late result is dropped). Treat it like `BROWSER_DISCONNECTED`: confirm on-chain before re-issuing any write. |
 | `BROWSER_DISCONNECTED` | Reconcile first | Approval page was closed or lost heartbeat. If it dropped **before** the user approved, nothing was signed and re-issuing is safe; if it dropped **after** approval, the signed tx may already have been broadcast. The agent cannot distinguish the two from this code alone — confirm on-chain (`get_balance` / explorer) before re-issuing any write. |
 | `NETWORK_ERROR` | Yes | A TronGrid / RPC request failed. Transient. |
 | `BROADCAST_FAILED` | No | Signing succeeded but submission was rejected by the node. Inspect the message; **do not** auto-retry — the signature may already have been accepted by another node. |
@@ -181,9 +181,9 @@ Unexpected failures return a plain `Error: <message>` text with `isError: true`.
 
 - **Approval page never opens** — the server opens the system default browser; if the port is taken it auto-increments, so re-issue the tool call rather than assuming a fixed port. Check that a desktop browser is available (headless hosts cannot sign).
 - **`BROWSER_DISCONNECTED`** — the approval tab was closed. Re-issuing reopens it; for any write, reconcile on-chain first (see [Errors](#errors)).
-- **`TIMEOUT` after 5 minutes** — nothing was signed or broadcast; re-issue and approve within the window, or raise the request timeout.
+- **`TIMEOUT` after 5 minutes** — most often the approval was never given; but a near-deadline Approve can still have broadcast (see the Errors table), so query the chain for the transaction before re-issuing a write. The 5-minute window is hardcoded in 0.1.4; there is no option or env var to raise it.
 - **Approve clicked but the tx fails** — wallet locked, wrong `network` parameter, or an expired pre-built transaction (see the raw-transaction expiry note above). Unlock TronLink, verify `network`, rebuild the raw tx just before calling.
-- **Verify the install** — `list_tools` must return the 7 tools in the table above; every response carries `meta.schemaVersion`.
+- **Verify the install** — `list_tools` must return the 7 tools in the table above. (Responses carry no `meta.schemaVersion` or other meta field in 0.1.4 — do not gate install checks on one.)
 
 ## Version & License
 

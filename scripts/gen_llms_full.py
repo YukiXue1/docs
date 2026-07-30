@@ -68,6 +68,7 @@ PAGES_EN = [
     "dapp/stake2.en.md",
     "reference/networks.en.md",
     "reference/glossary.en.md",
+    "reference/error-code-map.en.md",
     "reference/faq.en.md",
 ]
 
@@ -96,6 +97,7 @@ PAGES_ZH = [
     "dapp/stake2.zh.md",
     "reference/networks.zh.md",
     "reference/glossary.zh.md",
+    "reference/error-code-map.zh.md",
     "reference/faq.zh.md",
 ]
 
