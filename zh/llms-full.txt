@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 ../llms.txt 的 Localized 段。
 
-- Generated: 2026-05-21T14:08:15Z
-- Commit: e724781c635f
+- Generated: 2026-10-14T02:48:41Z
+- Commit: 0dd71c449a85
 - Language: zh
 - Pages: 23
-- Token estimate: ~39,427 (chars / 4)
+- Token estimate: ~40,796 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: introduction/ -->
@@ -476,6 +476,8 @@ img {
 }
 ```
 
+<a id="result-code"></a>
+
 ## 回传消息码
 
 > 注意：转账请求中 `tokenId` 与 `contract` 互斥，两者同时传入会返回消息码 `10025`。
@@ -715,7 +717,7 @@ img {
 
 ### 回调 `code` 枚举
 
-完整取值见上方[回传消息码](#回传消息码)表。请基于 `code`（integer）分支，**不要**解析 `message`（人类可读，可能会本地化）。
+完整取值见上方[回传消息码](#result-code)表。请基于 `code`（integer）分支，**不要**解析 `message`（人类可读，可能会本地化）。
 
 ---
 
@@ -795,6 +797,8 @@ try {
 
 > **旧版用法（不推荐）：** [兼容用法：tron_requestAccounts](#tron_requestaccounts)
 
+
+<a id="get-tronlink-provider-via-tip-6963"></a>
 
 ## 获取TronLink的provider TIP-6963
 
@@ -932,19 +936,28 @@ try {
 > **前提条件：** 已通过 `eth_requestAccounts` 完成 DApp 连接授权（参见上方 [连接网站 TIP-1102](#tip-1102)）。
 
 ### 简介
-DApp 需要用户对一个 hex 消息签名，签名后消息转发给后端进行验签，以此判断用户合法登录。
+DApp 可以请求用户对消息签名，再将消息与签名转发给后端验签，以此验证用户登录。
 
 ### 技术规范
 #### 代码示例
 ```typescript
 const tronweb = window.tron.tronWeb;
+const message = "Sign in to Example DApp\nNonce: 8f3a2c"; // 普通 UTF-8 文本
 try {
-  const message = "0x01EF"; // any hex string
   const signedString = await tronweb.trx.signMessageV2(message);
+  // 用同一个字符串验签，返回签名者的 base58 地址
+  const recovered = await tronweb.trx.verifyMessageV2(message, signedString);
+  const ok = recovered === tronweb.defaultAddress.base58;
 } catch (e) {}
 ```
 #### 参数
-`window.tron.tronWeb.trx.signMessageV2` 接收一个十六进制的字符串作为参数，该字符串表示当前待签名的内容。
+消息须为非空**字符串**。TronLink 对该字符串的 UTF-8 字节签名，并加上 TIP-191 前缀 `"\x19TRON Signed Message:\n" + <字节长度>`。外观类似 hex 的字符串**不会**被解码：`"0x1234"` 按六个文本字符（字节为 `30 78 31 32 33 34`）签名，而不是两个原始字节 `12 34`。
+
+通过 TronLink 注入的 `tronWeb` 只支持字符串（TronLink 插件 4.0.0 起）。TronWeb 本身还接受 `Uint8Array` / `number[]` 来签原始字节，但 TronLink 会拒绝这些类型，因此 DApp 无法通过 `signMessageV2` 让 TronLink 对任意原始字节签名。
+
+验签时把**同一个字符串**传给 `verifyMessageV2`（见上方示例）。它返回恢复出的 base58 地址，地址不匹配时不会抛错——需要自行比对。
+
+参见 [TronWeb 消息签名与验签说明](https://tronweb.network/docu/docs/Sign%20and%20Verify%20Message/)。
 
 #### 返回值
 如果用户在弹窗中选择签名，DApp 可以得到签名后的十六进制字符串，比如：
@@ -959,9 +972,9 @@ Uncaught (in promise) Invalid transaction provided
 
 ### 交互流程
 
-当代码执行到 `await tronweb.trx.signMessageV2(message);` 时，TronLink 钱包会提示弹窗，需要用户进行确认，如下图，其中消息内容会以 hex 的方式展示：
+当代码执行到 `await tronweb.trx.signMessageV2(message);` 时，TronLink 钱包会提示弹窗，需要用户进行确认，如下图。弹窗以文本形式展示消息内容：
 
-![TronLink 消息签名审批弹窗，以 hex 形式展示待签消息以及"拒绝"/"签名"按钮](../images/zh_plugin-wallet_sign_message.png)
+![TronLink 消息签名审批弹窗，展示待签消息内容以及"拒绝"/"签名"按钮](../images/zh_plugin-wallet_sign_message.png)
 
 如果用户在弹窗中选择【拒绝】，则会抛出异常，开发者可捕获此异常进行业务处理。
 
@@ -1267,7 +1280,7 @@ interface SwitchTronChainParameter {
 }
 ```
 
-用户拒绝时抛出 `Error("Confirmation declined by user")`（无数字 code）。
+用户拒绝时，Promise 以纯字符串 `'Confirmation declined by user'` reject（不是 `Error`，没有数字 `code`）。参见[处理拒签](../reference/error-code-map.md#handling-rejections)。
 
 ### `tronweb.trx.multiSign(transaction, privateKey?, permissionId)` —— 多签签名
 
@@ -1275,7 +1288,7 @@ interface SwitchTronChainParameter {
 
 ### `tronweb.trx.signMessageV2(message)` —— TIP-191 消息签名
 
-**参数**——字符串（纯 UTF-8 或带 `0x` 前缀的 hex）：
+**参数**——非空字符串，按 UTF-8 文本签名。`0x` 前缀不会使其变成原始字节，TronLink 会拒绝非字符串输入；详见[消息签名](#signmessagev2)。
 
 ```json
 { "type": "string" }
@@ -1287,11 +1300,13 @@ interface SwitchTronChainParameter {
 { "type": "string", "pattern": "^0x[0-9a-fA-F]{130}$" }
 ```
 
-用户拒绝时抛出 `Error("Invalid transaction provided")` / `Error("user rejected request")` —— try/catch 捕获即可；无 `code` 字段。
+**错误结构：** 在 TronLink 注入的 `tronWeb` 上（插件 4.0.0 起），用户拒绝 `trx.sign`、`trx.multiSign` 或 `trx.signMessageV2` 时，Promise 以**纯字符串** `'Confirmation declined by user'` reject——不是 `Error` 对象，也没有数字 `code`。`{ code: 4001, message: 'User rejected the request.' }` 对象只由 `window.tron.request(...)` 方法（如 `eth_requestAccounts`）返回。其他失败（钱包未解锁、载荷非法、观察钱包等）返回其他值——参见[处理拒签](../reference/error-code-map.md#handling-rejections)。不要自动重试签名。
+
+其他 reject 字符串包括：`'Invalid transaction provided'`（消息为空或签名失败）、`'Transaction integrity check failed'`（非字符串消息；4.11.1 起，更早版本返回 `'Invalid transaction provided'`）、`'User has not unlocked wallet'`。这些都不是用户拒绝。
 
 ### TIP-6963（provider 发现）
 
-事件机制，**不是** `request` 方法。结构定义见上方 [获取TronLink的provider TIP-6963](#trontip-6963) 的 TypeScript 接口；线上格式是两个 `CustomEvent`：
+事件机制，**不是** `request` 方法。结构定义见上方 [获取TronLink的provider TIP-6963](#get-tronlink-provider-via-tip-6963) 的 TypeScript 接口；线上格式是两个 `CustomEvent`：
 
 - `TIP6963:requestProvider` —— 由 DApp 派发，无 payload。
 - `TIP6963:announceProvider` —— 由已安装的每个钱包派发，`detail = { info: { uuid, name, icon, rdns }, provider }`。TronLink 的 `rdns = "org.tronlink.www"`、`name = "TronLink"`。
@@ -1432,7 +1447,7 @@ if (window.tronLink.ready) {
 if (window.tronLink.ready) {
   const tronweb = tronLink.tronWeb;
   try {
-    const message = "0x01EF"; // any hex string
+    const message = "Sign in to Example DApp\nNonce: 8f3a2c"; // 普通 UTF-8 文本
     const signedString = await tronweb.trx.signMessageV2(message);
   } catch (e) {}
 }
@@ -1878,9 +1893,12 @@ window.addEventListener('message', function (e) {
 
 
 # 即将实施：对ledger签名后signature的v字段进行兼容改造
-针对ledger签名（包括所有交易签名、消息签名、712签名），在将来的几个月内，会更新一项新的技术措施，会将签名后的 `signature` 字段中末尾的`01`替换成`1c`，`00`替换成`1b`。
 
-这个改动，是为了保证ledger账户签名和普通账户签名的末尾两位一致。
+> **当前状态——计划中，尚未上线：** 目前 Ledger 签名（交易、消息、TIP-712）均按设备原样返回，末尾为 `00` / `01`，广播的交易中也是同一个值。普通（非 Ledger）账户签名末尾为 `1b` / `1c`。在该改动上线前，验签的 DApp 应同时兼容两种形式：在恢复签名地址、或把签名传给要求 `v` = 27 / 28 的合约之前，把末尾的 `00` / `01` 按 `1b` / `1c`（v + 27）处理。
+
+针对ledger签名（包括所有交易签名、消息签名、712签名），计划更新一项新的技术措施，会将签名后的 `signature` 字段中末尾的`01`替换成`1c`，`00`替换成`1b`。
+
+这个改动，是为了保证ledger账户签名和普通账户签名的末尾两位十六进制字符（即一个字节）一致。
 
 ### 普通交易签名
 
@@ -2238,9 +2256,9 @@ hexToAddress()             0x41... → T 地址
 |------|------|
 | `TL_TRONGRID_URL` | 全节点 API 地址 |
 | `TL_TRONGRID_API_KEY` | API 密钥（主网必需）。免费档约 100k 请求/日 + ~5 QPS；付费档提高 QPS、日配额并按用量计费。具体配额与响应 header 会变——请查 [TronGrid Pricing](https://www.trongrid.io/pricing) 与控制台当前值，并在运行时读 `X-Ratelimit-*` header。触发限流返回 HTTP 429（映射到 `TL_CHAIN_QUERY_FAILED`，可重试）。长期跑批的 agent 请在 50% / 80% / 95% 设置消费告警。 |
-| `TL_SUNSWAP_ROUTER` | SunSwap V2 路由地址。**没有内置默认**——请钉到当前 router；下方示例中的值**截至 2026-05** 适用于主网。来源：[docs.sun.io](https://docs.sun.io)。SunSwap 升级新 router 时，请直接在此 env 改值，不要等文档/代码同步。 |
-| `TL_SUNSWAP_V3_ROUTER` | SunSwap V3 智能路由地址。规则同 V2。 |
-| `TL_WTRX_ADDRESS` | WTRX 合约地址。主网 WTRX 为 `TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR`。数据截至 2026-05。 |
+| `TL_SUNSWAP_ROUTER` | SunSwap V2 路由地址。可选——未设置时按 `TL_TRONGRID_URL` 使用内置默认值：URL 含 `nile` 时为 Nile 路由 `TMn1qrmYUMSTXo9babrJLzepKZoPC7M6Sy`，其他 URL 为主网路由 `TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax`。仅在需要覆盖默认值时设置，且地址必须部署在同一网络。来源：[docs.sun.io](https://docs.sun.io)。 |
+| `TL_SUNSWAP_V3_ROUTER` | SunSwap V3 路由地址，须实现 `exactInputSingle`。可选——内置默认值在所有网络上都是主网路由 `TQAvWQpT9H916GckwWDJNhYZvQMkuRL7PN`。 |
+| `TL_WTRX_ADDRESS` | WTRX 合约地址。可选；按网络默认（主网 `TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR`，Nile `TYsbWxNnyTgsZaTFaue9hqpxkU3Fkco94a`）。 |
 
 **钱包（agent-wallet）：**
 
@@ -2298,7 +2316,7 @@ Claude Code 自动检测：
 
 如果选择自动创建，服务会生成随机密码，把密码保存到 `~/.agent-wallet/runtime_secrets.json`，创建一个加密的 `main` 钱包，并继续当前会话。
 
-如果你想直接照着一个更完整的 Nile 示例来配，可以在这个最小示例的基础上补成下面这样：
+下面是更完整的 Nile 配置。示例省略了兑换路由变量，以使用 Nile 默认值：`tl_chain_swap`（V2）走 Nile 路由；`tl_chain_swap_v3` 在 Nile 上可以询价（`action=estimate`），但无法执行——默认 V3 路由在 Nile 上没有合约，Nile 上的 Smart Router `TB6xBCixqRPUSKiXb45ky1GhChFJ7qrfFj` 也没有实现 `exactInputSingle`。Shasta 的 URL 会使用主网默认值，因此 Shasta 上无法兑换。请勿把主网路由地址填进 Nile 配置：
 
 ```json
 {
@@ -2313,8 +2331,6 @@ Claude Code 自动检测：
         "TL_HEADLESS": "false",
         "TL_TRONGRID_URL": "https://nile.trongrid.io",
         "AGENT_WALLET_PASSWORD": "your-wallet-password",
-        "TL_SUNSWAP_ROUTER": "TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax",
-        "TL_SUNSWAP_V3_ROUTER": "TB6xBCixqRPUSKiXb45ky1GhChFJ7qrfFj",
         "TL_MULTISIG_BASE_URL": "https://apinile.walletadapter.org",
         "TL_MULTISIG_SECRET_ID": "TEST",
         "TL_MULTISIG_SECRET_KEY": "TESTTESTTEST",
@@ -2417,7 +2433,7 @@ mcp-server-tronlink/
 
 ## 工具契约与副作用
 
-**输入/输出 schema 与错误契约。** 每个工具的输入/输出 schema 及结构化错误信封由底层框架定义——见 [TronLink MCP Core](tronlink-mcp-core.md#错误码) 的 SSOT 错误码表（`code` / `retryable` / `hint` / 典型触发）。每个响应均带 `meta.schemaVersion`，major 版本内字段含义稳定。Agent 应基于 `error.code` 与 `error.retryable` 分支，**不要**解析人类可读的 `message`。
+**输入/输出 schema 与错误契约。** 每个工具的输入/输出 schema 及结构化错误信封由底层框架定义——见 [TronLink MCP Core](tronlink-mcp-core.md#error-codes) 的 SSOT 错误码表（`code` / `retryable` / `hint` / 典型触发）。每个响应均带 `meta.schemaVersion`，major 版本内字段含义稳定。Agent 应基于 `error.code` 与 `error.retryable` 分支，**不要**解析人类可读的 `message`。
 
 **逐工具输入 schema 可在运行时发现。** 每个工具的参数都由 core 用 Zod 校验,并通过 MCP `list_tools` 方法以 JSON `inputSchema` 形式暴露,因此客户端无需阅读本页即可枚举参数名、类型和必填项。下方表格按能力归纳工具;`list_tools` 才是权威的机器可读来源。
 
@@ -2426,11 +2442,13 @@ mcp-server-tronlink/
 | 副作用 | 示例 |
 | --- | --- |
 | **只读**（Network Read） | `tl_chain_get_account`、`tl_chain_get_tx`、`tl_gasfree_get_account`、`tl_wallet_list`、屏幕/状态读取 |
-| **远程写**（签名 / 改变远程状态） | `tl_chain_send`、`tl_chain_stake`、`tl_chain_swap_v3`、`tl_multisig_submit_tx`、转账、资源代理 |
+| **远程写**（签名 / 改变远程状态） | `tl_chain_send`、`tl_chain_stake`、`tl_chain_swap` / `tl_chain_swap_v3`（`action=execute`）、`tl_multisig_submit_tx`、转账、资源代理 |
 
 - **预检查：** 所有交易类工具在执行前会校验（余额、回滚、资源消耗）。
 - **人工确认（HITL）：** 写操作工具使用加密的本地 `agent-wallet` 签名；浏览器模式下由用户在 TronLink UI 审批。生产环境应将每个「远程写」工具视为需要确认。
 - **重试：** 只读工具可安全重试；「远程写」工具除非证明幂等，否则不得自动重试。
+
+<a id="selected-tool-schemas-inline-mirror"></a>
 
 ### 精选工具 schema（文档侧镜像）
 
@@ -2465,8 +2483,8 @@ mcp-server-tronlink/
     "action":           { "type": "string", "enum": ["estimate", "execute"], "description": "estimate = 仅报价（Network Read）；execute = 签名 + 广播（Remote Write）" },
     "from_token":       { "type": "string", "description": "源代币地址，或 'TRX' 表示原生 TRX" },
     "to_token":         { "type": "string", "description": "目标代币地址，或 'TRX'" },
-    "amount":           { "type": "string", "description": "输入金额（代币单位）" },
-    "fee_tier":         { "type": "number", "enum": [500, 3000, 10000], "description": "池费率 bps：500=0.05%、3000=0.3%、10000=1%（默认 3000）" },
+    "amount":           { "type": "string", "description": "输入金额，以代币最小单位的整数字符串表示（TRX 为 sun：\"1000000\" = 1 TRX）。\"1.5\" 这类小数会被拒绝。" },
+    "fee_tier":         { "type": "number", "enum": [500, 3000, 10000], "description": "池费率（百万分率，ppm）：500=0.05%、3000=0.3%、10000=1%（默认 3000）" },
     "slippage":         { "type": "number", "description": "滑点容忍百分比（默认 0.5）。详见上方“兑换安全”——生产环境绝不允许未声明默认值。" },
     "sqrt_price_limit": { "type": "string", "description": "可选 partial-fill 价格上限（进阶）" }
   }
@@ -2562,7 +2580,7 @@ mcp-server-tronlink/
 | 边界 | 保证 | Agent / 运维方义务 |
 |---|---|---|
 | **Prompt 注入** | 工具输入按原始值作为调用参数使用，server 不会把工具输入拼接进任何向 LLM 二次提交的 prompt。**但**从链上或第三方 API 拿回来的字符串（账户备注、合约 revert 原因、交易 note 等）**可能含攻击者控制内容**，必须视为不可信。 | 不要让 agent 基于 read 工具返回的 prose 自动路由到 Remote Write。分支必须基于结构化字段（`txId`、`code`、`retryable`）。 |
-| **出站 host 白名单（SSRF）** | server 只向 4 个配置端点发起 HTTPS：`TL_TRONGRID_URL`、`TL_MULTISIG_BASE_URL`、`TL_GASFREE_BASE_URL`，以及通过 TronWeb 访问的 SunSwap router。工具不接收会被原样请求的用户 URL。 | 生产环境把这些 env 钉死到已知 host；禁止 LLM 输入回填任何 `*_BASE_URL`。 |
+| **出站 host 白名单（SSRF）** | server 只向 3 个配置端点发起 HTTPS——`TL_TRONGRID_URL`（TronGrid；SunSwap 路由合约也通过它的 `triggersmartcontract` 接口调用）、`TL_MULTISIG_BASE_URL`、`TL_GASFREE_BASE_URL`——以及内置的 SunSwap 报价 API（主网 `rot.endjgfsv.link`，Nile `tnrouter.endjgfsv.link`，不可配置）。工具不接收会被原样请求的用户 URL。 | 生产环境把这些 env 钉死到已知 host，并把报价 API host 加入出站白名单；禁止 LLM 输入回填任何 `*_BASE_URL`。 |
 | **API key 处理（token passthrough）** | `TL_TRONGRID_API_KEY`、`TL_MULTISIG_SECRET_KEY`、`TL_GASFREE_API_SECRET` 仅在启动时从 env 读取，仅用于出站；**不**会出现在任何工具响应、错误 `details` 或 Knowledge Store 记录中。server 不接受 MCP 客户端传入的 Authorization header 并转发到上游。 | 审计 MCP host 配置对 env 的捕获（部分 host 会落日志）；secret 放进 host 的 secret manager，不要写进会提交 git 的 `.mcp.json`。 |
 | **浏览器 JS 执行** | `tl_evaluate` 会在受控 Playwright 浏览器上下文中执行任意 JS。这是 **High-risk / Destructive** 原语——可读 DOM、点击隐藏元素、外泄状态、绕过 UI 上的 HITL。 | 严格不需要时，从 MCP host 的工具白名单中禁用 `tl_evaluate`。绝不要把它暴露给远程/多用户 MCP 部署。 |
 | **HITL 绕过** | Direct-API 工具（`tl_chain_send`、`tl_chain_swap_v3` 等）使用本地加密 `agent-wallet` 签名并直接广播，**不**经过 TronLink 浏览器审批。`agent-wallet` 密码是唯一屏障。 | 把 `AGENT_WALLET_PASSWORD` 保管在 agent 不可达处。生产环境涉及资金转移的工具，优先用 `mcp-tronlink-signer`（浏览器审批），而非 Direct-API。 |
@@ -2575,7 +2593,7 @@ mcp-server-tronlink/
 
 - **必须设置 minOut / 滑点上限。** 通过 `list_tools` 查看 `tl_chain_swap_v3` 的输入 schema（`SwapV3Params`），核对实际的 minimum-output / 滑点字段名；**不要**依赖未声明的默认值，缺省或 0 的 minOut 一律视为不安全。
 - **执行前现取报价。** 通过 Skills `tron-swap` 的 `swap-quote` / `swap-route`（或同等接口）取最新报价/路径，选定可接受的滑点容忍度并显式传入。
-- **钉死 router。** `TL_SUNSWAP_V3_ROUTER` 没有内置默认值；过期或错误的 router 会把资金路由到非预期目标。请按当前 SunSwap V3 router 地址设置（见环境变量）。
+- **核对 router。** 路由默认值按网络内置（见环境变量中的 `TL_SUNSWAP_ROUTER` / `TL_SUNSWAP_V3_ROUTER`）。如果覆盖 `TL_SUNSWAP_ROUTER` / `TL_SUNSWAP_V3_ROUTER`，请在目标网络上核实地址；过期或错误的 router 会把资金路由到非预期目标。
 - **不可自动重试。** swap 失败或结果未知都属于远程写——先在链上确认再决定是否重发（`TL_CHAIN_SWAP_FAILED` 不可重试）。
 
 #### 多签凭证管理（`TL_MULTISIG_SECRET_ID` / `TL_MULTISIG_SECRET_KEY`）
@@ -2724,7 +2742,7 @@ export TL_TRONGRID_URL="https://nile.trongrid.io"
 - **语义化版本。** 1.0 之前：**minor** 升级（0.x → 0.y）允许破坏性变更；**patch** 升级（0.1.x → 0.1.y）不变更工具名、输入 schema、`error.code` 值或 `meta.schemaVersion` 语义。1.0 之后：标准 semver，仅 major 允许破坏。
 - **稳定契约**（patch 不会动）：
     - 工具名（`tl_chain_send`、`tl_chain_swap_v3`、`tl_multisig_*`、`tl_gasfree_*`、`tl_evaluate` 等）
-    - `error.code` 枚举（SSOT：[TronLink MCP Core 错误码](tronlink-mcp-core.md#错误码)）
+    - `error.code` 枚举（SSOT：[TronLink MCP Core 错误码](tronlink-mcp-core.md#error-codes)）
     - `error.retryable` 语义
     - `meta.schemaVersion` 的 major 分量
     - 必需环境变量名（`TL_TRONGRID_URL`、`TL_MULTISIG_SECRET_KEY`、`AGENT_WALLET_PASSWORD` 等）
@@ -2988,7 +3006,7 @@ interface GasFreeCapability {
 
 所有工具使用 `tl_` 前缀，分为 13 个类别：
 
-> **Schema SSOT。** 每个工具的 `inputSchema` 都由 [`src/mcp-server/schemas.ts`](https://github.com/TronLink/tronlink-mcp-core/blob/main/src/mcp-server/schemas.ts) 中的 Zod schema 生成，运行时通过 `list_tools` 暴露。下方表格只列**工具名 + 一句话描述**；参数类型、必填字段、枚举值和默认值请对运行中的 server 调用 `list_tools`，或直接读 Zod 源码。下游 [`mcp-server-tronlink` 页面](mcp-server-tronlink.md#精选工具-schema文档侧镜像) 为 7 个高影响工具（`tl_chain_send`、`tl_chain_swap_v3`、`tl_chain_stake`、`tl_multisig_submit_tx`、`tl_gasfree_send`、`tl_chain_get_account`、`tl_evaluate`）镜像了 JSON Schema——便于 agent 在没打开 MCP 会话时写调用站点。SSOT 仍然是本包。
+> **Schema SSOT。** 每个工具的 `inputSchema` 都由 [`src/mcp-server/schemas.ts`](https://github.com/TronLink/tronlink-mcp-core/blob/main/src/mcp-server/schemas.ts) 中的 Zod schema 生成，运行时通过 `list_tools` 暴露。下方表格只列**工具名 + 一句话描述**；参数类型、必填字段、枚举值和默认值请对运行中的 server 调用 `list_tools`，或直接读 Zod 源码。下游 [`mcp-server-tronlink` 页面](mcp-server-tronlink.md#selected-tool-schemas-inline-mirror) 为 7 个高影响工具（`tl_chain_send`、`tl_chain_swap_v3`、`tl_chain_stake`、`tl_multisig_submit_tx`、`tl_gasfree_send`、`tl_chain_get_account`、`tl_evaluate`）镜像了 JSON Schema——便于 agent 在没打开 MCP 会话时写调用站点。SSOT 仍然是本包。
 
 ### 1. 会话管理（2 个）
 | 工具 | 说明 |
@@ -3125,6 +3143,8 @@ interface GasFreeCapability {
   meta: { timestamp, sessionId, durationMs, schemaVersion: "1.0" }
 }
 ```
+
+<a id="error-codes"></a>
 
 ### 错误码
 
@@ -3520,6 +3540,8 @@ Stake 2.0 查询与 SR 信息。
 **何时不要用：** 执行 freeze / 投票 / 解冻动作——这些是 Remote Write，请走 signer SDK / MCP Server；单次操作能量成本——`tron-resource`。
 
 ---
+
+<a id="skill-mcp-tool-map"></a>
 
 ## Skill ↔ MCP 工具映射
 
@@ -3921,7 +3943,7 @@ Skills 已进入 **v1.0.x**，适用标准 semver——只有 **major** 升级�
 
 - **稳定契约**（minor / patch 不会动）：
     - 33 个 CLI 命令名与其必填 / 可选 flag（`tron_api.mjs <command> [...]`）。
-    - [Skill ↔ MCP 工具映射](#skill--mcp-工具映射) 列出的 25 个 MCP 工具名（`tron_*` 形式）及其 `inputSchema` 字段名。
+    - [Skill ↔ MCP 工具映射](#skill-mcp-tool-map) 列出的 25 个 MCP 工具名（`tron_*` 形式）及其 `inputSchema` 字段名。
     - Exit code：`0` 成功，`1` 查询错误 / 参数非法，`2` 未支持 / 未知命令。
     - `Network Read` 副作用分级——任何命令未经 major 升级都不会变成 Remote Write。
 - **不稳定契约**（minor 允许变化）：
@@ -4053,7 +4075,7 @@ claude mcp add -s user tronlink-signer -- node /path/to/packages/mcp-tronlink-si
 
 > 「已发送 5 TRX——链上已确认（交易 `0a1b2c…`）。」
 
-> 请基于 `status` / `error.code` 分支,不要解析自然语言。`status: "pending"` 表示广播成功但确认超时——应用 `get_balance` 或浏览器查询对账,而不是重发(见[错误](#错误)）。
+> 请基于 `status` / `error.code` 分支,不要解析自然语言。`status: "pending"` 表示广播成功但确认超时——应用 `get_balance` 或浏览器查询对账,而不是重发(见[错误](#errors)）。
 
 ## 取消
 
@@ -4063,9 +4085,11 @@ claude mcp add -s user tronlink-signer -- node /path/to/packages/mcp-tronlink-si
 
 当调用 `sign_transaction` 且 `broadcast: true` 时，服务器会在广播后自动轮询链上确认状态，并返回执行结果（`success` 或 `pending`）。如果交易在链上失败（如 `OUT_OF_ENERGY`、Solidity revert），错误信息会连同解码后的原因一并返回给 AI 智能体。
 
+<a id="errors"></a>
+
 ## 错误
 
-server 返回的错误使用标准 MCP 信封结构，带稳定的 `code` 与 `retryable`，便于 agent 在不解析自然语言的前提下做分支。框架层错误码统一以 [TronLink MCP Core 错误码](tronlink-mcp-core.md#错误码) 为准；signer 特有错误如下：
+server 返回的错误使用标准 MCP 信封结构，带稳定的 `code` 与 `retryable`，便于 agent 在不解析自然语言的前提下做分支。框架层错误码统一以 [TronLink MCP Core 错误码](tronlink-mcp-core.md#error-codes) 为准；signer 特有错误如下：
 
 | 条件 | Retryable | 何时发生 |
 | --- | :---: | --- |
@@ -4086,11 +4110,13 @@ server 返回的错误使用标准 MCP 信封结构，带稳定的 `code` 与 `r
 |---|---|---|
 | **Prompt 注入** | 工具输入按原始值作为调用参数，server 不会再次提交给 LLM。TronLink 审批页渲染的是解析后的交易字段，不是 agent 的自由文本。 | 链上拿到的字符串（备注、revert 原因）视为不可信；分支应基于 `txId` / `status` / `code`，而非 prose。 |
 | **本地 HTTP listener** | 本地审批 server **仅绑定 `127.0.0.1`**（端口 `TRON_HTTP_PORT`，默认 3386，被占用时自增），永远不接受跨主机连接。每个 server session 有唯一 ID，前一次 session 的浏览器标签会被自动失效。 | 不要把 3386 端口转发到外网。同一台机器不要用相同 `TRON_HTTP_PORT` 跑两份。 |
-| **出站 host 白名单（SSRF）** | signer 只与 [Networks](#环境变量) 列出的 TronGrid 端点以及本地浏览器通信，工具不接受会被原样请求的用户 URL。 | 生产环境钉死 `TRON_NETWORK`、`TRON_API_KEY`。 |
+| **出站 host 白名单（SSRF）** | signer 只与 [Networks](#environment-variables) 列出的 TronGrid 端点以及本地浏览器通信，工具不接受会被原样请求的用户 URL。 | 生产环境钉死 `TRON_NETWORK`、`TRON_API_KEY`。 |
 | **API key 处理（token passthrough）** | `TRON_API_KEY` 仅在启动时从 env 读取，仅用于到 TronGrid 的出站；**不**会出现在任何工具响应、错误 `details` 或 MCP resource 中。server 不接受 MCP 客户端传入的 Authorization header 并转发到上游。 | API key 放进 MCP host 的 secret manager，不要写进会提交 git 的 `mcpServers` 配置。 |
 | **签名必须 HITL** | 所有签名工具（`send_trx`、`send_trc20`、`sign_message`、`sign_typed_data`、`sign_transaction`）都会打开 TronLink 审批页，**不存在程序化绕过**。私钥始终留在 TronLink。 | 不需要运维额外强制 HITL——这是结构性保证。不要试图通过移除浏览器层来"加固"。 |
 | **浏览器标签劫持** | 审批页基于 server session ID 验证每次请求，过期的标签会被忽略；心跳检测会在断连时关闭 session。 | 同一用户跑多个 agent 时，请让每个 agent 启动自己的 signer 实例；跨实例的请求串扰由 session ID 屏蔽，但 UI 层混淆不防。 |
 | **Confused deputy** | signer 以已连接的 TronLink 账户身份执行，没有来自 MCP 客户端的逐次授权 scope。 | 一个 signer 实例 = 一个 TronLink 账户，不要把多个终端用户复用到同一个实例。 |
+
+<a id="environment-variables"></a>
 
 ## 环境变量
 
@@ -4105,6 +4131,8 @@ server 返回的错误使用标准 MCP 信封结构，带稳定的 `code` 与 `r
 - **包：** `mcp-tronlink-signer` v0.1.4
 - **许可证：** MIT —— `SPDX-License-Identifier: MIT`
 - **变更记录 / 发布：** [https://github.com/TronLink/mcp-tronlink-signer/releases](https://github.com/TronLink/mcp-tronlink-signer/releases)
+
+<a id="inline-changelog"></a>
 
 ### 内联 changelog
 
@@ -4128,7 +4156,7 @@ server 返回的错误使用标准 MCP 信封结构，带稳定的 `code` 与 `r
 - **改进** —— 单页审批流：一个常驻浏览器标签 + 心跳检测；server 重启后旧标签自动失效。
 - **改进** —— TRC20 金额校验改用 BigInt 小数转换（处理 0 位小数、>18 位小数等边界）。
 - **改进** —— `send_trx`、`sign_transaction` 在提交失败时返回真实的 broadcast 错误，不再是空消息。
-- **迁移** —— 若你已经基于 `error.code` / `status` 分支，无需迁移；如有解析 message 文本，请立即切换（见 [错误](#错误)）。
+- **迁移** —— 若你已经基于 `error.code` / `status` 分支，无需迁移；如有解析 message 文本，请立即切换（见 [错误](#errors)）。
 
 #### v0.1.1 — 2026-04-15
 
@@ -4201,7 +4229,7 @@ await signer.stop();
 
 ### `signer.sendTrx(to, amount, network?, options?): Promise<BroadcastResult>`
 
-向指定地址发送 TRX，会打开浏览器授权页面供用户确认。返回 `{ txId, status, error? }`，其中 `status` 为 `"success"`、`"pending"` 或 `"failed"`（参见[广播结果](#广播结果)）。
+向指定地址发送 TRX，会打开浏览器授权页面供用户确认。返回 `{ txId, status, error? }`，其中 `status` 为 `"success"`、`"pending"` 或 `"failed"`（参见[广播结果](#broadcast-result)）。
 
 | 参数 | 类型 | 说明 |
 | ---- | ---- | ---- |
@@ -4212,7 +4240,7 @@ await signer.stop();
 
 ### `signer.sendTrc20(contractAddress, to, amount, decimals?, network?, options?): Promise<BroadcastResult>`
 
-发送 TRC20 代币，会打开浏览器授权页面。返回 `{ txId, status, error? }` — 参见[广播结果](#广播结果)。
+发送 TRC20 代币，会打开浏览器授权页面。返回 `{ txId, status, error? }` — 参见[广播结果](#broadcast-result)。
 
 | 参数 | 类型 | 说明 |
 | ---- | ---- | ---- |
@@ -4244,7 +4272,7 @@ const { signature } = await signer.signTypedData({
 
 ### `signer.signTransaction(transaction, network?, broadcast?, options?): Promise<{ signedTransaction; txId?; status?; error? }>`
 
-对原始交易进行签名。当 `broadcast` 为 `true` 时，签名后的交易会通过 TronLink 广播到链上，且 SDK 会自动轮询链上确认状态 — 可能的 `status` 取值参见[广播结果](#广播结果)。
+对原始交易进行签名。当 `broadcast` 为 `true` 时，签名后的交易会通过 TronLink 广播到链上，且 SDK 会自动轮询链上确认状态 — 可能的 `status` 取值参见[广播结果](#broadcast-result)。
 
 | 参数 | 类型 | 说明 |
 | ---- | ---- | ---- |
@@ -4271,6 +4299,8 @@ const result = await signer.signTransaction(tx, "nile", true, {
   onBroadcasted: ({ txId }) => console.log("Broadcast:", txId),
 });
 ```
+
+<a id="broadcast-result"></a>
 
 ### 广播结果
 
@@ -4453,7 +4483,7 @@ export type {
 
 - **包：** `tronlink-signer` v0.1.4
 - **许可证：** MIT —— `SPDX-License-Identifier: MIT`
-- **变更记录 / 发布：** [https://github.com/TronLink/mcp-tronlink-signer/releases](https://github.com/TronLink/mcp-tronlink-signer/releases) —— 与 `mcp-tronlink-signer` 共用版本线；已发布 GitHub release：**v0.1.1、v0.1.2**（2026-04-15）。v0.1.3 / v0.1.4 截至当前仅 npm —— MCP 可见变更详见 [`mcp-tronlink-signer` 的内联 changelog](mcp-tronlink-signer.md#内联-changelog)，SDK 层跟随同一波次。
+- **变更记录 / 发布：** [https://github.com/TronLink/mcp-tronlink-signer/releases](https://github.com/TronLink/mcp-tronlink-signer/releases) —— 与 `mcp-tronlink-signer` 共用版本线；已发布 GitHub release：**v0.1.1、v0.1.2**（2026-04-15）。v0.1.3 / v0.1.4 截至当前仅 npm —— MCP 可见变更详见 [`mcp-tronlink-signer` 的内联 changelog](mcp-tronlink-signer.md#inline-changelog)，SDK 层跟随同一波次。
 
 ### 兼容性与迁移策略
 
@@ -4461,8 +4491,8 @@ SDK 与 MCP 封装层共用版本线、共同发布。
 
 - **语义化版本。** 1.0 之前：**minor**（0.x → 0.y）允许破坏性变更；**patch**（0.1.x → 0.1.y）不变更导出类型、函数签名或 `error.code`。1.0 之后：标准 semver，仅 major 允许破坏。
 - **稳定契约**（patch 不会动）：
-    - 导出函数名（`connect`、`sendTrx`、`sendTrc20`、`signMessage`、`signTypedData`、`signTransaction`）。
-    - `BroadcastResult` 结构（`status: 'success' | 'pending'`、`txId`、`error?`）。
+    - `TronSigner` 方法名（`connectWallet`、`sendTrx`、`sendTrc20`、`signMessage`、`signTypedData`、`signTransaction`）。
+    - `BroadcastResult` 结构（`status: 'success' | 'pending' | 'failed'`、`txId`、`error?`）。
     - `error.code` 枚举值与 `error.retryable` 语义。
     - HITL（浏览器审批）强制要求——patch 永远不会引入程序化绕过。
 - **不稳定契约**（随时可能变化）：
@@ -4722,7 +4752,7 @@ tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --am
 
 **两条路径是互斥的，而不是冗余。** 加 `--local-broadcast` 后，签名器只返回已签名交易**不再广播**；CLI 用自己的 TronWeb 提交一次。同一条已签名 payload 不会被本次命令重复提交。
 
-若网络抖动导致 CLI 本地广播与签名器残留的广播都打到节点（例如断线重连、同一 nonce 的两次 CLI 调用），第二次提交会被节点拒绝——TRON 节点按交易 ID 去重，结果只会是一次入块 + 一次 `DUP_TRANSACTION_ERROR` 类失败，绝不会出现两次链上效果。已确认入块后再看到此类错误视为良性；尚未确认前出现则按退出码 `5`（网络）处理，先用区块浏览器核对再决定是否重试。
+若网络抖动导致 CLI 本地广播与签名器残留的广播都打到节点（例如断线重连、同一 nonce 的两次 CLI 调用），第二次提交会被节点拒绝——TRON 节点按交易 ID 去重，结果只会是一次入块 + 一次 `DUP_TRANSACTION_ERROR` 类失败，绝不会出现两次链上效果。已确认入块后再看到此类错误视为良性；尚未确认前出现则按结果未知的网络失败处理（CLI 退出 `1`），先用区块浏览器核对再决定是否重试。
 
 所有输入在连接 TronLink 前会进行校验：
 
@@ -4762,32 +4792,19 @@ tronlink transfer --type trx --toAddress TYqx5gm3p3wLDE9Bv8TBJAbK4ELNbSLfJV --am
 
 ## 退出码
 
-CLI 以下面的稳定退出码退出，自动化脚本可据此对失败类型做分支，无需解析自然语言。`--json` 模式下，同一分类也会出现在输出中。
+CLI v1.0.1 成功时退出 `0`，任何失败均退出 `1`，没有按失败类别区分的退出码。不要仅根据退出状态区分参数错误、用户拒绝、超时、链上失败或网络失败。
 
-| 退出码 | 类别 | 含义 | 可重试 |
-| :---: | --- | --- | :---: |
-| `0` | 成功 | 查询返回，或交易已签名并广播 | n/a |
-| `1` | 输入非法 | 在任何钱包交互前校验失败（见「输入校验」） | 否——修正输入 |
-| `2` | 用户拒绝 | 用户在 TronLink 审批页点击 Reject | 否——用户已拒绝 |
-| `3` | 签名超时 | 在 `--timeout <ms>` 内未审批（默认 5 分钟） | 是——但**已在途**的广播除外 |
-| `4` | 链上失败 | 广播成功但执行失败（`OUT_OF_ENERGY`、`REVERT`、`FAILED`） | 否——该交易已最终化，先解决根因 |
-| `5` | 网络错误 | TronGrid / RPC 请求失败（偶发） | 是；写命令需先确认上一笔未上链 |
-
-> **重试策略。** 读命令（`balance` / `resource` / `--constant trigger`）始终可安全重试。写/签名命令（transfer、stake、delegate、vote、写型 trigger）在「已提交但结果未知」时**不得**自动重试——重新发起会再次弹审批，可能重复提交。仅在通过区块浏览器或 `balance` 确认上一笔未落账后再重试。
+> **重试策略。** 读命令可以重试。写/签名命令失败或结果未知时，不要自动重试；先确认上一笔交易是否已经上链。
 
 ## 错误
 
-agent 应基于上面的退出码分支。下表把 CLI 在 stderr 与 `--json` 输出中提到的具体条件映射到对应退出码：
+v1.0.1 在 `--json` 模式下将失败信息写入 **stderr**，并以 `1` 退出：
 
-| 条件 | 退出码 |
-| --- | :---: |
-| 参数解析 / 类型 / 取值校验失败 | `1` |
-| 用户在 TronLink 审批页点击 Reject | `2` |
-| `--timeout` 超时未审批 | `3` |
-| 节点返回 `OUT_OF_ENERGY` | `4` |
-| `REVERT`（Solidity revert） | `4` |
-| `FAILED`（其他链上失败） | `4` |
-| TronGrid / RPC 不可达、5xx 或超时 | `5` |
+```json
+{ "status": "error", "error": "Transaction cancelled by user in TronLink" }
+```
+
+`error` 是描述失败原因的字符串，不是对象。本版本没有结构化的 `error.code` 或 `error.retryable` 字段。该文本不是稳定契约——例如在 TronLink 插件弹窗中拒绝时，会原样透传 `Confirmation declined by user`。请将 stderr 与 stdout 上的成功 JSON 分别捕获。
 
 ## 安全与副作用
 
@@ -4948,16 +4965,15 @@ CLI 已进入 **v1.0.x**，适用标准 semver——只有 **major** 升级允�
 
 - **稳定契约**（minor / patch 不会动）：
     - 子命令名与其必填位置参数 / flag。
-    - **Exit code** —— Exit Codes 表中的每一条都属于公开面。minor 允许为此前的通用失败新增 code；重新分配已有数字属于 major。
-    - **`--json` 输出 key** —— 顶层 key（`ok`、`error.code`、`error.retryable`、`txid` 等）以及 `error` 下的结构。minor 允许新增可选字段；改名 / 删除属于 major。
-    - `error.code` 枚举（与 [TronLink MCP Core](tronlink-mcp-core.md#错误码) 共享 SSOT）。
+    - **退出状态** —— v1.0.1 成功为 `0`，失败为 `1`。
+    - **`--json` 输出键** —— v1.0.1 中写操作命令返回 `Status`、`TxID`、`Explorer`（及各命令自身的键），`balance` 等读命令返回各自的数据键；失败时 stderr 使用 `status` / `error`，其中 `error` 为字符串。minor 允许新增可选字段；改名 / 删除属于 major。
 - **不稳定契约**（随时可能变化）：
     - 未带 `--json` 的人类可读 stdout 文本。
     - 提示、横幅、颜色码的具体文本。
     - stderr 日志行格式（自动化请用 `--json`）。
 - **`--json` 是自动化契约。** 如果脚本调用本 CLI，**必须**传 `--json` 并基于结构化字段分支；纯文本输出供人阅读，minor 之间会漂移。
 - **废弃窗口。** 被标 deprecated 的子命令 / flag 至少在 **一个 minor 周期** 内继续可用，使用时 stderr 打印 `[DEPRECATED]`；移除最早发生在下一个 major。
-- **升级后校验。** 重新 `tronlink-cli --help` + 依赖的子命令 `--help`，并对一条读操作 + 一条 preview-only 写操作的 `--json` 结构抽查一次再恢复自动化。
+- **升级后校验。** v1.0.1 使用 `tronlink --help` + 依赖的子命令 `--help`，并对一条读操作 + 一条 preview-only 写操作的 `--json` 结构抽查一次再恢复自动化。
 
 ---
 
@@ -5008,11 +5024,11 @@ try {
 
 ## 错误码
 
-DApp provider 把错误以带 `.code` / `.message` 的 JavaScript exception 抛出。此调用上可能出现的码:
+**错误结构：** 在 TronLink 注入的 `tronWeb` 上（插件 4.0.0 起），用户拒绝 `trx.sign`、`trx.multiSign` 或 `trx.signMessageV2` 时，Promise 以**纯字符串** `'Confirmation declined by user'` reject——不是 `Error` 对象，也没有数字 `code`。`{ code: 4001, message: 'User rejected the request.' }` 对象只由 `window.tron.request(...)` 方法（如 `eth_requestAccounts`）返回。其他失败（钱包未解锁、载荷非法、观察钱包等）返回其他值——参见[处理拒签](../reference/error-code-map.md#handling-rejections)。不要自动重试签名。
 
 | 码 | 含义 | 来源 | 可重试? |
 | :---: | --- | --- | :---: |
-| `4001` | 用户在签名弹窗里点【拒绝】 | `tronWeb.trx.sign(tx)` | 否——用户拒绝 |
+| `'Confirmation declined by user'`（字符串） | 用户在签名弹窗里点【拒绝】 | `tronWeb.trx.sign(tx)` | 否——用户拒绝 |
 | (抛出) | `Invalid address` / `Invalid amount` 等 | `transactionBuilder.sendTrx(...)` 在钱包交互前 | 否——修参数 |
 | `REVERT` / `OUT_OF_ENERGY` / `FAILED` | 广播成功但链上执行失败 | `sendRawTransaction` 返回或 `tronWeb.trx.getTransactionInfo(txid)` | **否——交易已 final,永远不要自动重试** |
 | (network error) | TronGrid / RPC 抖动 | `sendRawTransaction` HTTP 层 | 是——退避后重试 |
@@ -5072,9 +5088,11 @@ try {
 
 ## 错误码
 
+**错误结构：** 在 TronLink 注入的 `tronWeb` 上（插件 4.0.0 起），用户拒绝 `trx.sign`、`trx.multiSign` 或 `trx.signMessageV2` 时，Promise 以**纯字符串** `'Confirmation declined by user'` reject——不是 `Error` 对象，也没有数字 `code`。`{ code: 4001, message: 'User rejected the request.' }` 对象只由 `window.tron.request(...)` 方法（如 `eth_requestAccounts`）返回。其他失败（钱包未解锁、载荷非法、观察钱包等）返回其他值——参见[处理拒签](../reference/error-code-map.md#handling-rejections)。不要自动重试签名。
+
 | 码 | 含义 | 来源 | 可重试? |
 | :---: | --- | --- | :---: |
-| `4001` | 用户在签名弹窗里点【拒绝】 | `tronWeb.trx.multiSign(...)` | 否——用户拒绝 |
+| `'Confirmation declined by user'`（字符串） | 用户在签名弹窗里点【拒绝】 | `tronWeb.trx.multiSign(...)` | 否——用户拒绝 |
 | (抛出) | `permission_id not active` / `permission_id not exist` | `transactionBuilder.sendTrx({permissionId})`——权限不存在或被撤销 | 否——重新 `getAccount(...).active_permission` 查 |
 | (抛出) | 签名权重广播后仍低于 `threshold` | `sendRawTransaction` | 否——再凑签名(每个 co-signer 一次 `multiSign`) |
 | `REVERT` / `OUT_OF_ENERGY` / `FAILED` | 广播成功但链上执行失败 | `getTransactionInfo(txid)` | **否——交易已 final,永远不要自动重试** |
@@ -5089,7 +5107,7 @@ try {
 
 ## 简介
 
-DApp 需要用户对一个 hex 消息签名，签名后消息转发给后端进行验签，以此判断用户合法登录。
+DApp 可以请求用户对消息签名，再将消息与签名转发给后端验签，以此验证用户登录。
 
 > **前提条件：** 已通过 `eth_requestAccounts` 完成 DApp 连接授权（参见[开始开发](getting-started.md)）。
 
@@ -5099,15 +5117,24 @@ DApp 需要用户对一个 hex 消息签名，签名后消息转发给后端进�
 
 ```javascript
 const tronweb = window.tron.tronWeb;
+const message = "Sign in to Example DApp\nNonce: 8f3a2c"; // 普通 UTF-8 文本
 try {
-  const message = "0x01EF"; // any hex string
   const signedString = await tronweb.trx.signMessageV2(message);
+  // 用同一个字符串验签，返回签名者的 base58 地址
+  const recovered = await tronweb.trx.verifyMessageV2(message, signedString);
+  const ok = recovered === tronweb.defaultAddress.base58;
 } catch (e) {}
 ```
 
 ### 参数
 
-`window.tron.tronWeb.trx.signMessageV2` 接收一个十六进制的字符串作为参数，该字符串表示当前待签名的内容。
+消息须为非空**字符串**。TronLink 对该字符串的 UTF-8 字节签名，并加上 TIP-191 前缀 `"\x19TRON Signed Message:\n" + <字节长度>`。外观类似 hex 的字符串**不会**被解码：`"0x1234"` 按六个文本字符（字节为 `30 78 31 32 33 34`）签名，而不是两个原始字节 `12 34`。
+
+通过 TronLink 注入的 `tronWeb` 只支持字符串（TronLink 插件 4.0.0 起）。TronWeb 本身还接受 `Uint8Array` / `number[]` 来签原始字节，但 TronLink 会拒绝这些类型，因此 DApp 无法通过 `signMessageV2` 让 TronLink 对任意原始字节签名。
+
+验签时把**同一个字符串**传给 `verifyMessageV2`（见上方示例）。它返回恢复出的 base58 地址，地址不匹配时不会抛错——需要自行比对。
+
+参见 [TronWeb 消息签名与验签说明](https://tronweb.network/docu/docs/Sign%20and%20Verify%20Message/)。
 
 ### 返回值
 
@@ -5125,18 +5152,22 @@ try {
 
 ## 交互流程
 
-当代码执行到`await tronweb.trx.signMessageV2(message);`时，TronLink 钱包会提示弹窗，需要用户进行确认， 如下图, 其中消息内容会以hex的方式展示：
+当代码执行到`await tronweb.trx.signMessageV2(message);`时，TronLink 钱包会提示弹窗，需要用户进行确认，如下图。弹窗以文本形式展示消息内容：
 
-![TronLink 消息签名审批弹窗，以 hex 形式展示待签消息与"拒绝"/"签名"按钮](../images/zh_plugin-wallet_sign_message.png)
+![TronLink 消息签名审批弹窗，展示待签消息内容与"拒绝"/"签名"按钮](../images/zh_plugin-wallet_sign_message.png)
 
 如果用户在弹窗中选择【拒绝】，则会抛出异常，开发者可捕获此异常进行业务处理。
 
 ## 错误码
 
+**错误结构：** 在 TronLink 注入的 `tronWeb` 上（插件 4.0.0 起），用户拒绝 `trx.sign`、`trx.multiSign` 或 `trx.signMessageV2` 时，Promise 以**纯字符串** `'Confirmation declined by user'` reject——不是 `Error` 对象，也没有数字 `code`。`{ code: 4001, message: 'User rejected the request.' }` 对象只由 `window.tron.request(...)` 方法（如 `eth_requestAccounts`）返回。其他失败（钱包未解锁、载荷非法、观察钱包等）返回其他值——参见[处理拒签](../reference/error-code-map.md#handling-rejections)。不要自动重试签名。
+
 | 码 | 含义 | 来源 | 可重试? |
 | :---: | --- | --- | :---: |
-| `4001` | 用户在签名弹窗里点【拒绝】 | `tronWeb.trx.signMessageV2(message)` | 否——用户拒绝 |
-| (抛出) | `Invalid transaction provided` / 非 hex 输入 | `signMessageV2(...)` 参数校验 | 否——传合法的 hex 字符串 |
+| `'Confirmation declined by user'`（字符串） | 用户在签名弹窗里点【拒绝】 | `tronWeb.trx.signMessageV2(message)` | 否——用户拒绝 |
+| `'Invalid transaction provided'`（字符串） | 消息为空，或钱包内部签名失败 | `signMessageV2(...)` | 否——传入非空字符串 |
+| `'Transaction integrity check failed'`（字符串） | 非字符串消息（如 `Uint8Array`）被钱包拦截，在用户关闭 TronLink 警告弹窗后返回；插件 4.11.0 及更早返回 `'Invalid transaction provided'` | `signMessageV2(...)` | 否——传入字符串 |
+| `'User has not unlocked wallet'`（字符串） | 钱包未解锁，或 DApp 未连接 | `signMessageV2(...)` | 是——用户解锁或重新连接后 |
 | (抛出) | provider 未注入 / 钱包未授权 | `window.tron.tronWeb` 未定义 | 否——先通过 `eth_requestAccounts` 连接 |
 
 跨 surface 的码对照见[错误码对照表](../reference/error-code-map.md)。
@@ -5149,36 +5180,45 @@ try {
 
 > **前提条件：** 已通过 `eth_requestAccounts` 完成 DApp 连接授权（参见[开始开发](getting-started.md)）。
 
-DApp 生成质押2.0交易的时候，对于`DelegateResourceContract` 或者`UnDelegateResourceContract` 类型的交易，想要在签名时使用 tronlink 插件展示预估结果，需要向交易体添加 __options 字段。
+DApp 请求 TronLink 对 `DelegateResourceContract` 或 `UnDelegateResourceContract` 交易签名时，签名弹窗会展示资源类型和预估的资源数量：
 
-__options 内部有两个值 `estimatedBandwidth，estimatedEnergy` ，分别对应代理和回收预估的能量和带宽。
+- **资源类型**——读取自 `raw_data.contract[0].parameter.value.resource`。`tronWeb.transactionBuilder.delegateResource` / `undelegateResource` 对能量交易已自动写入 `"ENERGY"`；带宽交易会省略该字段（它是 protobuf 默认值），TronLink（4.1.4 及以上）把缺失值按 `"BANDWIDTH"` 处理。DApp 无需自行添加。
+- **预估数量**——读取自 DApp 在交易对象顶层添加的 `__options`：`estimatedBandwidth` 表示预估带宽，`estimatedEnergy` 表示预估能量。弹窗只展示与资源类型对应的那一项。缺少 `__options` 时弹窗显示 `0`，签名不受影响。
 
-通过非 tronlink 插件注入的 tronweb 生成质押2.0交易的时候，对于`DelegateResourceContract` 或者`UnDelegateResourceContract` 类型的交易想要在签名时使用 tronlink 插件展示资源对应的类型，需要向交易体添加 resource 字段。(添加 resource 仅针对非 tronlink 插件注入的 tronweb ，使用 tronlink 插件注入的 tronweb 不需要添加)。
+`__options` 不在 `raw_data` 内，添加它不会改变 `txID` 或 `raw_data_hex`。而 `parameter.value.resource` 属于被签名的协议数据，构建后不要再修改：修改后的值与 `raw_data_hex` / `txID` 不一致。`trx.sign` 会拒绝这样的交易（`'Invalid transaction provided'`），`trx.multiSign` 则会按修改后的数据重新计算 `txID`，签出的交易与你构建的不同。需要更换资源类型时请重新构建交易。
 
-resource 对应 `'BANDWIDTH'，'ENERGY'`。
-
-![Stake 2.0 委托/取消委托签名界面示意，标注了 __resource（"BANDWIDTH" 或 "ENERGY"）与 __options.estimatedBandwidth / estimatedEnergy 字段——TronLink 据此在签名页渲染资源类型](../images/dapp_stake2.0_img_0.jpg)
+![委托交易对象示意，标出 raw_data.contract[0].parameter.value.resource 与顶层的 __options.estimatedBandwidth](../images/dapp_stake2.0_img_0.jpg)
 <style>
 img {
   max-width: 100%!important;
 }
 </style>
+
 代码示例：
 
 ```javascript
-    const transaction = await tronWeb.transactionBuilder.delegateResource(10e6, 'receiverAddress', 'BANDWIDTH', 'ownerAddress', false);
-    transaction.raw_data.contract[0].parameter.value.resource = "BANDWIDTH"
-    transaction.__options = {"estimatedBandwidth": 1}
+// 能量——tronWeb 会写入 parameter.value.resource = "ENERGY"
+const energyTx = await tronWeb.transactionBuilder.delegateResource(10e6, 'receiverAddress', 'ENERGY', 'ownerAddress', false);
+energyTx.__options = { estimatedEnergy: 65000 };
+
+// 带宽——省略 resource，按 BANDWIDTH 展示
+const bandwidthTx = await tronWeb.transactionBuilder.delegateResource(10e6, 'receiverAddress', 'BANDWIDTH', 'ownerAddress', false);
+bandwidthTx.__options = { estimatedBandwidth: 3000 };
+
+const signed = await tronWeb.trx.sign(energyTx);
 ```
+
+`undelegateResource` 交易使用相同的 `__options` 字段。
 
 estimatedEnergy estimatedBandwidth 的具体计算逻辑见![Stake 2.0 资源份额到具体数额换算公式示意图](../images/dapp_skake2.0_img_1.png)[<a class="tooltip" href="https://www.google.com/url?q=https://coredevs.medium.com/stake-2-0-adaption-faq-66bafdf53606&sa=D&source=editors&ust=1684151119972747&usg=AOvVaw0msvWulJZhW6xn5QU461cb" data-tooltip="https://www.google.com/url?q=https://coredevs.medium.com/stake-2-0-adaption-faq-66bafdf53606&sa=D&source=editors&ust=1684151119972747&usg=AOvVaw0msvWulJZhW6xn5QU461cb">Stake 2.0 Adaptation FAQ</a>](https://www.google.com/url?q=https://coredevs.medium.com/stake-2-0-adaption-faq-66bafdf53606&sa=D&source=editors&ust=1684151119972747&usg=AOvVaw0msvWulJZhW6xn5QU461cb) 最后一个章节：How to convert resource share to amount?
 
 ## 错误码
 
+**错误结构：** 在 TronLink 注入的 `tronWeb` 上（插件 4.0.0 起），用户拒绝 `trx.sign`、`trx.multiSign` 或 `trx.signMessageV2` 时，Promise 以**纯字符串** `'Confirmation declined by user'` reject——不是 `Error` 对象，也没有数字 `code`。`{ code: 4001, message: 'User rejected the request.' }` 对象只由 `window.tron.request(...)` 方法（如 `eth_requestAccounts`）返回。其他失败（钱包未解锁、载荷非法、观察钱包等）返回其他值——参见[处理拒签](../reference/error-code-map.md#handling-rejections)。不要自动重试签名。
+
 | 码 | 含义 | 来源 | 可重试? |
 | :---: | --- | --- | :---: |
-| `4001` | 用户在签名弹窗里点【拒绝】 | 委托/取消委托交易的 `tronWeb.trx.sign(tx)` | 否——用户拒绝 |
-| (抛出) | 缺 `__options` 或 `__resource`——签名页无法渲染预估 | `tronWeb.trx.sign(tx)` | 否——按上文规则补全两个字段 |
+| `'Confirmation declined by user'`（字符串） | 用户在签名弹窗里点【拒绝】 | 委托/取消委托交易的 `tronWeb.trx.sign(tx)` | 否——用户拒绝 |
 | (抛出) | 质押的 TRX 不足 / 无可取消的代理 | `delegateResource` / `undelegateResource` 构造器 | 否——先修链上状态 |
 | `REVERT` / `OUT_OF_ENERGY` / `FAILED` | 广播成功但链上执行失败 | `sendRawTransaction` 返回或 `getTransactionInfo` | **否——交易已 final,永远不要自动重试** |
 
@@ -5317,7 +5357,7 @@ TRON 地址有两种可互转的编码：
 
 ## Ledger 签名看起来不一样（`v` 字节）
 
-TronLink 会规范化 Ledger 签名的末尾字节（`01`→`1c`，`00`→`1b`），使 Ledger 与普通账户签名一致。参见[对 Ledger 签名后的 v 字段兼容](../plugin-wallet/ledger-signing-update.md)。
+TronLink 插件的 Ledger 签名目前末尾为 `00` / `01`（v = 0 / 1），普通账户签名末尾为 `1b` / `1c`（v = 27 / 28）。[Ledger v 字段兼容指南](../plugin-wallet/ledger-signing-update.md)描述了计划中的归一化（`01`→`1c`、`00`→`1b`），目前尚未上线。验签时请同时兼容两种形式。
 
 ## 如何与移动端集成？
 
@@ -5326,4 +5366,8 @@ TronLink 会规范化 Ledger 签名的末尾字节（`01`→`1c`，`00`→`1b`�
 ## 如何构建使用 TronLink 的 AI 智能体？
 
 可使用 MCP 服务、智能体技能集、签名 SDK 或 CLI。从 [AI 支持](../ai-support/ai-llms.md)开始。
+
+## TronLink 会收集我的钱包地址吗？
+
+不会。为了改进产品，TronLink 会统计一些使用数据，但其中不包含你的钱包地址、私钥、助记词或交易哈希。统计规则是开源的，也很简单。上报的数据里不会出现钱包地址，只会用一个随机生成的编号代替。这个编号在你的设备上生成，跟地址没有任何关系，TronLink 也无法用它反查出你的地址。金额只记录所在区间，不记录具体数值。数据在你的设备上按天汇总后才会上报，不会逐笔发送。这些数据只用于改进 TronLink，绝不会出售。统计规则见 tronlink-extension-core 中的 [Anonymous Analytics Module](https://github.com/TronLink/tronlink-extension-core/blob/main/README.md#anonymous-analytics-module) 一节。
 
