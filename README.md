@@ -50,8 +50,13 @@ cd docs
 
 2. Install dependencies
 ```bash
+nvm install
+nvm use
 pip install -r requirements.txt
 ```
+
+Node.js is pinned to 24.22.1 in `.nvmrc` for local development and CI.
+The documentation is built with Python and MkDocs.
 
 3. Start the local server
 ```bash
