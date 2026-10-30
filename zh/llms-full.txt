@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 ../llms.txt 的 Localized 段。
 
-- Generated: 2026-10-14T09:05:47Z
-- Commit: 0dd71c449a85
+- Generated: 2026-10-14T09:58:10Z
+- Commit: 75c4f979dccf
 - Language: zh
 - Pages: 23
-- Token estimate: ~40,902 (chars / 4)
+- Token estimate: ~40,931 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: introduction/ -->
@@ -2256,9 +2256,9 @@ hexToAddress()             0x41... → T 地址
 |------|------|
 | `TL_TRONGRID_URL` | 全节点 API 地址 |
 | `TL_TRONGRID_API_KEY` | API 密钥（主网必需）。免费档约 100k 请求/日 + ~5 QPS；付费档提高 QPS、日配额并按用量计费。具体配额与响应 header 会变——请查 [TronGrid Pricing](https://www.trongrid.io/pricing) 与控制台当前值，并在运行时读 `X-Ratelimit-*` header。触发限流返回 HTTP 429（映射到 `TL_CHAIN_QUERY_FAILED`，可重试）。长期跑批的 agent 请在 50% / 80% / 95% 设置消费告警。 |
-| `TL_SUNSWAP_ROUTER` | SunSwap V2 路由地址。可选——未设置时按 `TL_TRONGRID_URL` 使用内置默认值：URL 含 `nile` 时为 Nile 路由 `TMn1qrmYUMSTXo9babrJLzepKZoPC7M6Sy`，其他 URL 为主网路由 `TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax`。仅在需要覆盖默认值时设置，且地址必须部署在同一网络。来源：[docs.sun.io](https://docs.sun.io)。 |
-| `TL_SUNSWAP_V3_ROUTER` | SunSwap V3 路由地址，须实现 `exactInputSingle`。可选——内置默认值在所有网络上都是主网路由 `TQAvWQpT9H916GckwWDJNhYZvQMkuRL7PN`。 |
-| `TL_WTRX_ADDRESS` | WTRX 合约地址。可选；按网络默认（主网 `TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR`，Nile `TYsbWxNnyTgsZaTFaue9hqpxkU3Fkco94a`）。 |
+| `TL_SUNSWAP_ROUTER` | SunSwap V2 Router 地址。建议设置为 SunSwap 官方 [V2 合约地址](https://docs.sun.io/protocols/sunswap-v2/reference/contract/) 中同一网络的 Router。未设置时使用 server 内置默认值，该值可能与官方地址不同。 |
+| `TL_SUNSWAP_V3_ROUTER` | SunSwap V3 Router 地址（须实现 `exactInputSingle`）。建议设置为 SunSwap 官方 [V3 合约地址](https://docs.sun.io/protocols/sunswap-v3/reference/contract/) 中同一网络的 Router。未设置时内置默认值在所有网络上都是主网地址，因此在 Nile 上不设置此变量无法执行 V3 兑换。 |
+| `TL_WTRX_ADDRESS` | WTRX 合约地址。可选；默认值与该网络 Router 使用的 WTRX 一致，一般无需设置。 |
 
 **钱包（agent-wallet）：**
 
@@ -2316,7 +2316,7 @@ Claude Code 自动检测：
 
 如果选择自动创建，服务会生成随机密码，把密码保存到 `~/.agent-wallet/runtime_secrets.json`，创建一个加密的 `main` 钱包，并继续当前会话。
 
-下面是更完整的 Nile 配置。示例省略了兑换路由变量，以使用 Nile 默认值：`tl_chain_swap`（V2）走 Nile 路由，但它会把报价 API 最优路径中的代币路径交给该 V2 路由执行，路径包含非 V2 池子时会失败（例如 Nile 上的 TRX→USDT），除非路径是纯 V2，否则 Nile 上的兑换只能视为可询价；`tl_chain_swap_v3` 在 Nile 上可以询价（`action=estimate`），但无法执行——默认 V3 路由在 Nile 上没有合约，Nile 上的 Smart Router `TB6xBCixqRPUSKiXb45ky1GhChFJ7qrfFj` 也没有实现 `exactInputSingle`。Shasta 的 URL 会使用主网默认值，因此 Shasta 上无法兑换。请勿把主网路由地址填进 Nile 配置：
+下面是更完整的 Nile 配置。其中的路由地址是 SunSwap 官方的 Nile Router（[V2](https://docs.sun.io/protocols/sunswap-v2/reference/contract/)、[V3](https://docs.sun.io/protocols/sunswap-v3/reference/contract/)）；请勿把主网路由地址填进 Nile 配置。`tl_chain_swap`（V2）会把报价 API 最优路径中的代币路径交给 V2 路由执行，路径包含非 V2 池子时会失败（例如 Nile 上的 TRX→USDT）。Shasta 的 URL 会使用主网默认值，因此 Shasta 上无法兑换：
 
 ```json
 {
@@ -2331,6 +2331,8 @@ Claude Code 自动检测：
         "TL_HEADLESS": "false",
         "TL_TRONGRID_URL": "https://nile.trongrid.io",
         "AGENT_WALLET_PASSWORD": "your-wallet-password",
+        "TL_SUNSWAP_ROUTER": "TYMjxCXfqLpMWW1QToP6hbcjpion7EE25p",
+        "TL_SUNSWAP_V3_ROUTER": "TFkswj6rUfK3cQtFGzungCkNXxD2UCpEVD",
         "TL_MULTISIG_BASE_URL": "https://apinile.walletadapter.org",
         "TL_MULTISIG_SECRET_ID": "TEST",
         "TL_MULTISIG_SECRET_KEY": "TESTTESTTEST",
@@ -2356,6 +2358,8 @@ Claude Code 自动检测：
       "env": {
         "TL_TRONGRID_URL": "https://nile.trongrid.io",
         "AGENT_WALLET_PASSWORD": "your-wallet-password",
+        "TL_SUNSWAP_ROUTER": "TYMjxCXfqLpMWW1QToP6hbcjpion7EE25p",
+        "TL_SUNSWAP_V3_ROUTER": "TFkswj6rUfK3cQtFGzungCkNXxD2UCpEVD",
         "TL_MULTISIG_BASE_URL": "https://apinile.walletadapter.org",
         "TL_MULTISIG_SECRET_ID": "TEST",
         "TL_MULTISIG_SECRET_KEY": "TESTTESTTEST",
@@ -2593,7 +2597,7 @@ mcp-server-tronlink/
 
 - **必须设置 minOut / 滑点上限。** 通过 `list_tools` 查看 `tl_chain_swap_v3` 的输入 schema（`SwapV3Params`），核对实际的 minimum-output / 滑点字段名；**不要**依赖未声明的默认值，缺省或 0 的 minOut 一律视为不安全。
 - **执行前现取报价。** 通过 Skills `tron-swap` 的 `swap-quote` / `swap-route`（或同等接口）取最新报价/路径，选定可接受的滑点容忍度并显式传入。
-- **核对 router。** 路由默认值为内置：V2 路由按网络区分，V3 默认值在所有网络都是同一个主网地址（见环境变量中的 `TL_SUNSWAP_ROUTER` / `TL_SUNSWAP_V3_ROUTER`）。如果覆盖 `TL_SUNSWAP_ROUTER` / `TL_SUNSWAP_V3_ROUTER`，请在目标网络上核实地址；过期或错误的 router 会把资金路由到非预期目标。
+- **核对 router。** 请将 `TL_SUNSWAP_ROUTER` / `TL_SUNSWAP_V3_ROUTER` 设置为 SunSwap 官方合约地址中对应网络的 Router（见环境变量）；过期或错误的 router 会把资金路由到非预期目标。
 - **不可自动重试。** swap 失败或结果未知都属于远程写——先在链上确认再决定是否重发（`TL_CHAIN_SWAP_FAILED` 不可重试）。
 
 #### 多签凭证管理（`TL_MULTISIG_SECRET_ID` / `TL_MULTISIG_SECRET_KEY`）
