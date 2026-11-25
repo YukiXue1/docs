@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 ../llms.txt 的 Localized 段。
 
-- Generated: 2026-11-04T10:12:58Z
-- Commit: 56f294d79923
+- Generated: 2026-11-25T09:13:28Z
+- Commit: 0d9bae027b94
 - Language: zh
-- Pages: 24
-- Token estimate: ~42,359 (chars / 4)
+- Pages: 27
+- Token estimate: ~43,558 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: introduction/ -->
@@ -751,6 +751,108 @@ DApp 浏览器支持运行 TRON DApp，并自动注入 tronWeb 及 tronLink 对�
         // screenModel: "1" -> 竖屏；"2" -> 横屏
         public void setScreenModel(String url, String screenModel)
 ```
+
+---
+
+<!-- source: docs/mobile/android-core.zh.md | url: mobile/android-core/ -->
+
+# Android 开源核心库
+
+在 Android 应用中集成 TronLink 的钱包功能，可以创建 TRON 钱包、读取地址，并对交易或消息签名。
+
+[上游 README](https://github.com/TronLink/tronlink-android-core/blob/main/README.md)
+
+## 安装
+
+环境要求为 Android API 21 及以上、Java 8 及以上。在 Gradle 解析依赖的仓库列表中加入 JitPack。以下示例使用 Groovy DSL。
+
+```groovy
+repositories {
+    maven { url "https://jitpack.io" }
+}
+```
+
+在应用模块中声明 AAR 依赖。
+
+```groovy
+dependencies {
+    implementation 'com.github.TronLink:tronlink-android-core:1.0.2@aar'
+}
+```
+
+## 创建钱包
+
+在应用中创建钱包并读取 TRON 地址。
+
+```java
+import org.tron.walletserver.Wallet;
+
+// 在应用的方法中执行
+Wallet wallet = new Wallet(true);
+String address = wallet.getAddress();
+```
+
+钱包测试还演示了如何通过助记词或私钥恢复地址。交易签名和消息签名的用法见签名测试。[钱包示例](https://github.com/TronLink/tronlink-android-core/blob/main/core/src/test/java/org/tron/WalletCoreUnitTest.java) · [签名示例](https://github.com/TronLink/tronlink-android-core/blob/main/core/src/test/java/org/tron/TransactionCoreUnitTest.java)
+
+## 验证 AAR 签名
+
+发布签名公钥的指纹为 `7B910EA80207596075E6D7BA5D34F7A6550473BA`。导入公钥后，在 AAR 和签名文件所在目录运行以下命令，并将文件名替换为实际下载的名称。
+
+```bash
+gpg --verify tronlink-android-core-VERSION.aar.asc tronlink-android-core-VERSION.aar
+```
+
+## 隐私
+
+TronLink Android 在设备上为地址分配 UUID，按金额区间汇总使用数据。在 App 设置中开启基础模式（Basic Mode）后，应用会停止生成和上传统计报告。[Android 隐私说明](https://github.com/TronLink/tronlink-android-core/blob/main/PRIVACY-POLICY.md)
+
+## 版本与许可证
+
+上游安装示例使用 `1.0.2`。[Apache License 2.0](https://github.com/TronLink/tronlink-android-core/blob/main/LICENSE)
+
+---
+
+<!-- source: docs/mobile/ios-core.zh.md | url: mobile/ios-core/ -->
+
+# iOS 开源核心库
+
+在 iOS 应用中使用 TronLink 的原生钱包模块，可以创建 TRON 钱包、读取地址，并对交易或消息签名。
+
+[上游 README](https://github.com/TronLink/tronlink-iOS-core/blob/main/README.md)
+
+## 安装
+
+该 Pod 支持 iOS 15.1 及以上，声明的 Swift 版本为 4.2。在 Podfile 中为应用 target 添加依赖。
+
+```ruby
+pod 'tronlink-iOS-core', '2.0.1'
+```
+
+运行 `pod install`，用 Xcode 打开生成的 `.xcworkspace`，然后在 Swift 文件中导入模块。
+
+```swift
+import TLCore
+```
+
+## 运行示例工程
+
+要在上游 Xcode 示例工程中查看钱包 API 的用法，请先进入示例目录安装依赖。
+
+```bash
+git clone https://github.com/TronLink/tronlink-iOS-core.git
+cd tronlink-iOS-core/Example
+pod install
+```
+
+在 Xcode 中打开 `Example/` 下的工作区。Swift 测试展示了创建钱包、签署交易和消息，以及导出私钥或助记词的用法。[Swift 钱包示例](https://github.com/TronLink/tronlink-iOS-core/blob/main/Example/Tests/Tests.swift)
+
+## 隐私
+
+TronLink iOS 在设备上汇总使用数据。开启基础模式（Basic Mode）后，应用会停止生成和上传统计报告。观察钱包和 Shasta 测试网也不参与上报。Debug 与 Release 构建都只允许在宿主标记为线上或预发布的环境中上传。[iOS 隐私说明](https://github.com/TronLink/tronlink-iOS-core/blob/main/PRIVACY-POLICY.md)
+
+## 版本与许可证
+
+版本为 `2.0.1`。[Podspec](https://github.com/TronLink/tronlink-iOS-core/blob/main/tronlink-iOS-core.podspec) · [Apache License 2.0](https://github.com/TronLink/tronlink-iOS-core/blob/main/LICENSE)
 
 ---
 
@@ -2011,6 +2113,56 @@ ledger返回的实际签名hash：
 ```text
 ......7ee71b
 ```
+
+---
+
+<!-- source: docs/plugin-wallet/extension-core.zh.md | url: plugin-wallet/extension-core/ -->
+
+# 插件开源核心库
+
+`@tronlink/core` 是 TronLink 插件使用的 JavaScript / TypeScript 钱包库。钱包应用可以用它派生 TRON 和 EVM 账户，并在本地签名。DApp 如需连接用户已安装的 TronLink 插件并请求签名，请使用[插件提供的接口](active-requests.zh.md)。
+
+[上游 README](https://github.com/TronLink/tronlink-extension-core/blob/main/README.md)
+
+## 安装
+
+通过 npm 安装。该包提供 CommonJS、ES 模块入口以及 TypeScript 类型声明。
+
+```bash
+npm install @tronlink/core
+```
+
+项目指定 Node.js `24.22.3`，开发使用 pnpm `10.12.4`。TypeScript 项目需要 `4.9.5` 及以上版本。面向浏览器打包时，需要为 `buffer`、`crypto`、`stream` 等 Node 模块配置 polyfill。[上游 webpack 配置](https://github.com/TronLink/tronlink-extension-core/blob/main/webpack.config.js)
+
+## 派生 TRON 地址
+
+生成助记词，获取第一个账户下第一个地址的派生路径，再用该路径派生私钥并计算地址。
+
+```ts
+import { BaseWallet, TronWallet } from '@tronlink/core';
+
+const wallet = new TronWallet();
+const mnemonic = BaseWallet.generateRandomMnemonic();
+const path = wallet.derivePath({ accountIndex: 0, addressIndex: 0 });
+const privateKey = wallet.derivePrivateKey({ mnemonic, path });
+const address = wallet.getAddressBy({ privateKey });
+```
+
+派生 EVM 地址时，使用 `EvmWallet` 的 `derivePath` 获取对应路径，再派生私钥。[TRON 与 EVM 账户示例](https://github.com/TronLink/tronlink-extension-core/blob/main/demo/create_account.ts)
+
+## 签名
+
+两个钱包类都支持交易、消息和结构化数据签名。对 TRON 交易签名时，将已构建的交易传入 `wallet.signTransaction({ privateKey, data: rawTransaction })`。对 EVM 交易签名时，在 `data` 中提供链配置和未签名交易。签名结果在本地返回，广播需另行执行。[TRON 签名示例](https://github.com/TronLink/tronlink-extension-core/blob/main/demo/tron_signature.ts) · [EVM 签名示例](https://github.com/TronLink/tronlink-extension-core/blob/main/demo/evm_signature.ts)
+
+## Ledger 与使用统计
+
+Ledger 签名要求浏览器提供 `navigator.hid`。使用设备上的 TRX 应用时选择 `LedgerTrxSigner`，使用 ETH 应用时选择 `LedgerEvmSigner`。
+
+可选的 `userStatistics` 模块使用设备上为地址分配的 UUID，按日期和金额区间汇总主网活动。存储与上报回调由宿主应用提供。[隐私与上报说明](https://github.com/TronLink/tronlink-extension-core/blob/main/PRIVACY.md)
+
+## 版本与许可证
+
+包版本为 `1.1.4`。[包配置](https://github.com/TronLink/tronlink-extension-core/blob/main/package.json) · [Apache License 2.0](https://github.com/TronLink/tronlink-extension-core/blob/main/LICENSE)
 
 ---
 
