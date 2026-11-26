@@ -133,7 +133,7 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 
 # 版权信息
-copyright: Copyright &copy; 2025 TronLink Team
+copyright: Copyright &copy; 2025–2026 TronLink Team
 
 # 验证
 validation:

@@ -40,12 +40,8 @@ color: #3C7CF3!important;
     padding-top: 0; /* 移除顶部内边距 */
 }
 
-.md-footer {
-  background-color: var(--md-default-bg-color);
-}
-
-.md-footer {
-  display: none !important;  /* 隐藏底部导航 */
+.md-footer__inner {
+  display: none;  /* 翻页导航已在正文下方展示 */
 }
 
 .md-sidebar--secondary {
@@ -121,6 +117,11 @@ a.card-link:hover {
   display: flex;
 }
 
+/* 正文翻页导航在窄屏上也显示上一页标题。 */
+.page-nav-below .md-footer__link--prev .md-footer__title {
+  display: block;
+}
+
 /* add flex alignment */
 .md-footer__link {
   align-items: center;
@@ -153,11 +154,4 @@ a.card-link:hover {
 .md-nav--primary .md-nav__item--section > .md-nav__link {
     color: #000;
     font-size: 1.1em; 
-}
-
-/* Override the responsive design part of the footer. */
-@media screen and (max-width: 44.984375em) {
-  .md-footer__link--prev .md-footer__title {
-    display: block;
-  }
 }
