@@ -62,10 +62,13 @@ plugins:
               - Asset Management: mobile/asset-management.en.md
               - DeepLink: mobile/deeplink.en.md
               - DApp Support: mobile/dapp-support.en.md
+              - Android Core (Open Source): mobile/android-core.en.md
+              - iOS Core (Open Source): mobile/ios-core.en.md
             - TronLink Wallet Extension:
               - Request TronLink Extension: plugin-wallet/active-requests.en.md
               - Receive messages from TronLink: plugin-wallet/passive-messages.en.md
               - Compatibility for the v field after Ledger signing: plugin-wallet/ledger-signing-update.en.md
+              - Extension Core (Open Source): plugin-wallet/extension-core.en.md
             - AI Support:
               - AI / LLMs: ai-support/ai-llms.en.md
               - MCP Server TronLink : ai-support/mcp-server-tronlink.en.md
@@ -96,10 +99,13 @@ plugins:
               - 资产管理: mobile/asset-management.zh.md
               - DeepLink: mobile/deeplink.zh.md
               - DApp支持: mobile/dapp-support.zh.md
+              - Android 开源核心库: mobile/android-core.zh.md
+              - iOS 开源核心库: mobile/ios-core.zh.md
             - 插件钱包:
               - 主动请求TronLink插件功能: plugin-wallet/active-requests.zh.md
               - 被动接收TronLink插件的消息: plugin-wallet/passive-messages.zh.md
               - 对ledger签名后的v字段兼容: plugin-wallet/ledger-signing-update.zh.md
+              - 插件开源核心库: plugin-wallet/extension-core.zh.md
             - AI 支持:
               - AI / LLMs: ai-support/ai-llms.zh.md
               - MCP Server TronLink : ai-support/mcp-server-tronlink.zh.md

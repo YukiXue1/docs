@@ -2,7 +2,7 @@
 
 > TronLink 是 TRON 生态的去中心化钱包，提供浏览器扩展和移动 App。本文档涵盖 DApp 通过浏览器扩展、移动端（DeepLink）以及 AI/智能体工具链（MCP 服务、CLI、签名 SDK）与 TronLink 集成。
 
-> Updated: 2026-11-04T10:12:58Z · Commit: 56f294d79923
+> Updated: 2026-11-26T08:06:39Z · Commit: 76cab7fad6f5
 
 集成原理：TronLink 向页面注入 `window.tron` provider，暴露 `tronWeb` 实例、`request` 方法以及 `on` / `removeListener` 事件订阅。DApp 通过 TIP-6963 检测钱包，用 `eth_requestAccounts`（TIP-1102）请求授权，再经 `tronWeb` 构建、签名并广播交易。账户/网络变化以 `accountsChanged` / `chainChanged` 被动事件送达。
 
@@ -21,6 +21,7 @@
 - [主动请求 TronLink 插件功能](plugin-wallet/active-requests/)：连接网站（TIP-1102 / EIP-1102）、provider 发现（TIP-6963）、普通/多签转账、消息签名、`wallet_watchAsset`、切换网络（TIP-3326）及旧版 `window.tronLink` 方法
 - [被动接收 TronLink 插件的消息](plugin-wallet/passive-messages/)：`accountsChanged`、`chainChanged`、`connect`、`disconnect`（TIP-1193）事件及旧版 3.x 消息
 - [对 Ledger 签名后的 v 字段兼容](plugin-wallet/ledger-signing-update/)：交易、消息、EIP-712 签名的 `v` 字节归一化计划（`01`→`1c`，`00`→`1b`，尚未上线）
+- [插件开源核心库](plugin-wallet/extension-core/)：使用 `@tronlink/core` 派生 TRON 和 EVM 账户并在本地签名
 
 ## DApp 集成
 
@@ -34,6 +35,8 @@
 - [资产管理](mobile/asset-management/)：添加自定义 TRC-20 / TRC-721 代币
 - [DeepLink](mobile/deeplink/)：`tronlinkoutside://` 协议——打开钱包、打开 DApp、登录、转账、签名交易、签名消息及回传码
 - [DApp 支持](mobile/dapp-support/)：应用内 DApp 浏览器注入（`tronWeb`、`tronLink`、`iTron`）
+- [Android 开源核心库](mobile/android-core/)：集成 Android 钱包 AAR、创建钱包及验证发布签名
+- [iOS 开源核心库](mobile/ios-core/)：集成 TLCore 并运行 Swift 钱包示例
 
 ## AI 支持
 

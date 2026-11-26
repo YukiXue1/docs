@@ -16,6 +16,9 @@ If you are an AI coding agent or an autonomous tool reading this for orientation
 | --- | --- |
 | DApp integration in the browser (TIP-6963 / `eth_requestAccounts` / `tronWeb`) | [docs/dapp/getting-started.en.md](docs/dapp/getting-started.en.md) + [docs/plugin-wallet/*](docs/plugin-wallet/) |
 | Mobile DeepLink (`tronlinkoutside://`) | [docs/mobile/deeplink.en.md](docs/mobile/deeplink.en.md) |
+| Android wallet core | [docs/mobile/android-core.en.md](docs/mobile/android-core.en.md) |
+| iOS wallet core | [docs/mobile/ios-core.en.md](docs/mobile/ios-core.en.md) |
+| Browser extension wallet core | [docs/plugin-wallet/extension-core.en.md](docs/plugin-wallet/extension-core.en.md) |
 | AI-agent tooling overview | [docs/ai-support/ai-llms.en.md](docs/ai-support/ai-llms.en.md) |
 | MCP server (production) | [docs/ai-support/mcp-server-tronlink.en.md](docs/ai-support/mcp-server-tronlink.en.md) |
 | MCP framework / SSOT error codes | [docs/ai-support/tronlink-mcp-core.en.md](docs/ai-support/tronlink-mcp-core.en.md) |
