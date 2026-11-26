@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 ../llms.txt 的 Localized 段。
 
-- Generated: 2026-11-26T07:01:25Z
-- Commit: fb149495bc69
+- Generated: 2026-11-26T08:33:06Z
+- Commit: 070c80e80562
 - Language: zh
 - Pages: 27
-- Token estimate: ~45,046 (chars / 4)
+- Token estimate: ~45,066 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: introduction/ -->
@@ -742,7 +742,9 @@ img {
 
 TronLink App 内置 DApp 浏览器，对于在其上运行的 TRON DApp，TronLink 会自动将 tronWeb 及 tronLink 对象注入到该 DApp。从而允许 DApp 与 TronLink App，以及TRON 网络交互。
 
-在 App 内置浏览器中取得已授权的 TronWeb 实例后，可参考[开始开发](../dapp/getting-started.md)中的交易构建步骤。该指南的发现、授权和事件示例面向浏览器插件，请在目标 App 版本上逐项确认接口支持情况。从外部移动浏览器唤起 TronLink 请参考 [DeepLink](deeplink.md)。
+App 内置浏览器支持通过 TIP-6963 发现 Provider，并通过 `eth_requestAccounts` 请求连接授权。可参考[开始开发](../dapp/getting-started.md)中的发现和授权步骤，再用授权后的 TronWeb 实例构建交易。如果 DApp 依赖 `accountsChanged` 或 `chainChanged`，请在目标 App 版本上验证这些事件。
+
+从外部移动浏览器唤起 TronLink 请参考 [DeepLink](deeplink.md)。
 
 ## Dapp 浏览器
 
