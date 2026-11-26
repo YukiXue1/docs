@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 ../llms.txt 的 Localized 段。
 
-- Generated: 2026-11-26T08:33:06Z
-- Commit: 070c80e80562
+- Generated: 2026-11-26T08:57:36Z
+- Commit: 3a008d5017cb
 - Language: zh
 - Pages: 27
-- Token estimate: ~45,066 (chars / 4)
+- Token estimate: ~46,140 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: introduction/ -->
@@ -151,6 +151,7 @@ async function getTronWeb() {
         let tx;
         try {
           const to = "替换为实际收款地址";
+          // 构建一笔 10 SUN 的转账（1 TRX = 1_000_000 SUN）。
           tx = await tronweb.transactionBuilder.sendTrx(to, 10, tronweb.defaultAddress.base58);
         } catch (error) {
           return console.error("构建转账失败", error);
@@ -166,7 +167,10 @@ async function getTronWeb() {
 
         try {
           const receipt = await tronweb.trx.sendRawTransaction(signedTx);
-          if (receipt.result === false || receipt.code) return console.error(receipt.code, receipt.message);
+          if (!receipt.result) {
+            const message = receipt.message ? tronweb.toUtf8(receipt.message) : "";
+            return console.error(receipt.code, message);
+          }
           console.log("请查询该交易的链上确认状态", signedTx.txID);
         } catch (error) {
           console.error("广播结果未知，重试前先按交易 ID 查询", signedTx.txID, error);
@@ -286,7 +290,14 @@ img {
 }
 </style>
 
-下文每个操作中，`tronlinkoutside://pull.activity?param={}` 的 `param` 参数都是 JSON 格式的协议数据。注意：JSON 字符串放入链接前需要进行 urlencode 编码。
+`param` 查询参数包含 URL 编码后的 JSON。每个示例链接都由其下方的请求对象编码而成。接入时请替换示例值，并重新生成链接。
+
+```javascript
+const buildDeepLink = (request) =>
+  "tronlinkoutside://pull.activity?param=" + encodeURIComponent(JSON.stringify(request));
+```
+
+登录、转账和签名时，请使用自己的 DApp 地址、回调地址、目标 chainId 和新生成的 actionId。交易签名时，将 `data` 设为新构建交易的 JSON 字符串。示例交易的有效期已过。
 
 ## 打开钱包
 
@@ -327,8 +338,6 @@ img {
 
 ## 登录授权
 
-接入时请替换 DApp 的 URL、回调地址、图标、名称、目标网络及本次请求的 actionId，再将请求序列化为 JSON，用 `encodeURIComponent` 编码后填入 `param`。
-
 使用 DeepLink 方式唤起钱包，并在钱包中选择获取钱包地址。可用版本：TronLink v4.11.0 起。
 
 ```html
@@ -368,7 +377,7 @@ img {
 使用 DeepLink 方式唤起 TronLink，并发送转账数据，在钱包中转账并广播。可用版本：TronLink v4.11.0 起。
 
 ```html
-<a href='tronlinkoutside://pull.activity?param={}'>Transfer</a>
+<a href='tronlinkoutside://pull.activity?param=%7B%22url%22%3A%22https%3A%2F%2Fjustlend.org%2F%23%2Fhome%22%2C%22callbackUrl%22%3A%22https%3A%2F%2Fyour-backend.example.com%2Fapi%2Ftron%2Fv1%2Fcallback%22%2C%22dappIcon%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2Ficon.png%22%2C%22dappName%22%3A%22Test%20demo%22%2C%22protocol%22%3A%22TronLink%22%2C%22version%22%3A%221.0%22%2C%22chainId%22%3A%220x2b6653dc%22%2C%22memo%22%3A%22Reward%22%2C%22from%22%3A%22TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig%22%2C%22to%22%3A%22TXd9duqtcyyj4pBCKvXKNqmazxxDw5SdBa%22%2C%22loginAddress%22%3A%22TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig%22%2C%22tokenId%22%3A%220%22%2C%22contract%22%3A%22%22%2C%22amount%22%3A%2220%22%2C%22action%22%3A%22transfer%22%2C%22actionId%22%3A%22408170fc-7919-4459-be5e-05a9d4b4065e%22%7D'>Transfer</a>
 ```
 
 `param`（请求）：
@@ -411,7 +420,7 @@ img {
 可用版本：TronLink v4.11.0 起。
 
 ```html
-<a href='tronlinkoutside://pull.activity?param={}'>Sign transaction</a>
+<a href='tronlinkoutside://pull.activity?param=%7B%22url%22%3A%22https%3A%2F%2Fjustlend.org%2F%23%2Fhome%22%2C%22callbackUrl%22%3A%22https%3A%2F%2Fyour-backend.example.com%2Fapi%2Ftron%2Fv1%2Fcallback%22%2C%22dappIcon%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2Ficon.png%22%2C%22dappName%22%3A%22Test%20demo%22%2C%22protocol%22%3A%22TronLink%22%2C%22version%22%3A%221.0%22%2C%22chainId%22%3A%220x2b6653dc%22%2C%22action%22%3A%22sign%22%2C%22loginAddress%22%3A%22TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig%22%2C%22method%22%3A%22transfer%28address%2Cuint256%29%22%2C%22signType%22%3A%22signTransaction%22%2C%22data%22%3A%22%7B%5C%22visible%5C%22%3Afalse%2C%5C%22txID%5C%22%3A%5C%22dcfaf2c2d75d91994f9a23623e905eaa7d74bc804fa5821640111ada3441376a%5C%22%2C%5C%22raw_data%5C%22%3A%7B%5C%22contract%5C%22%3A%5B%7B%5C%22parameter%5C%22%3A%7B%5C%22value%5C%22%3A%7B%5C%22data%5C%22%3A%5C%22a9059cbb000000000000000000000000ed87a3ae2bf2ab8b95486a23f224487ad75c60200000000000000000000000000000000000000000000000000000000000000014%5C%22%2C%5C%22owner_address%5C%22%3A%5C%2241b42b84bad413dde093e27d01bb02ed9eede52c43%5C%22%2C%5C%22contract_address%5C%22%3A%5C%2241eca9bc828a3005b9a3b909f2cc5c2a54794de05f%5C%22%7D%2C%5C%22type_url%5C%22%3A%5C%22type.googleapis.com%2Fprotocol.TriggerSmartContract%5C%22%7D%2C%5C%22type%5C%22%3A%5C%22TriggerSmartContract%5C%22%7D%5D%2C%5C%22ref_block_bytes%5C%22%3A%5C%2284e1%5C%22%2C%5C%22ref_block_hash%5C%22%3A%5C%221731d6450e11a03f%5C%22%2C%5C%22expiration%5C%22%3A1670168865000%2C%5C%22fee_limit%5C%22%3A100000000%2C%5C%22timestamp%5C%22%3A1670168805340%7D%2C%5C%22raw_data_hex%5C%22%3A%5C%220a0284e122081731d6450e11a03f40e8d1c9eecd305aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541b42b84bad413dde093e27d01bb02ed9eede52c43121541eca9bc828a3005b9a3b909f2cc5c2a54794de05f2244a9059cbb000000000000000000000000ed87a3ae2bf2ab8b95486a23f224487ad75c6020000000000000000000000000000000000000000000000000000000000000001470dcffc5eecd30900180c2d72f%5C%22%7D%22%2C%22actionId%22%3A%2264fcdb39-2cfa-47f2-85bd-d7e8409809ed%22%7D'>Sign transaction</a>
 ```
 
 `param`（请求）：
@@ -452,7 +461,7 @@ img {
 可用版本：TronLink v4.11.0 起。
 
 ```html
-<a href='tronlinkoutside://pull.activity?param={}'>Sign message</a>
+<a href='tronlinkoutside://pull.activity?param=%7B%22url%22%3A%22https%3A%2F%2Fjustlend.org%2F%23%2Fhome%22%2C%22callbackUrl%22%3A%22https%3A%2F%2Fyour-backend.example.com%2Fapi%2Ftron%2Fv1%2Fcallback%22%2C%22dappIcon%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2Ficon.png%22%2C%22dappName%22%3A%22Test%20demo%22%2C%22protocol%22%3A%22TronLink%22%2C%22version%22%3A%221.0%22%2C%22chainId%22%3A%220x2b6653dc%22%2C%22loginAddress%22%3A%22TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig%22%2C%22signType%22%3A%22signStr%22%2C%22message%22%3A%22abc%22%2C%22action%22%3A%22sign%22%2C%22actionId%22%3A%2250554861-4861-41c4-adf3-abf36213f843%22%7D'>Sign message</a>
 ```
 
 `param`（请求）：
@@ -490,8 +499,6 @@ img {
 
 ## 回传消息码
 
-> `10025` 表示转账资产标识冲突。每次转账只指定一种资产。
-
 | 消息码 | 消息 | 备注 |
 |:-------|:-------|:-------|
 | 0 | success |  |
@@ -519,7 +526,7 @@ img {
 | 10022 | Incorrect loginAddress |  |
 | 10023 | System contract not support |  |
 | 10024 | Incorrect tokenId |  |
-| 10025 | 代币 ID 与合约地址冲突 |  |
+| 10025 | TokenId & Contract address should not exist together | 转账请求中的资产标识冲突。 |
 | 300 | Transaction canceled |  |
 | 301 | Transaction executed in TronLink |  |
 | 302 | Broadcast failure - returned with incorrect info |  |
@@ -618,7 +625,13 @@ img {
 }
 ```
 
-**转账**时，TRX 使用 `tokenId: "0"`，TRC10 使用十进制字符串形式的资产 ID，TRC20 使用 `contract` 指定合约地址。示例将未使用的字段写作空字符串。省略字段会生成不同的 JSON 请求，请在目标 App 版本确认未使用字段的填法。
+**转账**字段按下表填写。沿用转账示例和 DeepLink Demo 的请求格式，将未使用的字段设为空字符串。
+
+| 资产 | `tokenId` | `contract` |
+|---|---|---|
+| TRX | `"0"` | `""` |
+| TRC10 | 十进制字符串形式的代币 ID | `""` |
+| TRC20 | `""` | 代币合约地址 |
 
 ```json
 {
@@ -808,7 +821,7 @@ String address = wallet.getAddress();
 
 ## 验证 AAR 签名
 
-验签需要 TronLink 签署的 AAR 原件及其配套的独立签名文件 `.asc`。JitPack 只提供 AAR，[1.0.2 发布页](https://github.com/TronLink/tronlink-android-core/releases/tag/1.0.2) 也没有签名附件。如需验证此版本，请向维护者索取签署的 AAR 和配套签名。[上游验签说明](https://github.com/TronLink/tronlink-android-core/blob/1.0.3/README.md#integrity-check) 自 1.0.3 起提供。
+验签需要 TronLink 签署的 AAR 原件及配套的独立签名文件 `.asc`。[1.0.2](https://github.com/TronLink/tronlink-android-core/releases/tag/1.0.2) 和 [1.0.16](https://github.com/TronLink/tronlink-android-core/releases/tag/1.0.16) 的 GitHub 发布页提供源码归档。需要可验签的构建时，请向维护者索取签署的 AAR 和配套签名。[上游验签说明](https://github.com/TronLink/tronlink-android-core/blob/1.0.3/README.md#integrity-check) 自 1.0.3 起提供。
 
 下载[发布公钥](https://keys.openpgp.org/vks/v1/by-fingerprint/7B910EA80207596075E6D7BA5D34F7A6550473BA)，保存为 `tronlink-build.asc`。先查看签名子密钥的指纹，与上游公布的 `7B910EA80207596075E6D7BA5D34F7A6550473BA` 核对。一致后导入公钥，再用维护者提供的两个文件验签；请替换下例中的文件名。
 
@@ -824,7 +837,7 @@ gpg --verify release.aar.asc release.aar
 
 ## 版本与许可证
 
-上游安装示例使用 `1.0.2`。[Apache License 2.0](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/LICENSE)
+安装示例沿用上游 README 的 `1.0.2`。最新标签为 `1.0.16`。[Apache License 2.0](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/LICENSE)
 
 ---
 
@@ -4390,6 +4403,7 @@ try {
   const { address } = await signer.connectWallet("nile");
   const { balance } = await signer.getBalance(address, "nile");
   console.log(address, balance);
+  // Signer 以 TRX 为单位，这里发送 1 TRX。
   const { txId, status } = await signer.sendTrx(recipient, 1, "nile");
   console.log(txId, status);
 } finally {
@@ -4485,6 +4499,7 @@ const recipient = process.env.RECIPIENT;
 if (!TronWeb.isAddress(recipient)) throw new Error("Set RECIPIENT to a TRON address");
 await signer.start();
 const { address } = await signer.connectWallet("nile");
+// 交易构建器以 SUN 为单位，这里构建 10 SUN 的转账（1 TRX = 1_000_000 SUN）。
 const tx = await tronWeb.transactionBuilder.sendTrx(recipient, 10, address);
 ```
 
@@ -5278,7 +5293,7 @@ try {
 
 ```javascript
 const tronweb = window.tron.tronWeb;
-const owner = window.prompt("Transaction owner", tronweb.defaultAddress.base58);
+const owner = "REPLACE_WITH_OWNER_ADDRESS";
 const account = await tronweb.trx.getAccount(owner);
 console.table(account.active_permission);
 ```
@@ -5287,61 +5302,91 @@ console.table(account.active_permission);
 
 ### 签名并检查累计权重
 
-接着使用上面的变量，填写收款人和选定的权限 ID。每次收集新签名后，在同一网络上将更新后的交易传给 `checkAndBroadcast`。节点会按交易 owner 当前的权限验证签名。[GetSignWeight](https://developers.tron.network/reference/getsignweight)
+在交易所用网络上，将已授权的 TronWeb 实例传给以下函数。广播前，由节点根据交易 owner 当前的权限检查签名。[GetSignWeight](https://developers.tron.network/reference/getsignweight)
 
 ```javascript
-async function checkAndBroadcast(signedTx) {
-  const contract = signedTx.raw_data.contract[0];
-  const check = await tronweb.trx.getSignWeight(signedTx);
-  if (!check) throw new Error("Sign-weight response unavailable");
-  const { permission, result, current_weight: weight } = check;
-  if (result?.code === "PERMISSION_ERROR") throw new Error("Recheck owner and permission");
+function validateSignWeight(check, permissionId) {
+  const { permission, result, current_weight: weight } = check ?? {};
+  if (result?.code === "PERMISSION_ERROR") throw new Error("请核对交易 owner 和权限");
   if (!result || typeof result !== "object" || Array.isArray(result) ||
-      !permission || !Number.isSafeInteger(permission.id) ||
-      !Number.isSafeInteger(permission.threshold) ||
+      !permission || !Number.isSafeInteger(permission.threshold) ||
       permission.threshold <= 0 || !Number.isSafeInteger(weight) || weight < 0 ||
       !/^[0-9a-f]{64}$/i.test(permission.operations)) {
-    throw new Error("Permission or weight unavailable");
+    throw new Error("无法确认权限或累计权重");
   }
-  // TransferContract is operation 1 in the active permission bitmap.
+  // 活动权限位图中的第 1 位对应 TransferContract。
   const allowsTransfer = (parseInt(permission.operations.slice(0, 2), 16) & 2) !== 0;
-  if (permission.type !== "Active" || permission.id !== contract.Permission_id || !allowsTransfer) {
-    throw new Error("Recheck owner and permission");
+  if (permission.type !== "Active" || permission.id !== permissionId || !allowsTransfer) {
+    throw new Error("请核对交易 owner 和权限");
   }
-  if (result.code === "NOT_ENOUGH_PERMISSION" && weight < permission.threshold) {
+  return { code: result.code, weight, threshold: permission.threshold };
+}
+
+async function checkAndBroadcast(tronweb, signedTx, permissionId) {
+  const check = await tronweb.trx.getSignWeight(signedTx);
+  const { code, weight, threshold } = validateSignWeight(check, permissionId);
+  if (code === "NOT_ENOUGH_PERMISSION" && weight < threshold) {
     return { status: "collect", signedTx };
   }
-  // The node may omit the default ENOUGH_PERMISSION code in a successful result.
-  if ((result.code !== undefined && result.code !== "ENOUGH_PERMISSION") ||
-      weight < permission.threshold) throw new Error("Weight check failed");
+
+  // 节点可能省略默认的 ENOUGH_PERMISSION 状态码。
+  if ((code !== undefined && code !== "ENOUGH_PERMISSION") || weight < threshold) {
+    throw new Error("签名权重检查失败");
+  }
+
   const receipt = await tronweb.trx.sendRawTransaction(signedTx);
-  if (!receipt.result) throw new Error([receipt.code, receipt.message].join(" "));
+  if (!receipt.result) {
+    const message = receipt.message ? tronweb.toUtf8(receipt.message) : "";
+    throw new Error([receipt.code, message].filter(Boolean).join(" ") || "广播被拒绝");
+  }
   return { status: "submitted", txID: signedTx.txID };
 }
 
-const recipient = window.prompt("Recipient address");
-const permissionId = Number(window.prompt("Active permission ID"));
-if (!account.active_permission?.some(p => p.id === permissionId)) {
-  throw new Error("Select an active permission of the transaction owner");
-}
-const tx = await tronweb.transactionBuilder.sendTrx(recipient, 10, owner, { permissionId });
-let signedTx;
-try {
-  signedTx = await tronweb.trx.multiSign(tx, undefined, permissionId);
-} catch (error) {
-  if (error === "Confirmation declined by user") console.info("Signing declined");
-  else console.error(tx.txID, error);
-}
-if (signedTx) {
-  try {
-    console.log(await checkAndBroadcast(signedTx));
-  } catch (error) {
-    console.error(signedTx.txID, error);
+async function signAndCheck(tronweb, tx) {
+  const permissionId = tx.raw_data.contract[0].Permission_id;
+  if (!Number.isSafeInteger(permissionId) || permissionId < 2) {
+    throw new Error("请填写有效的活动权限 ID");
   }
+
+  let signedTx;
+  try {
+    signedTx = await tronweb.trx.multiSign(tx, undefined, permissionId);
+  } catch (error) {
+    if (error === "Confirmation declined by user") return { status: "declined" };
+    throw error;
+  }
+
+  return checkAndBroadcast(tronweb, signedTx, permissionId);
 }
 ```
 
-返回 `collect` 时，保留部分签名交易并交给下一位有权限的共同签名人。查询失败或缺少必要字段时暂停，恢复后重新执行完整检查。权限已撤销或不再允许本次操作时，停止收集签名，核对 owner、权限 ID 和当前权限后重建交易，重新收集全部签名。广播超时则先按交易 ID 查询结果。
+### 第一位签名人
+
+替换收款地址，并填写上面从交易 owner 的活动权限中选出的 ID。
+
+```javascript
+const recipient = "REPLACE_WITH_RECIPIENT_ADDRESS";
+const permissionId = 2; // 替换为所选活动权限的 ID。
+if (!account.active_permission?.some(p => p.id === permissionId)) {
+  throw new Error("请选择交易 owner 的活动权限");
+}
+
+// 构建一笔 10 SUN 的转账（1 TRX = 1_000_000 SUN）。
+const tx = await tronweb.transactionBuilder.sendTrx(recipient, 10, owner, { permissionId });
+const outcome = await signAndCheck(tronweb, tx);
+```
+
+### 后续共同签名人
+
+结果为 `collect` 时，通过 DApp 的交接流程将其中的 `signedTx` 传给下一位有权限的共同签名人。每位共同签名人在同一网络连接钱包，并核对收到的交易。将收到的交易对象传给下面的函数。`signAndCheck` 会在该对象上调用 `multiSign`，保留已有签名和交易 ID。
+
+```javascript
+async function coSignTransfer(partiallySignedTx) {
+  return signAndCheck(window.tron.tronWeb, partiallySignedTx);
+}
+```
+
+返回 `collect` 时继续交接，返回 `declined` 时停止本次签名。权重查询失败或缺少必要字段时暂停，恢复后重新执行完整权重检查。权限被撤销或已不允许本次操作时，核对交易 owner 和权限 ID，重建交易并重新收集全部签名。广播超时则先按交易 ID 查询结果。
 
 ## 错误码
 
@@ -5350,7 +5395,7 @@ if (signedTx) {
 | 码 | 含义 | 来源 | 可重试? |
 | :---: | --- | --- | :---: |
 | `'Confirmation declined by user'`（字符串） | 用户在签名弹窗里点【拒绝】 | `tronWeb.trx.multiSign(...)` | 否——用户拒绝 |
-| `code: 'SIGERROR'`，`message` 解码为 `Validate signature error: permission isn't exit` | `fromAddress` 上不存在该 `permissionId`（填错或已撤销）。`sendTrx` **不会**校验权限，由节点在广播时拒绝 | `sendRawTransaction(...)` 的返回值（不抛异常） | 否——重新查 `getAccount(fromAddress).active_permission` 后重建交易 |
+| `code: 'SIGERROR'`，`message` 解码为 `Validate signature error: permission isn't exit` | `owner` 上不存在该 `permissionId`（填错或已撤销）。`sendTrx` **不会**校验权限，由节点在广播时拒绝 | `sendRawTransaction(...)` 的返回值（不抛异常） | 否——重新查 `getAccount(owner).active_permission` 后重建交易 |
 | `code: 'SIGERROR'`，其他 `Validate signature error: …` 信息 | 签名不满足该权限——如总权重低于 `threshold`，或签名人不在其 `keys[]` 中 | `sendRawTransaction(...)` 的返回值（不抛异常） | 否——补齐缺少的签名（每个 co-signer 一次 `multiSign`） |
 | `REVERT` / `OUT_OF_ENERGY` / `FAILED` | 广播成功但链上执行失败 | `getTransactionInfo(txid)` | **否——交易已 final,永远不要自动重试** |
 
