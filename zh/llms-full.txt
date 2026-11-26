@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 ../llms.txt 的 Localized 段。
 
-- Generated: 2026-11-26T08:57:36Z
-- Commit: 3a008d5017cb
+- Generated: 2026-11-26T10:18:47Z
+- Commit: 30cb20521e2c
 - Language: zh
 - Pages: 27
-- Token estimate: ~46,140 (chars / 4)
+- Token estimate: ~46,709 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: introduction/ -->
@@ -341,14 +341,14 @@ const buildDeepLink = (request) =>
 使用 DeepLink 方式唤起钱包，并在钱包中选择获取钱包地址。可用版本：TronLink v4.11.0 起。
 
 ```html
-<a href='tronlinkoutside://pull.activity?param=%7B%22url%22%3A%22https%3A%2F%2Fjustlend.org%2F%23%2Fhome%22%2C%22callbackUrl%22%3A%22https%3A%2F%2Fyour-backend.example.com%2Fapi%2Ftron%2Fv1%2Fcallback%22%2C%22dappIcon%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2Ficon.png%22%2C%22dappName%22%3A%22Test%20demo%22%2C%22protocol%22%3A%22TronLink%22%2C%22version%22%3A%221.0%22%2C%22chainId%22%3A%220x2b6653dc%22%2C%22action%22%3A%22login%22%2C%22actionId%22%3A%22e5471a9c-b0f1-418b-8634-3de60d68a288%22%7D'>Login/Request Address</a>
+<a href='tronlinkoutside://pull.activity?param=%7B%22url%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2F%22%2C%22callbackUrl%22%3A%22https%3A%2F%2Fyour-backend.example.com%2Fapi%2Ftron%2Fv1%2Fcallback%22%2C%22dappIcon%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2Ficon.png%22%2C%22dappName%22%3A%22Test%20demo%22%2C%22protocol%22%3A%22TronLink%22%2C%22version%22%3A%221.0%22%2C%22chainId%22%3A%220x2b6653dc%22%2C%22action%22%3A%22login%22%2C%22actionId%22%3A%22e5471a9c-b0f1-418b-8634-3de60d68a288%22%7D'>Login/Request Address</a>
 ```
 
 `param`（请求）：
 
 ```json
 {
-  "url": "https://justlend.org/#/home",
+  "url": "https://your-dapp.example.com/",
   "callbackUrl": "https://your-backend.example.com/api/tron/v1/callback",
   "dappIcon": "https://your-dapp.example.com/icon.png",
   "dappName": "Test demo",
@@ -377,14 +377,14 @@ const buildDeepLink = (request) =>
 使用 DeepLink 方式唤起 TronLink，并发送转账数据，在钱包中转账并广播。可用版本：TronLink v4.11.0 起。
 
 ```html
-<a href='tronlinkoutside://pull.activity?param=%7B%22url%22%3A%22https%3A%2F%2Fjustlend.org%2F%23%2Fhome%22%2C%22callbackUrl%22%3A%22https%3A%2F%2Fyour-backend.example.com%2Fapi%2Ftron%2Fv1%2Fcallback%22%2C%22dappIcon%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2Ficon.png%22%2C%22dappName%22%3A%22Test%20demo%22%2C%22protocol%22%3A%22TronLink%22%2C%22version%22%3A%221.0%22%2C%22chainId%22%3A%220x2b6653dc%22%2C%22memo%22%3A%22Reward%22%2C%22from%22%3A%22TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig%22%2C%22to%22%3A%22TXd9duqtcyyj4pBCKvXKNqmazxxDw5SdBa%22%2C%22loginAddress%22%3A%22TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig%22%2C%22tokenId%22%3A%220%22%2C%22contract%22%3A%22%22%2C%22amount%22%3A%2220%22%2C%22action%22%3A%22transfer%22%2C%22actionId%22%3A%22408170fc-7919-4459-be5e-05a9d4b4065e%22%7D'>Transfer</a>
+<a href='tronlinkoutside://pull.activity?param=%7B%22url%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2F%22%2C%22callbackUrl%22%3A%22https%3A%2F%2Fyour-backend.example.com%2Fapi%2Ftron%2Fv1%2Fcallback%22%2C%22dappIcon%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2Ficon.png%22%2C%22dappName%22%3A%22Test%20demo%22%2C%22protocol%22%3A%22TronLink%22%2C%22version%22%3A%221.0%22%2C%22chainId%22%3A%220x2b6653dc%22%2C%22memo%22%3A%22Reward%22%2C%22from%22%3A%22TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig%22%2C%22to%22%3A%22TXd9duqtcyyj4pBCKvXKNqmazxxDw5SdBa%22%2C%22loginAddress%22%3A%22TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig%22%2C%22tokenId%22%3A%220%22%2C%22contract%22%3A%22%22%2C%22amount%22%3A%2220%22%2C%22action%22%3A%22transfer%22%2C%22actionId%22%3A%22408170fc-7919-4459-be5e-05a9d4b4065e%22%7D'>Transfer</a>
 ```
 
 `param`（请求）：
 
 ```json
 {
-  "url": "https://justlend.org/#/home",
+  "url": "https://your-dapp.example.com/",
   "callbackUrl": "https://your-backend.example.com/api/tron/v1/callback",
   "dappIcon": "https://your-dapp.example.com/icon.png",
   "dappName": "Test demo",
@@ -420,14 +420,14 @@ const buildDeepLink = (request) =>
 可用版本：TronLink v4.11.0 起。
 
 ```html
-<a href='tronlinkoutside://pull.activity?param=%7B%22url%22%3A%22https%3A%2F%2Fjustlend.org%2F%23%2Fhome%22%2C%22callbackUrl%22%3A%22https%3A%2F%2Fyour-backend.example.com%2Fapi%2Ftron%2Fv1%2Fcallback%22%2C%22dappIcon%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2Ficon.png%22%2C%22dappName%22%3A%22Test%20demo%22%2C%22protocol%22%3A%22TronLink%22%2C%22version%22%3A%221.0%22%2C%22chainId%22%3A%220x2b6653dc%22%2C%22action%22%3A%22sign%22%2C%22loginAddress%22%3A%22TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig%22%2C%22method%22%3A%22transfer%28address%2Cuint256%29%22%2C%22signType%22%3A%22signTransaction%22%2C%22data%22%3A%22%7B%5C%22visible%5C%22%3Afalse%2C%5C%22txID%5C%22%3A%5C%22dcfaf2c2d75d91994f9a23623e905eaa7d74bc804fa5821640111ada3441376a%5C%22%2C%5C%22raw_data%5C%22%3A%7B%5C%22contract%5C%22%3A%5B%7B%5C%22parameter%5C%22%3A%7B%5C%22value%5C%22%3A%7B%5C%22data%5C%22%3A%5C%22a9059cbb000000000000000000000000ed87a3ae2bf2ab8b95486a23f224487ad75c60200000000000000000000000000000000000000000000000000000000000000014%5C%22%2C%5C%22owner_address%5C%22%3A%5C%2241b42b84bad413dde093e27d01bb02ed9eede52c43%5C%22%2C%5C%22contract_address%5C%22%3A%5C%2241eca9bc828a3005b9a3b909f2cc5c2a54794de05f%5C%22%7D%2C%5C%22type_url%5C%22%3A%5C%22type.googleapis.com%2Fprotocol.TriggerSmartContract%5C%22%7D%2C%5C%22type%5C%22%3A%5C%22TriggerSmartContract%5C%22%7D%5D%2C%5C%22ref_block_bytes%5C%22%3A%5C%2284e1%5C%22%2C%5C%22ref_block_hash%5C%22%3A%5C%221731d6450e11a03f%5C%22%2C%5C%22expiration%5C%22%3A1670168865000%2C%5C%22fee_limit%5C%22%3A100000000%2C%5C%22timestamp%5C%22%3A1670168805340%7D%2C%5C%22raw_data_hex%5C%22%3A%5C%220a0284e122081731d6450e11a03f40e8d1c9eecd305aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541b42b84bad413dde093e27d01bb02ed9eede52c43121541eca9bc828a3005b9a3b909f2cc5c2a54794de05f2244a9059cbb000000000000000000000000ed87a3ae2bf2ab8b95486a23f224487ad75c6020000000000000000000000000000000000000000000000000000000000000001470dcffc5eecd30900180c2d72f%5C%22%7D%22%2C%22actionId%22%3A%2264fcdb39-2cfa-47f2-85bd-d7e8409809ed%22%7D'>Sign transaction</a>
+<a href='tronlinkoutside://pull.activity?param=%7B%22url%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2F%22%2C%22callbackUrl%22%3A%22https%3A%2F%2Fyour-backend.example.com%2Fapi%2Ftron%2Fv1%2Fcallback%22%2C%22dappIcon%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2Ficon.png%22%2C%22dappName%22%3A%22Test%20demo%22%2C%22protocol%22%3A%22TronLink%22%2C%22version%22%3A%221.0%22%2C%22chainId%22%3A%220x2b6653dc%22%2C%22action%22%3A%22sign%22%2C%22loginAddress%22%3A%22TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig%22%2C%22method%22%3A%22transfer%28address%2Cuint256%29%22%2C%22signType%22%3A%22signTransaction%22%2C%22data%22%3A%22%7B%5C%22visible%5C%22%3Afalse%2C%5C%22txID%5C%22%3A%5C%22dcfaf2c2d75d91994f9a23623e905eaa7d74bc804fa5821640111ada3441376a%5C%22%2C%5C%22raw_data%5C%22%3A%7B%5C%22contract%5C%22%3A%5B%7B%5C%22parameter%5C%22%3A%7B%5C%22value%5C%22%3A%7B%5C%22data%5C%22%3A%5C%22a9059cbb000000000000000000000000ed87a3ae2bf2ab8b95486a23f224487ad75c60200000000000000000000000000000000000000000000000000000000000000014%5C%22%2C%5C%22owner_address%5C%22%3A%5C%2241b42b84bad413dde093e27d01bb02ed9eede52c43%5C%22%2C%5C%22contract_address%5C%22%3A%5C%2241eca9bc828a3005b9a3b909f2cc5c2a54794de05f%5C%22%7D%2C%5C%22type_url%5C%22%3A%5C%22type.googleapis.com%2Fprotocol.TriggerSmartContract%5C%22%7D%2C%5C%22type%5C%22%3A%5C%22TriggerSmartContract%5C%22%7D%5D%2C%5C%22ref_block_bytes%5C%22%3A%5C%2284e1%5C%22%2C%5C%22ref_block_hash%5C%22%3A%5C%221731d6450e11a03f%5C%22%2C%5C%22expiration%5C%22%3A1670168865000%2C%5C%22fee_limit%5C%22%3A100000000%2C%5C%22timestamp%5C%22%3A1670168805340%7D%2C%5C%22raw_data_hex%5C%22%3A%5C%220a0284e122081731d6450e11a03f40e8d1c9eecd305aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541b42b84bad413dde093e27d01bb02ed9eede52c43121541eca9bc828a3005b9a3b909f2cc5c2a54794de05f2244a9059cbb000000000000000000000000ed87a3ae2bf2ab8b95486a23f224487ad75c6020000000000000000000000000000000000000000000000000000000000000001470dcffc5eecd30900180c2d72f%5C%22%7D%22%2C%22actionId%22%3A%2264fcdb39-2cfa-47f2-85bd-d7e8409809ed%22%7D'>Sign transaction</a>
 ```
 
 `param`（请求）：
 
 ```json
 {
-  "url": "https://justlend.org/#/home",
+  "url": "https://your-dapp.example.com/",
   "callbackUrl": "https://your-backend.example.com/api/tron/v1/callback",
   "dappIcon": "https://your-dapp.example.com/icon.png",
   "dappName": "Test demo",
@@ -461,14 +461,14 @@ const buildDeepLink = (request) =>
 可用版本：TronLink v4.11.0 起。
 
 ```html
-<a href='tronlinkoutside://pull.activity?param=%7B%22url%22%3A%22https%3A%2F%2Fjustlend.org%2F%23%2Fhome%22%2C%22callbackUrl%22%3A%22https%3A%2F%2Fyour-backend.example.com%2Fapi%2Ftron%2Fv1%2Fcallback%22%2C%22dappIcon%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2Ficon.png%22%2C%22dappName%22%3A%22Test%20demo%22%2C%22protocol%22%3A%22TronLink%22%2C%22version%22%3A%221.0%22%2C%22chainId%22%3A%220x2b6653dc%22%2C%22loginAddress%22%3A%22TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig%22%2C%22signType%22%3A%22signStr%22%2C%22message%22%3A%22abc%22%2C%22action%22%3A%22sign%22%2C%22actionId%22%3A%2250554861-4861-41c4-adf3-abf36213f843%22%7D'>Sign message</a>
+<a href='tronlinkoutside://pull.activity?param=%7B%22url%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2F%22%2C%22callbackUrl%22%3A%22https%3A%2F%2Fyour-backend.example.com%2Fapi%2Ftron%2Fv1%2Fcallback%22%2C%22dappIcon%22%3A%22https%3A%2F%2Fyour-dapp.example.com%2Ficon.png%22%2C%22dappName%22%3A%22Test%20demo%22%2C%22protocol%22%3A%22TronLink%22%2C%22version%22%3A%221.0%22%2C%22chainId%22%3A%220x2b6653dc%22%2C%22loginAddress%22%3A%22TSPrmJetAMo6S6RxMd4tswzeRCFVegBNig%22%2C%22signType%22%3A%22signStr%22%2C%22message%22%3A%22abc%22%2C%22action%22%3A%22sign%22%2C%22actionId%22%3A%2250554861-4861-41c4-adf3-abf36213f843%22%7D'>Sign message</a>
 ```
 
 `param`（请求）：
 
 ```json
 {
-  "url": "https://justlend.org/#/home",
+  "url": "https://your-dapp.example.com/",
   "callbackUrl": "https://your-backend.example.com/api/tron/v1/callback",
   "dappIcon": "https://your-dapp.example.com/icon.png",
   "dappName": "Test demo",
@@ -625,7 +625,7 @@ const buildDeepLink = (request) =>
 }
 ```
 
-**转账**字段按下表填写。沿用转账示例和 DeepLink Demo 的请求格式，将未使用的字段设为空字符串。
+**转账**字段按下表填写。沿用转账示例和 DeepLink Demo 的请求格式，将未使用的字段设为空字符串。省略未使用的字段会得到与示例不同的请求，本页未定义 App 对省略字段的处理方式，因此请保留两个字段。
 
 | 资产 | `tokenId` | `contract` |
 |---|---|---|
@@ -755,7 +755,7 @@ const buildDeepLink = (request) =>
 
 TronLink App 内置 DApp 浏览器，对于在其上运行的 TRON DApp，TronLink 会自动将 tronWeb 及 tronLink 对象注入到该 DApp。从而允许 DApp 与 TronLink App，以及TRON 网络交互。
 
-App 内置浏览器支持通过 TIP-6963 发现 Provider，并通过 `eth_requestAccounts` 请求连接授权。可参考[开始开发](../dapp/getting-started.md)中的发现和授权步骤，再用授权后的 TronWeb 实例构建交易。如果 DApp 依赖 `accountsChanged` 或 `chainChanged`，请在目标 App 版本上验证这些事件。
+在 App 内置浏览器中取得已授权的 TronWeb 实例后，可参考[开始开发](../dapp/getting-started.md)中的交易构建步骤。该指南中的 Provider 发现（TIP-6963）、授权（`eth_requestAccounts`）和事件示例面向浏览器插件，请在目标 App 版本上逐项确认接口支持情况。
 
 从外部移动浏览器唤起 TronLink 请参考 [DeepLink](deeplink.md)。
 
@@ -805,6 +805,8 @@ dependencies {
 }
 ```
 
+本页内容基于上游 README 使用的 `1.0.2`。使用更新的版本前，请先阅读[版本与许可证](#version-license)。
+
 ## 创建钱包
 
 在应用中创建钱包并读取 TRON 地址。
@@ -835,9 +837,11 @@ gpg --verify release.aar.asc release.aar
 
 集成 Android Core 1.0.2 不会启动使用统计上报。此版本还没有 `UserStatistics` 模块；该模块在 [1.0.8](https://github.com/TronLink/tronlink-android-core/releases/tag/1.0.8) 中引入。
 
+<a id="version-license"></a>
+
 ## 版本与许可证
 
-安装示例沿用上游 README 的 `1.0.2`。最新标签为 `1.0.16`。[Apache License 2.0](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/LICENSE)
+本页内容基于上游 README 安装示例中的 `1.0.2`。之后的标签（截至 `1.0.16`）未经本页核对。自 `1.0.8` 起库中包含 `UserStatistics` 模块，升级前请核实其上报行为，并相应更新上方的隐私说明。[Apache License 2.0](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/LICENSE)
 
 ---
 
@@ -900,7 +904,10 @@ TronLink 可用于管理钱包私钥，DApp 在进行一些需签名的操作前
 ```javascript
 try {
   await window.tron.request({method: 'eth_requestAccounts'});
-} catch (e) {}
+} catch (error) {
+  if (error?.code === 4001) console.info("连接请求被拒绝");
+  else console.error("授权失败", error);
+}
 ```
 #### 返回值
 
@@ -1015,10 +1022,17 @@ const tronweb = window.tron.tronWeb;
 const fromAddress = tronweb.defaultAddress.base58;
 const toAddress = "TDvSsdrNM5eeXNL3czpa6AxLDHZA9nwe9K";
 const tx = await tronweb.transactionBuilder.sendTrx(toAddress, 10, fromAddress); // 步骤1
+let signedTx;
 try {
-  const signedTx = await tronweb.trx.sign(tx); // 步骤2
-  await tronweb.trx.sendRawTransaction(signedTx); // 步骤3
-} catch (e) {}
+  signedTx = await tronweb.trx.sign(tx); // 步骤2
+} catch (error) {
+  if (error === "Confirmation declined by user") console.info("用户拒绝签名");
+  else console.error("签名失败", error);
+}
+if (signedTx) {
+  const receipt = await tronweb.trx.sendRawTransaction(signedTx); // 步骤3
+  if (!receipt.result) console.error(receipt.code, receipt.message && tronweb.toUtf8(receipt.message));
+}
 ```
 
 当代码执行到 `await tronweb.trx.sign(tx);` 时，TronLink 钱包会提示弹窗，需要用户进行确认，如下图：
@@ -1230,7 +1244,10 @@ try {
     method: 'wallet_switchEthereumChain',
     params: [{chainId: '0x2b6653dc'}]
   });
-} catch (e) {}
+} catch (error) {
+  if (error?.code === 4001) console.info("用户拒绝切换网络");
+  else console.error("切换网络失败", error);
+}
 ```
 #### 参数
 params 接受一个只有单一元素的数组，单一元素为 `SwitchTronChainParameter` 类型：
@@ -1265,7 +1282,7 @@ interface SwitchTronChainParameter {
 
 ![TronLink 解锁弹窗，输入钱包密码](../images/zh_plugin-wallet_lock-page.png)
 
-解锁后将打开网络切换确认弹窗。
+解锁后，或者 TronLink 已经提前解锁，会打开网络切换确认弹窗：
 
 ![TronLink 网络切换确认弹窗，显示目标网络名称、chainId 与"确认"/"拒绝"按钮](../images/zh_plugin-wallet_switch-chain.png)
 
@@ -1554,10 +1571,17 @@ if (window.tronLink.ready) {
   const fromAddress = tronweb.defaultAddress.base58;
   const toAddress = "TDvSsdrNM5eeXNL3czpa6AxLDHZA9nwe9K";
   const tx = await tronweb.transactionBuilder.sendTrx(toAddress, 10, fromAddress); // 步骤1
+  let signedTx;
   try {
-    const signedTx = await tronweb.trx.sign(tx); // 步骤2
-    await tronweb.trx.sendRawTransaction(signedTx); // 步骤3
-  } catch (e) {}
+    signedTx = await tronweb.trx.sign(tx); // 步骤2
+  } catch (error) {
+    if (error === "Confirmation declined by user") console.info("用户拒绝签名");
+    else console.error("签名失败", error);
+  }
+  if (signedTx) {
+    const receipt = await tronweb.trx.sendRawTransaction(signedTx); // 步骤3
+    if (!receipt.result) console.error(receipt.code, receipt.message && tronweb.toUtf8(receipt.message));
+  }
 }
 ```
 
@@ -1593,42 +1617,48 @@ if (window.tronLink.ready) {
 if (window.tronLink.ready) {
   const tronweb = tronLink.tronWeb;
   try {
-    tronweb.request({
+    await tronweb.request({
       method: 'wallet_watchAsset',
       params: {
         type: 'trc10',
         options: { address: '1002000' },
       },
     });
-  } catch (e) {}
+  } catch (error) {
+    console.error("wallet_watchAsset 调用失败", error);
+  }
 }
 
 // 添加 TRC20
 if (window.tronLink.ready) {
   const tronweb = tronLink.tronWeb;
   try {
-    tronweb.request({
+    await tronweb.request({
       method: 'wallet_watchAsset',
       params: {
         type: 'trc20',
         options: { address: 'TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m9' },
       },
     });
-  } catch (e) {}
+  } catch (error) {
+    console.error("wallet_watchAsset 调用失败", error);
+  }
 }
 
 // 添加 TRC721
 if (window.tronLink.ready) {
   const tronweb = tronLink.tronWeb;
   try {
-    tronweb.request({
+    await tronweb.request({
       method: 'wallet_watchAsset',
       params: {
         type: 'trc721',
         options: { address: 'TVtaUnsgKXhTfqSFRnHCsSXzPiXmm53nZt' },
       },
     });
-  } catch (e) {}
+  } catch (error) {
+    console.error("wallet_watchAsset 调用失败", error);
+  }
 }
 ```
 
@@ -1641,7 +1671,10 @@ try {
     method: 'wallet_switchEthereumChain',
     params: [{chainId: '0x2b6653dc'}]
   });
-} catch (e) {}
+} catch (error) {
+  if (error?.code === 4001) console.info("用户拒绝切换网络");
+  else console.error("切换网络失败", error);
+}
 ```
 
 ---
@@ -2775,7 +2808,7 @@ mcp-server-tronlink/
 
 兑换属于 **远程写**，且对接公开 DEX 路由器，因此暴露在 **价格滑点** 与 **三明治攻击 / MEV** 之下：在报价和执行之间池子价格变动时，实际成交可能比报价更差。
 
-- **必须设置 minOut / 滑点上限。** 通过 `list_tools` 查看 `tl_chain_swap_v3` 的输入 schema（`SwapV3Params`），核对实际的 minimum-output / 滑点字段名；**不要**依赖未声明的默认值，缺省或 0 的 minOut 一律视为不安全。
+- **必须设置最小输出 / 滑点上限。** 通过 `list_tools` 查看 `tl_chain_swap_v3` 的输入 schema（`SwapV3Params`），核对实际的 minimum-output / 滑点字段名；**不要**依赖未声明的默认值，缺省或为 0 的最小输出一律视为不安全。
 - **执行前现取报价。** 通过 Skills `tron-swap` 的 `swap-quote` / `swap-route`（或同等接口）取最新报价/路径，选定可接受的滑点容忍度并显式传入。
 - **核对 router。** 请将 `TL_SUNSWAP_ROUTER` / `TL_SUNSWAP_V3_ROUTER` 设置为 SunSwap 官方合约地址中对应网络的 Router（见环境变量）；过期或错误的 router 会把资金路由到非预期目标。
 - **不可自动重试。** swap 失败或结果未知都属于远程写——先在链上确认再决定是否重发（`TL_CHAIN_SWAP_FAILED` 不可重试）。
@@ -2847,7 +2880,7 @@ Direct-API 路径使用 `@bankofai/agent-wallet` 管理的本地加密钱包签�
 **生产建议。**
 
 - 优先手动创建。`AGENT_WALLET_PASSWORD` 来自 host 的 secret manager（如 vault）。
-- 必须用自动创建 时（如临时 CI），把 `AGENT_WALLET_DIR` 指到任务结束即销毁的 tmpfs。
+- 必须用自动创建时（如临时 CI），把 `AGENT_WALLET_DIR` 指到任务结束即销毁的 tmpfs。
 - 涉及真实资金的工具，生产环境优先选 `mcp-tronlink-signer`（浏览器审批、不落盘密码），避免 Direct-API。
 
 **如何强制手动创建（文档侧的当下做法）。**
@@ -2876,7 +2909,7 @@ Direct-API 路径使用 `@bankofai/agent-wallet` 管理的本地加密钱包签�
 
 3. **禁止 agent 调用 `tl_wallet_create`。** 用与 `tl_evaluate` 相同的方式禁用（Claude Code `permissions.deny`、Claude Desktop `disabledTools`，或客户端侧基于 `list_tools` 用名字 `tl_wallet_create` 过滤）。
 
-4. 首次启动后验证：`list_tools` 中不应出现 `tl_wallet_create`；`~/.agent-wallet/runtime_secrets.json` 不存在即说明自动创建 没有走过。
+4. 首次启动后验证：`list_tools` 中不应出现 `tl_wallet_create`；`~/.agent-wallet/runtime_secrets.json` 不存在即说明自动创建没有走过。
 
 **待解决（代码侧）。** 长期方案是在 server 启动时加 `--no-auto-create` / `AGENT_WALLET_DISABLE_AUTOCREATE=1` 开关，使无钱包时直接 fail-loud。上游 PR ship 之前，上面这套文档级强制方案是 defense-in-depth。
 
@@ -4308,7 +4341,7 @@ v0.1.4 中，错误以 MCP 工具结果返回：`isError: true`，内容是一�
 |---|---|---|
 | **Prompt 注入** | 工具输入按原始值作为调用参数，server 不会再次提交给 LLM。TronLink 审批页渲染的是解析后的交易字段，不是 agent 的自由文本。 | 链上拿到的字符串（备注、revert 原因）视为不可信；分支应基于 `txId` / `status`，而非 prose。 |
 | **本地 HTTP listener** | 本地审批 server **仅绑定 `127.0.0.1`**（端口 `TRON_HTTP_PORT`，默认 3386，被占用时自增），永远不接受跨主机连接。每个 server session 有唯一 ID，前一次 session 的浏览器标签会被自动失效。 | 不要把 3386 端口转发到外网。同一台机器不要用相同 `TRON_HTTP_PORT` 跑两份。 |
-| **出站 host 白名单（SSRF）** | signer 只与 [网络端点](../reference/networks.md#_2) 列出的 TronGrid 端点以及本地浏览器通信，工具不接受会被原样请求的用户 URL。 | 生产环境钉死 `TRON_NETWORK`、`TRON_API_KEY`。 |
+| **出站 host 白名单（SSRF）** | signer 只与 [网络端点](../reference/networks.md#networks) 列出的 TronGrid 端点以及本地浏览器通信，工具不接受会被原样请求的用户 URL。 | 生产环境钉死 `TRON_NETWORK`、`TRON_API_KEY`。 |
 | **API key 处理（token passthrough）** | `TRON_API_KEY` 仅在启动时从 env 读取，仅用于到 TronGrid 的出站；**不**会出现在任何工具响应、错误 `details` 或 MCP resource 中。server 不接受 MCP 客户端传入的 Authorization header 并转发到上游。 | API key 放进 MCP host 的 secret manager，不要写进会提交 git 的 `mcpServers` 配置。 |
 | **签名必须 HITL** | 所有签名工具（`send_trx`、`send_trc20`、`sign_message`、`sign_typed_data`、`sign_transaction`）都会打开 TronLink 审批页，**不存在程序化绕过**。私钥始终留在 TronLink。 | 不需要运维额外强制 HITL——这是结构性保证。不要试图通过移除浏览器层来"加固"。 |
 | **浏览器标签劫持** | 审批页基于 server session ID 验证每次请求，过期的标签会被忽略；心跳检测会在断连时关闭 session。 | 同一用户跑多个 agent 时，请让每个 agent 启动自己的 signer 实例；跨实例的请求串扰由 session ID 屏蔽，但 UI 层混淆不防。 |
@@ -5176,6 +5209,8 @@ tronlink reward --json
 # 将 PAYER 设为 TronLink 当前付款地址，RECIPIENT 设为收款地址。
 # 若账户或网络变化，请取消操作，重新查询实际付款账户的余额。
 NETWORK=mainnet
+
+# 1. 查询付款账户余额
 tronlink balance --address "${PAYER:?set PAYER}" --network "$NETWORK" --json
 
 # 2. 发送 10 TRX（会打开浏览器签名，需等待返回）
@@ -5378,11 +5413,31 @@ const outcome = await signAndCheck(tronweb, tx);
 
 ### 后续共同签名人
 
-结果为 `collect` 时，通过 DApp 的交接流程将其中的 `signedTx` 传给下一位有权限的共同签名人。每位共同签名人在同一网络连接钱包，并核对收到的交易。将收到的交易对象传给下面的函数。`signAndCheck` 会在该对象上调用 `multiSign`，保留已有签名和交易 ID。
+结果为 `collect` 时，通过 DApp 的交接流程将其中的 `signedTx` 传给下一位有权限的共同签名人。每位共同签名人在同一网络连接钱包。签名前，先确认交易数据与其 `txID` 一致，再解析 owner、收款地址、金额和过期时间并展示给共同签名人，确认无误后再继续。调用 `coSignTransfer` 时传入收到的交易对象，以及一个在共同签名人确认后返回 `true` 的 `confirmTransfer` 回调。`signAndCheck` 会在该对象上调用 `multiSign`，保留已有签名和交易 ID。
 
 ```javascript
-async function coSignTransfer(partiallySignedTx) {
-  return signAndCheck(window.tron.tronWeb, partiallySignedTx);
+function describeTransfer(tronweb, tx) {
+  // 签名针对 txID，展示前先确认 raw_data 的哈希与其一致。
+  const txCheck = tronweb.utils?.transaction?.txCheck;
+  if (!txCheck || !txCheck(tx)) throw new Error("交易数据与 txID 不一致");
+  const contract = tx.raw_data.contract[0];
+  if (contract.type !== "TransferContract") throw new Error("不是 TRX 转账");
+  const { owner_address, to_address, amount } = contract.parameter.value;
+  return {
+    owner: tronweb.address.fromHex(owner_address),
+    recipient: tronweb.address.fromHex(to_address),
+    amount: `${tronweb.fromSun(amount)} TRX`,
+    permissionId: contract.Permission_id,
+    expires: new Date(tx.raw_data.expiration).toISOString(),
+  };
+}
+
+async function coSignTransfer(partiallySignedTx, confirmTransfer) {
+  const tronweb = window.tron.tronWeb;
+  const details = describeTransfer(tronweb, partiallySignedTx);
+  // 在 DApp 界面中展示这些信息，共同签名人确认后再签名。
+  if (!(await confirmTransfer(details))) return { status: "declined" };
+  return signAndCheck(tronweb, partiallySignedTx);
 }
 ```
 
@@ -5537,6 +5592,8 @@ estimatedEnergy estimatedBandwidth 的具体计算逻辑见![Stake 2.0 资源份
 # 网络与地址
 
 汇总本文档各处用到的网络参数与常用地址。
+
+<a id="networks"></a>
 
 ## 网络
 

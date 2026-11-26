@@ -145,6 +145,8 @@ tronlink<span class=w> </span>reward<span class=w> </span>--json
 </code></pre></div> <h3 id=_28>常用代币合约</h3> <table> <thead> <tr> <th>代币</th> <th>网络</th> <th>合约地址</th> </tr> </thead> <tbody> <tr> <td>USDT</td> <td>mainnet</td> <td>TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t</td> </tr> <tr> <td>USDD</td> <td>mainnet</td> <td>TXDk8mbtRbXeYuMNS83CfKPaYYT8XWv9Hz</td> </tr> <tr> <td>USDC</td> <td>mainnet</td> <td>TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8</td> </tr> </tbody> </table> <h3 id=ai_2>示例：AI 转账流程</h3> <div class=highlight><pre><span></span><code><span class=c1># 将 PAYER 设为 TronLink 当前付款地址，RECIPIENT 设为收款地址。</span>
 <span class=c1># 若账户或网络变化，请取消操作，重新查询实际付款账户的余额。</span>
 <span class=nv>NETWORK</span><span class=o>=</span>mainnet
+
+<span class=c1># 1. 查询付款账户余额</span>
 tronlink<span class=w> </span>balance<span class=w> </span>--address<span class=w> </span><span class=s2>&quot;</span><span class=si>${</span><span class=nv>PAYER</span><span class=p>:?set PAYER</span><span class=si>}</span><span class=s2>&quot;</span><span class=w> </span>--network<span class=w> </span><span class=s2>&quot;</span><span class=nv>$NETWORK</span><span class=s2>&quot;</span><span class=w> </span>--json
 
 <span class=c1># 2. 发送 10 TRX（会打开浏览器签名，需等待返回）</span>
