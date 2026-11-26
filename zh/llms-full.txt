@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 ../llms.txt 的 Localized 段。
 
-- Generated: 2026-11-25T09:13:28Z
-- Commit: 0d9bae027b94
+- Generated: 2026-11-26T03:40:20Z
+- Commit: c9565e4fbd2d
 - Language: zh
 - Pages: 27
-- Token estimate: ~43,558 (chars / 4)
+- Token estimate: ~43,582 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: introduction/ -->
@@ -758,9 +758,9 @@ DApp 浏览器支持运行 TRON DApp，并自动注入 tronWeb 及 tronLink 对�
 
 # Android 开源核心库
 
-在 Android 应用中集成 TronLink 的钱包功能，可以创建 TRON 钱包、读取地址，并对交易或消息签名。
+**GitHub**: [https://github.com/TronLink/tronlink-android-core](https://github.com/TronLink/tronlink-android-core)
 
-[上游 README](https://github.com/TronLink/tronlink-android-core/blob/main/README.md)
+在 Android 应用中集成 TronLink 的钱包功能，可以创建 TRON 钱包、读取地址，并对交易或消息签名。
 
 ## 安装
 
@@ -816,9 +816,9 @@ TronLink Android 在设备上为地址分配 UUID，按金额区间汇总使用�
 
 # iOS 开源核心库
 
-在 iOS 应用中使用 TronLink 的原生钱包模块，可以创建 TRON 钱包、读取地址，并对交易或消息签名。
+**GitHub**: [https://github.com/TronLink/tronlink-iOS-core](https://github.com/TronLink/tronlink-iOS-core)
 
-[上游 README](https://github.com/TronLink/tronlink-iOS-core/blob/main/README.md)
+在 iOS 应用中使用 TronLink 的原生钱包模块，可以创建 TRON 钱包、读取地址，并对交易或消息签名。
 
 ## 安装
 
@@ -2120,9 +2120,9 @@ ledger返回的实际签名hash：
 
 # 插件开源核心库
 
-`@tronlink/core` 是 TronLink 插件使用的 JavaScript / TypeScript 钱包库。钱包应用可以用它派生 TRON 和 EVM 账户，并在本地签名。DApp 如需连接用户已安装的 TronLink 插件并请求签名，请使用[插件提供的接口](active-requests.zh.md)。
+**GitHub**: [https://github.com/TronLink/tronlink-extension-core](https://github.com/TronLink/tronlink-extension-core)
 
-[上游 README](https://github.com/TronLink/tronlink-extension-core/blob/main/README.md)
+`@tronlink/core` 是 TronLink 插件使用的 JavaScript / TypeScript 钱包库。钱包应用可以用它派生 TRON 和 EVM 账户，并在本地签名。DApp 如需连接用户已安装的 TronLink 插件并请求签名，请使用[插件提供的接口](active-requests.zh.md)。
 
 ## 安装
 
