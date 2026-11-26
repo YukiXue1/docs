@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 ../llms.txt 的 Localized 段。
 
-- Generated: 2026-11-04T10:12:58Z
-- Commit: 56f294d79923
+- Generated: 2026-11-26T08:06:40Z
+- Commit: 76cab7fad6f5
 - Language: zh
 - Pages: 24
-- Token estimate: ~42,359 (chars / 4)
+- Token estimate: ~42,658 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: introduction/ -->
@@ -2439,7 +2439,7 @@ mcp-server-tronlink/
 
 ## 工具契约与副作用
 
-**输入/输出 schema 与错误契约。** 每个工具的输入/输出 schema 及结构化错误信封由底层框架定义——见 [TronLink MCP Core](tronlink-mcp-core.md#error-codes) 的 SSOT 错误码表（`code` / `retryable` / `hint` / 典型触发）。每个响应均带 `meta.schemaVersion`，major 版本内字段含义稳定。Agent 应基于 `error.code` 与 `error.retryable` 分支，**不要**解析人类可读的 `message`。
+**工具结果与错误。** 服务端使用 Core 0.1.0 时，先检查 Core 响应中的 `ok`。失败时，根据 `error.code` 在 [Core 错误码表](tronlink-mcp-core.zh.md#error-codes) 中查找重试条件。错误响应包含 `error.message`，也可能包含 `error.details`。对于结果未知的写操作，先核对交易状态，再决定是否重试。
 
 **逐工具输入 schema 可在运行时发现。** 每个工具的参数都由 core 用 Zod 校验,并通过 MCP `list_tools` 方法以 JSON `inputSchema` 形式暴露,因此客户端无需阅读本页即可枚举参数名、类型和必填项。下方表格按能力归纳工具;`list_tools` 才是权威的机器可读来源。
 
@@ -2458,7 +2458,7 @@ mcp-server-tronlink/
 
 ### 精选工具 schema（文档侧镜像）
 
-以下是最关键工具输入的**文档侧镜像**——当 agent 需要在没有打开 MCP 会话的情况下写工具调用站点时使用。运行时 `list_tools` 仍是权威源：那里有完整的 Zod 元信息（描述、`default` 等）以及 `meta.schemaVersion`。下方字段抄自 `@tronlink/tronlink-mcp-core` `src/mcp-server/schemas.ts`，遵循 JSON Schema Draft 7。**未**镜像全部 52 个工具——以 core 仓库为 SSOT。
+下表摘录了部分工具的输入参数。对实际安装的服务调用 `tools/list`，从各工具的 `inputSchema` 读取参数说明和默认值。以下示例使用 JSON Schema Draft 7。
 
 > 下方各块的字段名和 required 标记由文档 CI 与上游 `schemas.ts` 自动比对；如有不一致，以 `list_tools` 为准。
 
@@ -2585,7 +2585,7 @@ mcp-server-tronlink/
 
 | 边界 | 保证 | Agent / 运维方义务 |
 |---|---|---|
-| **Prompt 注入** | 工具输入按原始值作为调用参数使用，server 不会把工具输入拼接进任何向 LLM 二次提交的 prompt。**但**从链上或第三方 API 拿回来的字符串（账户备注、合约 revert 原因、交易 note 等）**可能含攻击者控制内容**，必须视为不可信。 | 不要让 agent 基于 read 工具返回的 prose 自动路由到 Remote Write。分支必须基于结构化字段（`txId`、`code`、`retryable`）。 |
+| **Prompt 注入** | 工具输入按原始值作为调用参数使用，server 不会把工具输入拼接进任何向 LLM 二次提交的 prompt。**但**从链上或第三方 API 拿回来的字符串（账户备注、合约 revert 原因、交易 note 等）**可能含攻击者控制内容**，必须视为不可信。 | 不要让 agent 基于 read 工具返回的 prose 自动路由到 Remote Write。分支必须基于结构化字段（`txId`、`error.code`）。 |
 | **出站 host 白名单（SSRF）** | server 只向 3 个配置端点发起 HTTPS——`TL_TRONGRID_URL`（TronGrid；SunSwap 路由合约也通过它的 `triggersmartcontract` 接口调用）、`TL_MULTISIG_BASE_URL`、`TL_GASFREE_BASE_URL`——以及内置的 SunSwap 报价 API（主网 `rot.endjgfsv.link`，Nile `tnrouter.endjgfsv.link`，不可配置）。工具不接收会被原样请求的用户 URL。 | 生产环境把这些 env 钉死到已知 host，并把报价 API host 加入出站白名单；禁止 LLM 输入回填任何 `*_BASE_URL`。 |
 | **API key 处理（token passthrough）** | `TL_TRONGRID_API_KEY`、`TL_MULTISIG_SECRET_KEY`、`TL_GASFREE_API_SECRET` 仅在启动时从 env 读取，仅用于出站；**不**会出现在任何工具响应、错误 `details` 或 Knowledge Store 记录中。server 不接受 MCP 客户端传入的 Authorization header 并转发到上游。 | 审计 MCP host 配置对 env 的捕获（部分 host 会落日志）；secret 放进 host 的 secret manager，不要写进会提交 git 的 `.mcp.json`。 |
 | **浏览器 JS 执行** | `tl_evaluate` 会在受控 Playwright 浏览器上下文中执行任意 JS。这是 **High-risk / Destructive** 原语——可读 DOM、点击隐藏元素、外泄状态、绕过 UI 上的 HITL。 | 严格不需要时，从 MCP host 的工具白名单中禁用 `tl_evaluate`。绝不要把它暴露给远程/多用户 MCP 部署。 |
@@ -2745,19 +2745,17 @@ export TL_TRONGRID_URL="https://nile.trongrid.io"
 
 ### 兼容性与迁移策略
 
-- **语义化版本。** 1.0 之前：**minor** 升级（0.x → 0.y）允许破坏性变更；**patch** 升级（0.1.x → 0.1.y）不变更工具名、输入 schema、`error.code` 值或 `meta.schemaVersion` 语义。1.0 之后：标准 semver，仅 major 允许破坏。
+- **语义化版本。** 1.0 之前：**minor** 升级（0.x → 0.y）允许破坏性变更；**patch** 升级（0.1.x → 0.1.y）不变更工具名、输入 schema 或 `error.code` 值。1.0 之后：标准 semver，仅 major 允许破坏。
 - **稳定契约**（patch 不会动）：
     - 工具名（`tl_chain_send`、`tl_chain_swap_v3`、`tl_multisig_*`、`tl_gasfree_*`、`tl_evaluate` 等）
     - `error.code` 枚举（SSOT：[TronLink MCP Core 错误码](tronlink-mcp-core.md#error-codes)）
-    - `error.retryable` 语义
-    - `meta.schemaVersion` 的 major 分量
     - 必需环境变量名（`TL_TRONGRID_URL`、`TL_MULTISIG_SECRET_KEY`、`AGENT_WALLET_PASSWORD` 等）
 - **不稳定契约**（随时可能变化）：
     - `message` 自然语言文本、日志行格式、stderr 输出
     - 内部 Knowledge Store key（消费者不应解析）
     - 预检查的错误 detail 文本（分支用 `code`，别用 `details.reason`）
-- **废弃窗口。** 工具或入参字段被废弃时，下一 minor 至少保留旧形式与新形式并存 **一个 minor 周期**，`list_tools` 会带 `meta.deprecated` 标记；移除最早在再下一周期。
-- **升级后校验。** 重新 `list_tools` 确认依赖的工具名 + `inputSchema` 仍在，再继续工作流；将 `meta.schemaVersion` 与会话开始时缓存的值对比。
+- **弃用检查。** [@tronlink/mcp-server-tronlink 0.1.1](https://www.npmjs.com/package/@tronlink/mcp-server-tronlink/v/0.1.1) 的已注册工具没有弃用标记。升级前请查阅目标版本的发布说明，并用 `tools/list` 比对依赖的工具名称和输入字段。
+- **升级后校验。** 记录已安装的 Server 和 Core 版本，通过 `tools/list` 核对依赖的工具名和 `inputSchema`，再验证客户端能处理只读工具的 `ok: true` 和 `ok: false` 两种响应。
 
 ---
 
@@ -3122,7 +3120,7 @@ interface GasFreeCapability {
 
 ## 标准化响应格式
 
-所有工具返回一致的结构：
+[Core 0.1.0](https://www.npmjs.com/package/@tronlink/tronlink-mcp-core/v/0.1.0) 的调用方先检查 `ok`，再读取 `result` 或 `error`。失败时读取 `error.code` 和 `error.message`，`error.details` 为可选字段。响应元数据包含 `timestamp`、`sessionId` 和 `durationMs`。
 
 ```typescript
 // 成功
@@ -3142,11 +3140,9 @@ interface GasFreeCapability {
   error: {
     code: "TL_CLICK_FAILED",       // 稳定错误码 — 见下表
     message: "Element not found",
-    retryable: false,              // 给 agent 的显式提示
-    hint: "重新生成可达性快照并用新的 a11yRef 重试。",
     details: { /* 可选 */ }
   },
-  meta: { timestamp, sessionId, durationMs, schemaVersion: "1.0" }
+  meta: { timestamp: "2026-03-09T10:15:23.456Z", sessionId: "tl-1741504523", durationMs: 234 }
 }
 ```
 
@@ -3154,7 +3150,7 @@ interface GasFreeCapability {
 
 ### 错误码
 
-这是本框架所有工具返回错误码的**唯一数据源**（SSOT）。基于本框架的下游 server（`mcp-server-tronlink`）继承这些错误码并可扩展自有错误码；`mcp-tronlink-signer` 是独立的 server，不使用这些错误码。`retryable` 反映框架层面的安全性，agent 仍**必须**叠加调用工具的副作用分级——无论 `retryable` 为何，**结果未确认的 Remote Write 绝不能自动重试**。
+本表是 Core 错误码及其重试规则的唯一权威来源（SSOT）。根据返回的 `error.code` 查下表，判断是否可重试以及如何恢复。**Retryable** 和 **Hint** 是文档中的两列。Core 0.1.0 的响应不包含 `error.retryable`、`error.hint` 或 `meta.schemaVersion`。远程写操作结果未知时，先核对交易状态，再决定是否重试。基于 Core 的下游服务（如 `mcp-server-tronlink`）可以扩展此表；独立的 `mcp-tronlink-signer` 使用自己的错误格式。
 
 | 错误码 | Retryable | Hint | 典型触发 |
 |---|:---:|---|---|
@@ -3183,7 +3179,7 @@ interface GasFreeCapability {
 下游 server 扩展自定义错误码必须满足：
 
 - 不复用上表错误码表达不同含义。
-- 每个新错误码必须声明 `retryable`。
+- 在错误码表中为每个新增错误码写明重试条件和恢复步骤。
 - major 版本内含义稳定。
 - 新错误码在使用方文档说明，禁止悄悄引入。
 
@@ -3374,19 +3370,19 @@ npm run clean      # 删除 dist/
 
 ### 兼容性与迁移策略
 
-本包是 `mcp-server-tronlink` 及任何下游 MCP server 在工具 schema、错误码、`meta.schemaVersion` 上的 **SSOT**，兼容面比普通库更宽：
+本包定义了 `mcp-server-tronlink` 及其他下游服务使用的工具 schema、错误码和响应结构。
 
 - **语义化版本。** 1.0 之前：**minor** 升级可能改 `ISessionManager` 接口、能力 shape、`Tool[]` 注册顺序；**patch** 不会。1.0 之后：标准 semver，仅 major 允许破坏。
 - **稳定契约**（patch 不会动）：
     - `error.code` 枚举（导出为 `ERROR_CODES`，SSOT）——新增 code 非破坏；改名或删除是破坏。
-    - `{ ok, result/error, meta }` 响应包络与 `meta.schemaVersion` 的 major 分量。
+    - `{ ok, result/error, meta }` 响应结构。
     - 工具名与各工具 `inputSchema` 的**结构**——新增可选字段非破坏；改名或将字段改必填是破坏。
     - 9 个能力接口（`OnChainCapability`、`MultiSigCapability`…）——新增可选方法非破坏。
 - **不稳定契约**（随时可能变化）：
     - `src/internal/*` 下的内部 helper 导出、Knowledge Store key、recipe-runner 内部。
     - 预检查错误 `details` 文本（分支用 `code`，别用 `details.reason`）。
-- **废弃窗口。** 废弃的工具 / 字段 / 能力方法在 `list_tools` 中带 `meta.deprecated` 标记，至少保留 **一个 minor 周期** 与替代并存，移除最早发生在再下一周期。
-- **下游升级。** 升级 `@tronlink/tronlink-mcp-core` 之前，先在下游对新 core 跑一遍 `list_tools` 快照测试；断言 `meta.schemaVersion` major 与你的 harness 编写时一致。
+- **弃用检查。** [@tronlink/tronlink-mcp-core 0.1.0](https://www.npmjs.com/package/@tronlink/tronlink-mcp-core/v/0.1.0) 的已注册工具没有弃用标记。升级前请查阅目标版本的发布说明，并用 `tools/list` 比对依赖的工具名称和输入字段。
+- **下游升级。** 记录实际安装的包版本。用 `tools/list` 核对客户端依赖的工具名和输入 schema，再用只读工具的成功与失败响应检验客户端的处理逻辑。
 
 ---
 
@@ -3398,13 +3394,13 @@ npm run clean      # 删除 dist/
 
 **GitHub**: [https://github.com/TronLink/tronlink-skills](https://github.com/TronLink/tronlink-skills)
 
-> **版本范围。** 本页的命令说明（6 大技能、33 个命令）基于 **v1.0.x** 编写。默认分支（即 `git clone` 和 `install.sh` 安装的版本）现为 **v1.1.0**（commit `7d2d58cb`）：新增 7 个只读命令（共 40 个），并要求精确版本 **Node.js 24.22.1**。详见文末「版本与许可证」；以你本地安装版本的 `tron_api.mjs --help` / MCP `tools/list` 为准。
+> **版本范围。** 本页的命令说明（6 大技能、33 个命令）基于 **v1.0.x** 编写。默认分支（即 `git clone` 和 `install.sh` 安装的版本）现为 **v1.1.0**（commit `b12b5868`）：新增 7 个只读命令（共 40 个），并要求精确版本 **Node.js 24.22.3**。详见文末「版本与许可证」；以你本地安装版本的 `tron_api.mjs --help` / MCP `tools/list` 为准。
 
 **TronLink Wallet Skills** 是一套 AI Agent 技能集，通过自然语言提供完整的 TRON 区块链钱包和 DeFi 功能。专为 Claude Code、Cursor、OpenCode、Codex CLI 及其他 AI 代理设计。
 
 **核心亮点：**
 - **6 大技能，33 个命令**，涵盖钱包、代币研究、市场数据、兑换、资源和质押
-- **零 npm 依赖**：使用原生 Node.js `fetch` 和 `crypto`（要求精确版本 Node.js 24.22.1，见下方「依赖项」），无需 `npm install`
+- **零 npm 依赖**：使用原生 Node.js `fetch` 和 `crypto`（要求精确版本 Node.js 24.22.3，见下方「依赖项」），无需 `npm install`
 - **TRON 专属领域知识** — 专门处理能量 + 带宽资源模型
 - **多平台支持** — Claude Code、Cursor、OpenCode、Codex CLI、LangChain/CrewAI
 - **纯只读安全设计**：所有命令均为查询操作，不涉及私钥或签名
@@ -3435,7 +3431,7 @@ TronLink Skills 以深度 TRON 领域知识填补了这一空白。
 AI 代理 (Claude Code / Cursor / OpenCode / 自定义)
          |
          v
-tron_api.mjs (Node.js 24.22.1, 原生 fetch, 零依赖)
+tron_api.mjs (Node.js 24.22.3, 原生 fetch, 零依赖)
     ├── 零 npm 依赖
     ├── TronGrid HTTP API（公共或带 API Key）
     └── Tronscan API 用于代币元数据
@@ -3463,7 +3459,7 @@ tron_api.mjs (Node.js 24.22.1, 原生 fetch, 零依赖)
 
 **特点：** 同时支持 Base58Check（T...）和 hex 地址格式，内置常用代币符号，自动转换精度。
 
-**何时不要用：** 发送 TRX / 代币——这些命令是只读的，请走 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)。代币层面的深度分析（rug-pull / 流动性锁定）请用 `tron-token`。
+**何时不要用：** 转出 TRX 或 TRC-20 代币并由用户在浏览器中批准时，使用 [Signer SDK](tronlink-signer.zh.md) 的 `sendTrx` 或 `sendTrc20`。使用本地 agent 钱包时，调用 [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_send`。代币风险与流动性分析使用 `tron-token`。
 
 ### 2. tron-token（7 个命令）
 
@@ -3514,7 +3510,7 @@ DEX 兑换报价与路由优化。
 
 **特点：** 聚合多源流动性、估算能量成本、处理多跳路由。
 
-**何时不要用：** 真正执行 swap——报价是只读的，实际兑换走 [MCP Server TronLink](mcp-server-tronlink.md)（`tl_chain_swap_v3`）或 signer SDK；历史成交数据——`tron-market`。
+**何时不要用：** 执行兑换时，调用 [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_swap_v3`，将 `action` 设为 `"execute"`，并按用户确认的滑点百分比填写 `slippage`。历史成交数据使用 `tron-market`。
 
 ### 5. tron-resource（6 个命令）
 
@@ -3531,7 +3527,7 @@ DEX 兑换报价与路由优化。
 
 **特点：** 成本优化决策树逻辑、追踪每日免费带宽、计算 TRX 燃烧等值。
 
-**何时不要用：** 真正冻结 TRX 获取能量/带宽——那是 Remote Write，请走 signer SDK / MCP Server；冻结后的 SR 投票策略——见 `tron-staking`。
+**何时不要用：** 冻结 TRX 获取能量或带宽时，调用 [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_stake`，将 `action` 设为 `"freeze"`。投票前查询超级代表信息可使用 `tron-staking`。
 
 ### 6. tron-staking（3 个命令）
 
@@ -3545,7 +3541,7 @@ Stake 2.0 查询与 SR 信息。
 
 **特点：** Stake 2.0 状态查询、APY 计算、SR 佣金追踪。
 
-**何时不要用：** 执行 freeze / 投票 / 解冻动作——这些是 Remote Write，请走 signer SDK / MCP Server；单次操作能量成本——`tron-resource`。
+**何时不要用：** 投票使用 [TronLink CLI](tronlink-cli.zh.md) 的 `tronlink vote`，领取投票奖励使用同一 CLI 的 `tronlink reward`。冻结或解冻 TRX 使用 [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_stake`。估算能量消耗使用 `tron-resource`。
 
 ---
 
@@ -3553,7 +3549,7 @@ Stake 2.0 查询与 SR 信息。
 
 ## Skill ↔ MCP 工具映射
 
-`scripts/mcp_server.mjs`（即[方式二](#mcp)的封装）将 **33 个 CLI 命令中的 25 个** 暴露为 MCP 工具——签名、输入字段、输出结构都由同一份 `tron_api.mjs` 实现派生，因此 CLI 与 MCP 工具保证等价。剩余 8 个 CLI-only 命令仍可通过方式一（skill 提示词）和方式三（直接 CLI）使用。需要按用户提问路由到具体工具，或核对 `tools/list` 输出时，请用下表。
+在 v1.0.x 命令集中，`scripts/mcp_server.mjs` 将 **33 个 CLI 命令中的 25 个** 暴露为 MCP 工具。包装层运行对应的 CLI 命令，以文本形式返回 MCP 工具结果。其余 8 个命令可通过 Skills 或 CLI 使用。
 
 | Skill | CLI 命令 | MCP 工具名 | 副作用 | 可重试 |
 |---|---|---|---|:---:|
@@ -3591,7 +3587,7 @@ Stake 2.0 查询与 SR 信息。
 | `tron-staking` | `staking-info` | `tron_staking_info` | Network Read | 可 |
 | `tron-staking` | `staking-apy` | `tron_staking_apy` | Network Read | 可 |
 
-**汇总。** 33 个 CLI 命令 · 25 个 MCP 工具 · 8 个仅 CLI 命令。所有命令都是只读——不签名、不广播、不动资金。若需执行交易，请路由到 [MCP Server TronLink](mcp-server-tronlink.md)（`tl_chain_*`）或 [signer SDK](tronlink-signer.md)（`sendTrx`、`sendTrc20`、`sign*`）。
+上表涵盖 v1.0.x 的 33 个只读 CLI 命令，其中 25 个也可通过 MCP 调用。需要发起交易时，按下方路由示例选择工具。
 
 ### 用户提问 → Skill → 工具路由
 
@@ -3625,16 +3621,16 @@ Stake 2.0 查询与 SR 信息。
 
 ### ❌ 不要走这里（反例）
 
-Skills 是**只读**的。如果用户意图涉及签名或 Remote Write，**不要**派发到 skill——底层命令会成功，但只是做了查询/估算，用户真正的目标并没有完成。这种意图请改路由到 signer SDK 或 `mcp-server-tronlink`：
+Skills 提供查询和估算。涉及签名或广播时，按下表选择工具。[TronLink CLI](tronlink-cli.zh.md) 和 signer SDK 通过浏览器请求用户批准。MCP Server 的直连链上工具使用本地 agent 钱包签名，宿主应用须在调用前取得用户确认。
 
 | 用户提问（意图） | ❌ 误路由（看起来合理，但只读） | ✅ 正确路由 |
 |---|---|---|
-| 「给 `T…` 转 100 TRX」 | `tron-wallet wallet-balance` 就停下——只查了余额，没转。 | [signer SDK](tronlink-signer.md) `sendTrx`（HITL）或 [`mcp-server-tronlink`](mcp-server-tronlink.md) `tl_chain_send` |
-| 「冻 1000 TRX 换能量」 | `tron-resource optimize-cost`——只算了建议，没冻。 | `mcp-server-tronlink` `tl_chain_stake`（Remote Write、HITL） |
-| 「给 SR `T…` 投 5000 票」 | `tron-staking sr-list`——只读了 SR 列表，没投票。 | `mcp-server-tronlink` `tl_chain_stake` / signer SDK `signTransaction` |
-| 「给 SunSwap 路由器授权 USDT 额度」 | `tron-token token-info` / `contract-info`——纯元数据查询，没发送 approve。 | [signer SDK](tronlink-signer.md) `signTransaction` 或 `mcp-server-tronlink` `tl_chain_send` |
-| 「现在把 100 TRX 换成 USDT」 | `tron-swap swap-quote`——只报了价，没执行。 | `mcp-server-tronlink` `tl_chain_swap_v3`（Remote Write、HITL，必传 `minOut`） |
-| 「领我的质押奖励」 | `tron-staking staking-info`——只看了待领数量。 | `mcp-server-tronlink` `tl_chain_stake`（withdraw / claim）或 signer SDK |
+| 「给 `T…` 转 100 TRX」 | `tron-wallet wallet-balance` 就停下——只查了余额，没转。 | [signer SDK](tronlink-signer.zh.md) `sendTrx`（HITL）或 [`mcp-server-tronlink`](mcp-server-tronlink.zh.md) `tl_chain_send` |
+| 「冻 1000 TRX 换能量」 | `tron-resource optimize-cost`——只算了建议，没冻。 | [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_stake`（`action="freeze"`，`amount_trx=1000`，`resource="ENERGY"`） |
+| 「给 SR `T…` 投 5000 票」 | `tron-staking sr-list`——只读了 SR 列表，没投票。 | [TronLink CLI](tronlink-cli.zh.md) 的 `tronlink vote --votes <SR_ADDRESS>:5000` |
+| 「给 SunSwap 路由器授权 USDT 额度」 | `tron-token token-info` / `contract-info`——纯元数据查询，没发送 approve。 | [TronLink CLI](tronlink-cli.zh.md) 的 `tronlink trigger --contract <USDT_CONTRACT> --method 'approve(address,uint256)' --args '["<ROUTER_ADDRESS>","1000000"]'`。代币合约和路由器地址须对应所选网络。路由器是被授权方；USDT 精度为 6 时，`1000000` 表示授权 1 USDT。 |
+| 「现在把 100 TRX 换成 USDT」 | `tron-swap swap-quote`——只报了价，没执行。 | [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_swap_v3`（`action="execute"`，`slippage` 填用户确认的滑点百分比） |
+| 「领取我的投票奖励」 | `tron-staking staking-info`——只看了待领数量。 | [TronLink CLI](tronlink-cli.zh.md) 的 `tronlink reward` |
 
 **判断口诀。** 用户动词只要出现 *send / freeze / unfreeze / vote / unvote / approve / swap（执行）/ claim / sign / broadcast*，答案就**不在**这个 Skills 集里起步。Skills 仍然可以做**前置**（报价、估算成本、校验地址、查余额）——只是别声称"Skills 调用完成了用户的请求"。
 
@@ -3699,8 +3695,9 @@ tron-resource（检查状态）→ tron-resource（估算成本）→ tron-resou
 
 ```bash
 # 克隆后直接使用
-git clone <repo>
+git clone https://github.com/TronLink/tronlink-skills.git
 cd tronlink-skills
+nvm install && nvm use
 claude   # 自动发现 SKILL.md 文件
 ```
 
@@ -3724,6 +3721,12 @@ node scripts/tron_api.mjs wallet-balance --address T地址...
 node scripts/tron_api.mjs token-price --token USDT
 node scripts/tron_api.mjs swap-quote --from TRX --to USDT --amount 100
 ```
+
+#### 处理 Skills CLI 和 MCP 错误
+
+在 Skills v1.1.0（`b12b5868`）中，未知 CLI 命令或缺少必填参数会向 stderr 输出原因，并以 `1` 退出。命令也可能以 `0` 退出，同时在 stdout 返回错误。例如，`staking-apy --amount 0` 返回的 JSON 包含 `error`、`status: 400` 和 `parameter: "amount"`。调用查询命令时，先检查退出码，再解析 stdout 中的 JSON；确认没有 `error` 后再使用结果。[Skills CLI 实现](https://github.com/TronLink/tronlink-skills/blob/b12b58685ec38febc21843d2173dd43d969b8eb0/scripts/tron_api.mjs)
+
+通过 MCP 调用 `tools/call` 时，先检查 JSON-RPC 错误（未知工具返回 `-32602`）。对于已识别的工具，再解析 `result.content[0].text` 中的 JSON，检查其中的 `error` 字段。包装层可以在这段文本中返回命令错误，同时省略 `isError` 标记。[Skills MCP 实现](https://github.com/TronLink/tronlink-skills/blob/b12b58685ec38febc21843d2173dd43d969b8eb0/scripts/mcp_server.mjs)
 
 ### 方式四：其他 AI 平台
 
@@ -3781,7 +3784,10 @@ def tron_call(cmd: str) -> dict:
         ["node", "scripts/tron_api.mjs", *cmd.split()],
         cwd="/absolute/path/to/tronlink-skills",
     )
-    return json.loads(out)
+    result = json.loads(out)
+    if isinstance(result, dict) and "error" in result:
+        raise RuntimeError(result["error"])
+    return result
 
 tron_wallet_balance = Tool.from_function(
     func=lambda addr: tron_call(f"wallet-balance --address {addr}"),
@@ -3879,7 +3885,7 @@ tronlink-skills/
 
 | 依赖 | 是否必需？ | 用途 |
 |------|-----------|------|
-| Node.js 24.22.1（精确版本；默认分支 v1.1.0） | 是 | 运行时（原生 fetch、crypto）。默认分支通过 `.nvmrc` 与 `package.json` 的 `engines` 固定该版本；`install.sh` 检测到其他版本会直接报错退出。安装前先执行 `nvm install 24.22.1 && nvm use 24.22.1`。 |
+| Node.js 24.22.3（精确版本；默认分支 v1.1.0） | 是 | 运行时（原生 fetch、crypto）。默认分支通过 `.nvmrc` 与 `package.json` 的 `engines` 固定该版本；`install.sh` 检测到其他版本会直接报错退出。安装前先执行 `nvm install 24.22.3 && nvm use 24.22.3`。 |
 | npm install | 不需要 | 所有操作均无需安装任何 npm 依赖 |
 
 ---
@@ -3892,7 +3898,7 @@ tronlink-skills/
 | 副作用 | 每个命令都是 **Network Read**：调用公共 API,但不改变任何状态。所有命令均可安全重试,无需人工确认（HITL） |
 | 无需密钥 | 仅可选 TRONGRID_API_KEY 用于提高请求频率 |
 | 频率限制 | 公共 TronGrid API；使用 TRONGRID_API_KEY 获取更高限额 |
-| 错误处理 | 失败均为查询类错误：限流（可重试,需退避）、网络错误（可重试）、地址/参数非法（不可重试——修正输入）。如需执行交易（转账、兑换、质押）,请使用 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)——这些技能本身从不签名或广播 |
+| 错误处理 | 失败均为查询类错误：限流（可重试,需退避）、网络错误（可重试）、地址/参数非法（不可重试——修正输入）。 |
 
 ---
 
@@ -3923,8 +3929,9 @@ tronlink-skills/
 
 ```bash
 # 1. 克隆
-git clone <repo>
+git clone https://github.com/TronLink/tronlink-skills.git
 cd tronlink-skills
+nvm install && nvm use
 
 # 2. 配合 Claude Code 使用（只读操作无需安装）
 claude
@@ -3942,9 +3949,9 @@ node scripts/tron_api.mjs optimize-cost --address T地址...
 ## 版本与许可证
 
 - **包：** `tronlink-skills` v1.0.1——本页命令表所描述的版本。
-- **默认分支：** v1.1.0（commit `7d2d58cb`，`package.json` 中 `version: 1.1.0`），`git clone` / `install.sh` 安装的就是该版本。与 v1.0.1 相比，影响 agent 的差异：
+- **默认分支：** v1.1.0（commit `b12b5868`，`package.json` 中 `version: 1.1.0`），`git clone` / `install.sh` 安装的就是该版本。与 v1.0.1 相比，影响 agent 的差异：
     - 新增 7 个只读命令（同时以 `tron_<command>` 形式暴露为 MCP 工具）：`wallet-approvals`, `wallet-overview`, `token-overview`, `bandwidth-price`, `tx-cost`, `chain-params`, `health-check`。共 40 个命令，仍全部为 Network Read。
-    - Node.js 固定为精确版本 24.22.1（`.nvmrc`、`engines`）；`install.sh` 检测到其他版本会直接退出。
+    - 此提交的 [`.nvmrc`](https://github.com/TronLink/tronlink-skills/blob/b12b58685ec38febc21843d2173dd43d969b8eb0/.nvmrc) 指定 Node.js 24.22.3。复现[旧提交 `7d2d58cb`](https://github.com/TronLink/tronlink-skills/blob/7d2d58cb/.nvmrc) 时使用 Node.js 24.22.1。在检出的仓库根目录运行 `nvm install && nvm use`，即可按该提交的配置选择版本。
 - **许可证：** MIT —— `SPDX-License-Identifier: MIT`
 - **变更记录 / 发布：** [https://github.com/TronLink/tronlink-skills/releases](https://github.com/TronLink/tronlink-skills/releases) —— 截至当前 v1.0.x 尚无 GitHub tag 发布；打 tag 之前请直接看 commit 历史。
 
@@ -3955,7 +3962,6 @@ Skills 已进入 **v1.0.x**，适用标准 semver——只有 **major** 升级�
 - **稳定契约**（minor / patch 不会动）：
     - 33 个 CLI 命令名与其必填 / 可选 flag（`tron_api.mjs <command> [...]`）。
     - [Skill ↔ MCP 工具映射](#skill-mcp-tool-map) 列出的 25 个 MCP 工具名（`tron_*` 形式）及其 `inputSchema` 字段名。
-    - Exit code：`0` 成功，`1` 查询错误 / 参数非法，`2` 未支持 / 未知命令。
     - `Network Read` 副作用分级——任何命令未经 major 升级都不会变成 Remote Write。
 - **不稳定契约**（minor 允许变化）：
     - JSON `stdout` 输出的具体字段——新增字段任意 minor 都允许；改名或删除属于 major。请用宽容解析。
@@ -4178,7 +4184,7 @@ v0.1.4 中，错误以 MCP 工具结果返回：`isError: true`，内容是一�
 ### 兼容性与迁移策略
 
 - **语义化版本。** 1.0 之前：**minor** 升级（0.x → 0.y）允许破坏性变更；**patch** 升级（0.1.x → 0.1.y）不变更 MCP 工具名或输入 schema。1.0 之后：标准 semver，仅 major 允许破坏。
-- **废弃窗口。** 当某工具或入参字段被废弃时，下一 minor 至少保留旧形式与新形式并存 **一个 minor 周期**，schema 内置 `meta.deprecated` 标记；移除最早发生在再下一周期。
+- **弃用检查。** [mcp-tronlink-signer 0.1.4](https://www.npmjs.com/package/mcp-tronlink-signer/v/0.1.4) 的已注册工具没有弃用标记。升级前请查阅目标版本的发布说明，并用 `tools/list` 比对依赖的工具名称和输入字段。
 - **稳定契约。** 工具名、`status` 值（`success` / `pending` / `failed`）属于公开面，patch 不会动。
 - **不稳定契约。** 错误 `message` 文本（匹配[错误](#errors)中列出的已知取值，其他按未知处理）、日志行格式、审批页的视觉布局 **不属于** 公开面，随时可能变化。
 - **升级后校验。** 升级后 **必须** 重新 `list_tools` 确认你依赖的名字 + schema 仍存在，再继续工作流。

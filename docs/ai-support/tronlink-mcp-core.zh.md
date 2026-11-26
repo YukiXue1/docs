@@ -357,7 +357,7 @@ interface GasFreeCapability {
 
 ## 标准化响应格式
 
-所有工具返回一致的结构：
+[Core 0.1.0](https://www.npmjs.com/package/@tronlink/tronlink-mcp-core/v/0.1.0) 的调用方先检查 `ok`，再读取 `result` 或 `error`。失败时读取 `error.code` 和 `error.message`，`error.details` 为可选字段。响应元数据包含 `timestamp`、`sessionId` 和 `durationMs`。
 
 ```typescript
 // 成功
@@ -377,11 +377,9 @@ interface GasFreeCapability {
   error: {
     code: "TL_CLICK_FAILED",       // 稳定错误码 — 见下表
     message: "Element not found",
-    retryable: false,              // 给 agent 的显式提示
-    hint: "重新生成可达性快照并用新的 a11yRef 重试。",
     details: { /* 可选 */ }
   },
-  meta: { timestamp, sessionId, durationMs, schemaVersion: "1.0" }
+  meta: { timestamp: "2026-03-09T10:15:23.456Z", sessionId: "tl-1741504523", durationMs: 234 }
 }
 ```
 
@@ -389,7 +387,7 @@ interface GasFreeCapability {
 
 ### 错误码
 
-这是本框架所有工具返回错误码的**唯一数据源**（SSOT）。基于本框架的下游 server（`mcp-server-tronlink`）继承这些错误码并可扩展自有错误码；`mcp-tronlink-signer` 是独立的 server，不使用这些错误码。`retryable` 反映框架层面的安全性，agent 仍**必须**叠加调用工具的副作用分级——无论 `retryable` 为何，**结果未确认的 Remote Write 绝不能自动重试**。
+本表是 Core 错误码及其重试规则的唯一权威来源（SSOT）。根据返回的 `error.code` 查下表，判断是否可重试以及如何恢复。**Retryable** 和 **Hint** 是文档中的两列。Core 0.1.0 的响应不包含 `error.retryable`、`error.hint` 或 `meta.schemaVersion`。远程写操作结果未知时，先核对交易状态，再决定是否重试。基于 Core 的下游服务（如 `mcp-server-tronlink`）可以扩展此表；独立的 `mcp-tronlink-signer` 使用自己的错误格式。
 
 | 错误码 | Retryable | Hint | 典型触发 |
 |---|:---:|---|---|
@@ -418,7 +416,7 @@ interface GasFreeCapability {
 下游 server 扩展自定义错误码必须满足：
 
 - 不复用上表错误码表达不同含义。
-- 每个新错误码必须声明 `retryable`。
+- 在错误码表中为每个新增错误码写明重试条件和恢复步骤。
 - major 版本内含义稳定。
 - 新错误码在使用方文档说明，禁止悄悄引入。
 
@@ -609,16 +607,16 @@ npm run clean      # 删除 dist/
 
 ### 兼容性与迁移策略
 
-本包是 `mcp-server-tronlink` 及任何下游 MCP server 在工具 schema、错误码、`meta.schemaVersion` 上的 **SSOT**，兼容面比普通库更宽：
+本包定义了 `mcp-server-tronlink` 及其他下游服务使用的工具 schema、错误码和响应结构。
 
 - **语义化版本。** 1.0 之前：**minor** 升级可能改 `ISessionManager` 接口、能力 shape、`Tool[]` 注册顺序；**patch** 不会。1.0 之后：标准 semver，仅 major 允许破坏。
 - **稳定契约**（patch 不会动）：
     - `error.code` 枚举（导出为 `ERROR_CODES`，SSOT）——新增 code 非破坏；改名或删除是破坏。
-    - `{ ok, result/error, meta }` 响应包络与 `meta.schemaVersion` 的 major 分量。
+    - `{ ok, result/error, meta }` 响应结构。
     - 工具名与各工具 `inputSchema` 的**结构**——新增可选字段非破坏；改名或将字段改必填是破坏。
     - 9 个能力接口（`OnChainCapability`、`MultiSigCapability`…）——新增可选方法非破坏。
 - **不稳定契约**（随时可能变化）：
     - `src/internal/*` 下的内部 helper 导出、Knowledge Store key、recipe-runner 内部。
     - 预检查错误 `details` 文本（分支用 `code`，别用 `details.reason`）。
-- **废弃窗口。** 废弃的工具 / 字段 / 能力方法在 `list_tools` 中带 `meta.deprecated` 标记，至少保留 **一个 minor 周期** 与替代并存，移除最早发生在再下一周期。
-- **下游升级。** 升级 `@tronlink/tronlink-mcp-core` 之前，先在下游对新 core 跑一遍 `list_tools` 快照测试；断言 `meta.schemaVersion` major 与你的 harness 编写时一致。
+- **弃用检查。** [@tronlink/tronlink-mcp-core 0.1.0](https://www.npmjs.com/package/@tronlink/tronlink-mcp-core/v/0.1.0) 的已注册工具没有弃用标记。升级前请查阅目标版本的发布说明，并用 `tools/list` 比对依赖的工具名称和输入字段。
+- **下游升级。** 记录实际安装的包版本。用 `tools/list` 核对客户端依赖的工具名和输入 schema，再用只读工具的成功与失败响应检验客户端的处理逻辑。

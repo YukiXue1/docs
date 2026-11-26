@@ -207,7 +207,7 @@ v0.1.4 中，错误以 MCP 工具结果返回：`isError: true`，内容是一�
 ### 兼容性与迁移策略
 
 - **语义化版本。** 1.0 之前：**minor** 升级（0.x → 0.y）允许破坏性变更；**patch** 升级（0.1.x → 0.1.y）不变更 MCP 工具名或输入 schema。1.0 之后：标准 semver，仅 major 允许破坏。
-- **废弃窗口。** 当某工具或入参字段被废弃时，下一 minor 至少保留旧形式与新形式并存 **一个 minor 周期**，schema 内置 `meta.deprecated` 标记；移除最早发生在再下一周期。
+- **弃用检查。** [mcp-tronlink-signer 0.1.4](https://www.npmjs.com/package/mcp-tronlink-signer/v/0.1.4) 的已注册工具没有弃用标记。升级前请查阅目标版本的发布说明，并用 `tools/list` 比对依赖的工具名称和输入字段。
 - **稳定契约。** 工具名、`status` 值（`success` / `pending` / `failed`）属于公开面，patch 不会动。
 - **不稳定契约。** 错误 `message` 文本（匹配[错误](#errors)中列出的已知取值，其他按未知处理）、日志行格式、审批页的视觉布局 **不属于** 公开面，随时可能变化。
 - **升级后校验。** 升级后 **必须** 重新 `list_tools` 确认你依赖的名字 + schema 仍存在，再继续工作流。

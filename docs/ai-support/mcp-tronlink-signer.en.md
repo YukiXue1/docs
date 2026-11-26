@@ -201,7 +201,7 @@ Co-released with `tronlink-signer@0.1.2`. **Major UX overhaul** on the approval 
 ### Compatibility & migration policy
 
 - **Semver.** Pre-1.0: a **minor** bump (0.x → 0.y) may introduce breaking changes; a **patch** bump (0.1.x → 0.1.y) will not change MCP tool names or input schemas. Post-1.0: standard semver — major-only breaking changes.
-- **Deprecation window.** When a tool or input field is deprecated, the next minor release retains the old form alongside the new one for at least one minor cycle, with a `meta.deprecated` flag in the schema; removal lands no earlier than the cycle after that.
+- **Deprecations.** [mcp-tronlink-signer 0.1.4](https://www.npmjs.com/package/mcp-tronlink-signer/v/0.1.4) exposes no deprecation flag for its registered tools. Before upgrading, review the target release notes and compare the tool names and input fields returned by `tools/list`.
 - **Stable contracts.** Tool names and `status` values (`success` / `pending` / `failed`) are part of the public surface — they don't change in a patch.
 - **Volatile contracts.** Error `message` text (match the known values under [Errors](#errors) and treat others as unknown), log line formats, and the layout of the browser approval page are **not** part of the public surface and may change at any time.
 - **Verifying after upgrade.** Re-call `list_tools` and confirm the names + schemas you depend on are still present before resuming a workflow.

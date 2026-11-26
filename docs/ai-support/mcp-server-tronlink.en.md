@@ -429,7 +429,7 @@ Pinned to the `package.json` of `mcp-server-tronlink@0.1.1`. Re-verify when bump
 
 ## Tool Contract & Side Effects
 
-**Input/output schemas and error contract.** Each tool's input/output schema and the structured error envelope are defined by the underlying framework — see [TronLink MCP Core](tronlink-mcp-core.md#error-codes) for the SSOT error code table (`code` / `retryable` / `hint` / triggered_by). Every response carries `meta.schemaVersion`; field meanings are stable within a major version. Agents should branch on `error.code` and `error.retryable`, never on the human-readable `message`.
+**Tool results and errors.** When the server uses Core 0.1.0, inspect `ok` in the Core response. On failure, use `error.code` to look up retry guidance in the [Core error-code table](tronlink-mcp-core.en.md#error-codes). The response includes `error.message` and may include `error.details`. For writes with an unknown outcome, check the transaction status before retrying.
 
 **Per-tool input schemas are discoverable at runtime.** Every tool's parameters are Zod-validated in core and exposed as a JSON `inputSchema` via the MCP `list_tools` method, so a client can enumerate names, types, and required fields without reading this page. The tables below summarize tools by capability; `list_tools` is the authoritative, machine-readable source.
 
@@ -446,7 +446,7 @@ Pinned to the `package.json` of `mcp-server-tronlink@0.1.1`. Re-verify when bump
 
 ### Selected tool schemas (inline mirror)
 
-These are **docs-side mirrors** of the most critical tool inputs — useful when an agent is writing a tool-call call site without an MCP session open. Runtime `list_tools` remains the authoritative source: the schemas there carry full Zod metadata (descriptions, `default`, etc.) plus `meta.schemaVersion`. Fields below are derived from `@tronlink/tronlink-mcp-core` `src/mcp-server/schemas.ts` and follow JSON Schema Draft 7. The full set of 52 tool schemas is **not** reproduced here — see core for the SSOT.
+The following tables summarize selected tool inputs. Call `tools/list` on the installed server to read each tool’s `inputSchema`, including its parameter descriptions and defaults. The examples below use JSON Schema Draft 7.
 
 > Docs CI checks the field names and required flags of every block below against upstream `schemas.ts`; if they ever disagree, `list_tools` wins.
 
@@ -573,7 +573,7 @@ Reminder: `tl_evaluate` runs arbitrary JS in the controlled Playwright browser. 
 
 | Boundary | Guarantee | Agent / operator obligation |
 |---|---|---|
-| **Prompt injection** | Tool inputs are consumed verbatim as call arguments. The server never concatenates tool inputs into a prompt re-sent to an LLM. Strings retrieved from chain or third-party APIs (account memos, contract revert reasons, transaction notes) **may contain attacker-controlled text** — treat them as untrusted. | Do not let the agent auto-route Remote Write tools off prose returned from a read. Always require structured fields (`txId`, `code`, `retryable`) for branching. |
+| **Prompt injection** | Tool inputs are consumed verbatim as call arguments. The server never concatenates tool inputs into a prompt re-sent to an LLM. Strings retrieved from chain or third-party APIs (account memos, contract revert reasons, transaction notes) **may contain attacker-controlled text** — treat them as untrusted. | Do not let the agent auto-route Remote Write tools off prose returned from a read. Always require structured fields (`txId`, `error.code`) for branching. |
 | **Outbound host allowlist (SSRF)** | The server only originates HTTPS to the three configured endpoints — `TL_TRONGRID_URL` (TronGrid; SunSwap router contracts are also called through its `triggersmartcontract` endpoint), `TL_MULTISIG_BASE_URL`, `TL_GASFREE_BASE_URL` — plus the built-in SunSwap quote API (`rot.endjgfsv.link` on Mainnet, `tnrouter.endjgfsv.link` on Nile; not configurable). Tools never accept user-supplied URLs that get fetched verbatim. | Pin these env vars to known hosts in production, and include the quote API host in any egress allowlist; do not let LLM input populate any `*_BASE_URL`. |
 | **API key handling (token passthrough)** | `TL_TRONGRID_API_KEY`, `TL_MULTISIG_SECRET_KEY`, `TL_GASFREE_API_SECRET` are read from env at startup and used only on the outbound leg. They are **not** returned in any tool response, error `details`, or Knowledge Store record. The server does not accept Authorization headers from MCP clients and forward them upstream. | Audit env capture in your MCP host config (some hosts log env); store secrets in the host's secret manager, not in `.mcp.json` committed to git. |
 | **Browser JS execution** | `tl_evaluate` runs arbitrary JavaScript in the controlled Playwright browser context. This is a **High-risk / Destructive** primitive — it can read DOM, click invisible elements, exfiltrate state, and bypass UI HITL. | Disable `tl_evaluate` from the MCP host's tool allowlist for any agent that does not strictly require it. Never expose it to a remote/multi-user MCP deployment. |
@@ -732,16 +732,14 @@ npm install && npm run build
 
 ### Compatibility & migration policy
 
-- **Semver.** Pre-1.0: a **minor** bump (0.x → 0.y) may introduce breaking changes; a **patch** bump (0.1.x → 0.1.y) will not change tool names, input schemas, `error.code` values, or `meta.schemaVersion` semantics. Post-1.0: standard semver — major-only breaking changes.
+- **Semver.** Pre-1.0: a **minor** bump (0.x → 0.y) may introduce breaking changes; a **patch** bump (0.1.x → 0.1.y) will not change tool names, input schemas, or `error.code` values. Post-1.0: standard semver — major-only breaking changes.
 - **Stable contracts** (won't change in a patch):
     - Tool names (`tl_chain_send`, `tl_chain_swap_v3`, `tl_multisig_*`, `tl_gasfree_*`, `tl_evaluate`, etc.)
     - `error.code` enum (SSOT: [TronLink MCP Core — Error Codes](tronlink-mcp-core.md#error-codes))
-    - `error.retryable` semantics
-    - `meta.schemaVersion` major component
     - Required env var names (`TL_TRONGRID_URL`, `TL_MULTISIG_SECRET_KEY`, `AGENT_WALLET_PASSWORD`, …)
 - **Volatile contracts** (may change at any time):
     - Prose `message` text, log line formats, stderr output
     - Internal Knowledge Store keys (consumers should not parse them)
     - Pre-check error detail strings (branch on `code`, not on `details.reason`)
-- **Deprecation window.** When a tool or input field is deprecated, the next minor release retains the old form alongside the new one for at least one minor cycle, with a `meta.deprecated` flag exposed via `list_tools`; removal lands no earlier than the cycle after that.
-- **Verifying after upgrade.** Re-call `list_tools` and confirm the tool names + `inputSchema` you depend on are still present before resuming the workflow. Compare `meta.schemaVersion` against the value cached at session start.
+- **Deprecations.** [@tronlink/mcp-server-tronlink 0.1.1](https://www.npmjs.com/package/@tronlink/mcp-server-tronlink/v/0.1.1) exposes no deprecation flag for its registered tools. Before upgrading, review the target release notes and compare the tool names and input fields returned by `tools/list`.
+- **Verifying after upgrade.** Record the installed server and Core versions. Recheck tool names and `inputSchema` with `tools/list`, then verify your client handles both `ok: true` and `ok: false` for a read-only tool.
