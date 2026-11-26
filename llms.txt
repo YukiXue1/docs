@@ -2,7 +2,7 @@
 
 > TronLink is a decentralized wallet for the TRON ecosystem, available as a browser extension and a mobile app. This documentation covers integrating DApps with TronLink across the browser extension, the mobile app (via DeepLink), and AI/agent tooling (MCP servers, CLI, signer SDK).
 
-> Updated: 2026-11-26T06:33:48Z · Commit: 875841f8933b
+> Updated: 2026-11-26T06:48:26Z · Commit: 9bab618a3881
 
 How integration works: TronLink injects a `window.tron` provider into every page, exposing a `tronWeb` instance, a `request` method, and `on` / `removeListener` for events. A DApp detects the wallet via TIP-6963, requests authorization via `eth_requestAccounts` (TIP-1102), then builds, signs, and broadcasts transactions through `tronWeb`. Account/network changes arrive as passive `accountsChanged` / `chainChanged` events.
 
@@ -19,7 +19,7 @@ Networks: Mainnet `chainId` `0x2b6653dc` (EVM `728126428`), Shasta testnet `0x94
 - [Proactively Request TronLink Plugin Features](plugin-wallet/active-requests/): Connect website (TIP-1102 / EIP-1102), provider discovery (TIP-6963), normal/multi-sig transfer, message signing, `wallet_watchAsset`, switch network (TIP-3326), and legacy `window.tronLink` methods
 - [Receive Messages from TronLink](plugin-wallet/passive-messages/): `accountsChanged`, `chainChanged`, `connect`, `disconnect` (TIP-1193) events and legacy 3.x messages
 - [Ledger v-field Compatibility](plugin-wallet/ledger-signing-update/): Planned (not yet released) normalization of the signature `v` byte (`01`→`1c`, `00`→`1b`) for transaction, message, and EIP-712 signing
-- [Extension Core (Open Source)](plugin-wallet/extension-core/) — Derive TRON and EVM accounts and sign locally with `@tronlink/core`
+- [Extension Core (Open Source)](plugin-wallet/extension-core/): Derive TRON and EVM accounts and sign locally with `@tronlink/core`
 
 ## DApp Integration
 
@@ -33,8 +33,8 @@ Networks: Mainnet `chainId` `0x2b6653dc` (EVM `728126428`), Shasta testnet `0x94
 - [Asset Management](mobile/asset-management/): Adding custom TRC-20 / TRC-721 tokens
 - [DeepLink](mobile/deeplink/): `tronlinkoutside://` scheme for open wallet, open DApp, login, transfer, sign transaction, sign message, plus result codes
 - [DApp Support](mobile/dapp-support/): In-app DApp Explorer injection (`tronWeb`, `tronLink`, `iTron`)
-- [Android Core (Open Source)](mobile/android-core/) — Integrate the Android wallet AAR, create a wallet, and verify a release signature
-- [iOS Core (Open Source)](mobile/ios-core/) — Install the TLCore pod and run the Swift wallet examples
+- [Android Core (Open Source)](mobile/android-core/): Integrate the Android wallet AAR, create a wallet, and verify a release signature
+- [iOS Core (Open Source)](mobile/ios-core/): Install the TLCore pod and run the Swift wallet examples
 
 ## AI Support
 

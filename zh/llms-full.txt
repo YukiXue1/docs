@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 ../llms.txt 的 Localized 段。
 
-- Generated: 2026-11-26T06:33:48Z
-- Commit: 875841f8933b
+- Generated: 2026-11-26T06:48:26Z
+- Commit: 9bab618a3881
 - Language: zh
 - Pages: 27
-- Token estimate: ~43,737 (chars / 4)
+- Token estimate: ~44,046 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: introduction/ -->
@@ -792,23 +792,27 @@ Wallet wallet = new Wallet(true);
 String address = wallet.getAddress();
 ```
 
-钱包测试还演示了如何通过助记词或私钥恢复地址。交易签名和消息签名的用法见签名测试。[钱包示例](https://github.com/TronLink/tronlink-android-core/blob/main/core/src/test/java/org/tron/WalletCoreUnitTest.java) · [签名示例](https://github.com/TronLink/tronlink-android-core/blob/main/core/src/test/java/org/tron/TransactionCoreUnitTest.java)
+钱包测试还演示了如何通过助记词或私钥恢复地址。交易签名和消息签名的用法见签名测试。[钱包示例](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/core/src/test/java/org/tron/WalletCoreUnitTest.java) · [签名示例](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/core/src/test/java/org/tron/TransactionCoreUnitTest.java)
 
 ## 验证 AAR 签名
 
-发布签名公钥的指纹为 `7B910EA80207596075E6D7BA5D34F7A6550473BA`。导入公钥后，在 AAR 和签名文件所在目录运行以下命令，并将文件名替换为实际下载的名称。
+验签需要 TronLink 签署的 AAR 原件及其配套的独立签名文件 `.asc`。JitPack 只提供 AAR，[1.0.2 发布页](https://github.com/TronLink/tronlink-android-core/releases/tag/1.0.2) 也没有签名附件。如需验证此版本，请向维护者索取签署的 AAR 和配套签名。[上游验签说明](https://github.com/TronLink/tronlink-android-core/blob/1.0.3/README.md#integrity-check) 自 1.0.3 起提供。
+
+下载[发布公钥](https://keys.openpgp.org/vks/v1/by-fingerprint/7B910EA80207596075E6D7BA5D34F7A6550473BA)，保存为 `tronlink-build.asc`。先查看签名子密钥的指纹，与上游公布的 `7B910EA80207596075E6D7BA5D34F7A6550473BA` 核对。一致后导入公钥，再用维护者提供的两个文件验签；请替换下例中的文件名。
 
 ```bash
-gpg --verify tronlink-android-core-VERSION.aar.asc tronlink-android-core-VERSION.aar
+gpg --show-keys --with-subkey-fingerprint tronlink-build.asc
+gpg --import tronlink-build.asc
+gpg --verify release.aar.asc release.aar
 ```
 
 ## 隐私
 
-TronLink Android 在设备上为地址分配 UUID，按金额区间汇总使用数据。在 App 设置中开启基础模式（Basic Mode）后，应用会停止生成和上传统计报告。[Android 隐私说明](https://github.com/TronLink/tronlink-android-core/blob/main/PRIVACY-POLICY.md)
+集成 Android Core 1.0.2 不会启动使用统计上报。此版本还没有 `UserStatistics` 模块；该模块在 [1.0.8](https://github.com/TronLink/tronlink-android-core/releases/tag/1.0.8) 中引入。
 
 ## 版本与许可证
 
-上游安装示例使用 `1.0.2`。[Apache License 2.0](https://github.com/TronLink/tronlink-android-core/blob/main/LICENSE)
+上游安装示例使用 `1.0.2`。[Apache License 2.0](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/LICENSE)
 
 ---
 
@@ -839,20 +843,20 @@ import TLCore
 要在上游 Xcode 示例工程中查看钱包 API 的用法，请先进入示例目录安装依赖。
 
 ```bash
-git clone https://github.com/TronLink/tronlink-iOS-core.git
+git clone --branch 2.0.1 https://github.com/TronLink/tronlink-iOS-core.git
 cd tronlink-iOS-core/Example
 pod install
 ```
 
-在 Xcode 中打开 `Example/` 下的工作区。Swift 测试展示了创建钱包、签署交易和消息，以及导出私钥或助记词的用法。[Swift 钱包示例](https://github.com/TronLink/tronlink-iOS-core/blob/main/Example/Tests/Tests.swift)
+在 Xcode 中打开 `Example/` 下的工作区。Swift 测试展示了创建钱包、签署交易和消息，以及导出私钥或助记词的用法。[Swift 钱包示例](https://github.com/TronLink/tronlink-iOS-core/blob/2.0.1/Example/Tests/Tests.swift)
 
 ## 隐私
 
-TronLink iOS 在设备上汇总使用数据。开启基础模式（Basic Mode）后，应用会停止生成和上传统计报告。观察钱包和 Shasta 测试网也不参与上报。Debug 与 Release 构建都只允许在宿主标记为线上或预发布的环境中上传。[iOS 隐私说明](https://github.com/TronLink/tronlink-iOS-core/blob/main/PRIVACY-POLICY.md)
+安装 Pod 或创建钱包不会自动上传统计数据。要启用上传，集成方需要主动调用上报方法，实现 `TRXMetricsDataSource` 的上传回调，并将应用当前连接的环境标记为生产或预发布。Debug 和 Release 构建都遵循这项检查。TronLink iOS 还会在基础模式、观察钱包和 Shasta 测试网下停用上报。[iOS 隐私说明](https://github.com/TronLink/tronlink-iOS-core/blob/2.0.1/PRIVACY-POLICY.md)
 
 ## 版本与许可证
 
-版本为 `2.0.1`。[Podspec](https://github.com/TronLink/tronlink-iOS-core/blob/main/tronlink-iOS-core.podspec) · [Apache License 2.0](https://github.com/TronLink/tronlink-iOS-core/blob/main/LICENSE)
+版本为 `2.0.1`。[Podspec](https://github.com/TronLink/tronlink-iOS-core/blob/2.0.1/tronlink-iOS-core.podspec) · [Apache License 2.0](https://github.com/TronLink/tronlink-iOS-core/blob/2.0.1/LICENSE)
 
 ---
 
@@ -2129,10 +2133,10 @@ ledger返回的实际签名hash：
 通过 npm 安装。该包提供 CommonJS、ES 模块入口以及 TypeScript 类型声明。
 
 ```bash
-npm install @tronlink/core
+npm install @tronlink/core@1.1.4
 ```
 
-项目指定 Node.js `24.22.3`，开发使用 pnpm `10.12.4`。TypeScript 项目需要 `4.9.5` 及以上版本。面向浏览器打包时，需要为 `buffer`、`crypto`、`stream` 等 Node 模块配置 polyfill。[上游 webpack 配置](https://github.com/TronLink/tronlink-extension-core/blob/main/webpack.config.js)
+项目指定 Node.js `24.22.1`，开发使用 pnpm `10.12.4`。TypeScript 项目需要 `4.9.5` 及以上版本。面向浏览器打包时，需要为 `buffer`、`crypto`、`stream` 等 Node 模块配置 polyfill。[上游 webpack 配置](https://github.com/TronLink/tronlink-extension-core/blob/1.1.4/webpack.config.js) · [1.1.4 环境要求](https://github.com/TronLink/tronlink-extension-core/blob/1.1.4/README.md#prerequisites)
 
 ## 派生 TRON 地址
 
@@ -2148,21 +2152,21 @@ const privateKey = wallet.derivePrivateKey({ mnemonic, path });
 const address = wallet.getAddressBy({ privateKey });
 ```
 
-派生 EVM 地址时，使用 `EvmWallet` 的 `derivePath` 获取对应路径，再派生私钥。[TRON 与 EVM 账户示例](https://github.com/TronLink/tronlink-extension-core/blob/main/demo/create_account.ts)
+派生 EVM 地址时，使用 `EvmWallet` 的 `derivePath` 获取对应路径，再派生私钥。[TRON 与 EVM 账户示例](https://github.com/TronLink/tronlink-extension-core/blob/1.1.4/demo/create_account.ts)
 
 ## 签名
 
-两个钱包类都支持交易、消息和结构化数据签名。对 TRON 交易签名时，将已构建的交易传入 `wallet.signTransaction({ privateKey, data: rawTransaction })`。对 EVM 交易签名时，在 `data` 中提供链配置和未签名交易。签名结果在本地返回，广播需另行执行。[TRON 签名示例](https://github.com/TronLink/tronlink-extension-core/blob/main/demo/tron_signature.ts) · [EVM 签名示例](https://github.com/TronLink/tronlink-extension-core/blob/main/demo/evm_signature.ts)
+两个钱包类都支持交易、消息和结构化数据签名。对 TRON 交易签名时，将已构建的交易传入 `wallet.signTransaction({ privateKey, data: rawTransaction })`。对 EVM 交易签名时，在 `data` 中提供链配置和未签名交易。签名结果在本地返回，广播需另行执行。[TRON 签名示例](https://github.com/TronLink/tronlink-extension-core/blob/1.1.4/demo/tron_signature.ts) · [EVM 签名示例](https://github.com/TronLink/tronlink-extension-core/blob/1.1.4/demo/evm_signature.ts)
 
 ## Ledger 与使用统计
 
 Ledger 签名要求浏览器提供 `navigator.hid`。使用设备上的 TRX 应用时选择 `LedgerTrxSigner`，使用 ETH 应用时选择 `LedgerEvmSigner`。
 
-可选的 `userStatistics` 模块使用设备上为地址分配的 UUID，按日期和金额区间汇总主网活动。存储与上报回调由宿主应用提供。[隐私与上报说明](https://github.com/TronLink/tronlink-extension-core/blob/main/PRIVACY.md)
+导入包、派生地址或在本地签名都不会自动上传统计数据。启用上报需要宿主调用 `checkAndReportXY(deps)` 并提供上传回调。可选的 `userStatistics` 模块使用设备上为地址分配的 UUID，按日期和金额区间汇总主网活动。[隐私与上报说明](https://github.com/TronLink/tronlink-extension-core/blob/1.1.4/PRIVACY.md)
 
 ## 版本与许可证
 
-包版本为 `1.1.4`。[包配置](https://github.com/TronLink/tronlink-extension-core/blob/main/package.json) · [Apache License 2.0](https://github.com/TronLink/tronlink-extension-core/blob/main/LICENSE)
+包版本为 `1.1.4`。[包配置](https://github.com/TronLink/tronlink-extension-core/blob/1.1.4/package.json) · [Apache License 2.0](https://github.com/TronLink/tronlink-extension-core/blob/1.1.4/LICENSE)
 
 ---
 
@@ -2906,7 +2910,7 @@ export TL_TRONGRID_URL="https://nile.trongrid.io"
     - `message` 自然语言文本、日志行格式、stderr 输出
     - 内部 Knowledge Store key（消费者不应解析）
     - 预检查的错误 detail 文本（分支用 `code`，别用 `details.reason`）
-- **废弃窗口。** 工具或入参字段被废弃时，下一 minor 至少保留旧形式与新形式并存 **一个 minor 周期**，`list_tools` 会带 `meta.deprecated` 标记；移除最早在再下一周期。
+- **弃用检查。** [@tronlink/mcp-server-tronlink 0.1.1](https://www.npmjs.com/package/@tronlink/mcp-server-tronlink/v/0.1.1) 的已注册工具没有弃用标记。升级前请查阅目标版本的发布说明，并用 `tools/list` 比对依赖的工具名称和输入字段。
 - **升级后校验。** 记录已安装的 Server 和 Core 版本，通过 `tools/list` 核对依赖的工具名和 `inputSchema`，再验证客户端能处理只读工具的 `ok: true` 和 `ok: false` 两种响应。
 
 ---
@@ -3302,7 +3306,7 @@ interface GasFreeCapability {
 
 ### 错误码
 
-根据返回的 `error.code` 查下表，判断是否可重试以及如何恢复。**Retryable** 和 **Hint** 是文档中的两列。Core 0.1.0 的响应不包含 `error.retryable`、`error.hint` 或 `meta.schemaVersion`。远程写操作结果未知时，先核对交易状态，再决定是否重试。基于 Core 的下游服务（如 `mcp-server-tronlink`）可以扩展此表；独立的 `mcp-tronlink-signer` 使用自己的错误格式。
+本表是 Core 错误码及其重试规则的唯一权威来源（SSOT）。根据返回的 `error.code` 查下表，判断是否可重试以及如何恢复。**Retryable** 和 **Hint** 是文档中的两列。Core 0.1.0 的响应不包含 `error.retryable`、`error.hint` 或 `meta.schemaVersion`。远程写操作结果未知时，先核对交易状态，再决定是否重试。基于 Core 的下游服务（如 `mcp-server-tronlink`）可以扩展此表；独立的 `mcp-tronlink-signer` 使用自己的错误格式。
 
 | 错误码 | Retryable | Hint | 典型触发 |
 |---|:---:|---|---|
@@ -3533,7 +3537,7 @@ npm run clean      # 删除 dist/
 - **不稳定契约**（随时可能变化）：
     - `src/internal/*` 下的内部 helper 导出、Knowledge Store key、recipe-runner 内部。
     - 预检查错误 `details` 文本（分支用 `code`，别用 `details.reason`）。
-- **废弃窗口。** 废弃的工具 / 字段 / 能力方法在 `list_tools` 中带 `meta.deprecated` 标记，至少保留 **一个 minor 周期** 与替代并存，移除最早发生在再下一周期。
+- **弃用检查。** [@tronlink/tronlink-mcp-core 0.1.0](https://www.npmjs.com/package/@tronlink/tronlink-mcp-core/v/0.1.0) 的已注册工具没有弃用标记。升级前请查阅目标版本的发布说明，并用 `tools/list` 比对依赖的工具名称和输入字段。
 - **下游升级。** 记录实际安装的包版本。用 `tools/list` 核对客户端依赖的工具名和输入 schema，再用只读工具的成功与失败响应检验客户端的处理逻辑。
 
 ---
@@ -3611,7 +3615,7 @@ tron_api.mjs (Node.js 24.22.3, 原生 fetch, 零依赖)
 
 **特点：** 同时支持 Base58Check（T...）和 hex 地址格式，内置常用代币符号，自动转换精度。
 
-**何时不要用：** 发送 TRX / 代币——这些命令是只读的，请走 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)。代币层面的深度分析（rug-pull / 流动性锁定）请用 `tron-token`。
+**何时不要用：** 转出 TRX 或 TRC-20 代币并由用户在浏览器中批准时，使用 [Signer SDK](tronlink-signer.zh.md) 的 `sendTrx` 或 `sendTrc20`。使用本地 agent 钱包时，调用 [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_send`。代币风险与流动性分析使用 `tron-token`。
 
 ### 2. tron-token（7 个命令）
 
@@ -3662,7 +3666,7 @@ DEX 兑换报价与路由优化。
 
 **特点：** 聚合多源流动性、估算能量成本、处理多跳路由。
 
-**何时不要用：** 真正执行 swap——报价是只读的，实际兑换走 [MCP Server TronLink](mcp-server-tronlink.md)（`tl_chain_swap_v3`）或 signer SDK；历史成交数据——`tron-market`。
+**何时不要用：** 执行兑换时，调用 [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_swap_v3`，将 `action` 设为 `"execute"`，并按用户确认的滑点百分比填写 `slippage`。历史成交数据使用 `tron-market`。
 
 ### 5. tron-resource（6 个命令）
 
@@ -3679,7 +3683,7 @@ DEX 兑换报价与路由优化。
 
 **特点：** 成本优化决策树逻辑、追踪每日免费带宽、计算 TRX 燃烧等值。
 
-**何时不要用：** 真正冻结 TRX 获取能量/带宽——那是 Remote Write，请走 signer SDK / MCP Server；冻结后的 SR 投票策略——见 `tron-staking`。
+**何时不要用：** 冻结 TRX 获取能量或带宽时，调用 [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_stake`，将 `action` 设为 `"freeze"`。投票前查询超级代表信息可使用 `tron-staking`。
 
 ### 6. tron-staking（3 个命令）
 
@@ -3693,7 +3697,7 @@ Stake 2.0 查询与 SR 信息。
 
 **特点：** Stake 2.0 状态查询、APY 计算、SR 佣金追踪。
 
-投票使用 `tronlink vote`，冻结或解冻 TRX 使用 `tl_chain_stake`。估算单次操作的能量消耗请用 `tron-resource`。
+**何时不要用：** 投票使用 [TronLink CLI](tronlink-cli.zh.md) 的 `tronlink vote`，领取投票奖励使用同一 CLI 的 `tronlink reward`。冻结或解冻 TRX 使用 [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_stake`。估算能量消耗使用 `tron-resource`。
 
 ---
 
@@ -3778,11 +3782,11 @@ Skills 提供查询和估算。涉及签名或广播时，按下表选择工具�
 | 用户提问（意图） | ❌ 误路由（看起来合理，但只读） | ✅ 正确路由 |
 |---|---|---|
 | 「给 `T…` 转 100 TRX」 | `tron-wallet wallet-balance` 就停下——只查了余额，没转。 | [signer SDK](tronlink-signer.zh.md) `sendTrx`（HITL）或 [`mcp-server-tronlink`](mcp-server-tronlink.zh.md) `tl_chain_send` |
-| 「冻 1000 TRX 换能量」 | `tron-resource optimize-cost`——只算了建议，没冻。 | `tl_chain_stake` (`action="freeze"`, `amount_trx=1000`, `resource="ENERGY"`) |
-| 「给 SR `T…` 投 5000 票」 | `tron-staking sr-list`——只读了 SR 列表，没投票。 | `tronlink vote --votes <SR_ADDRESS>:5000` |
-| 「给 SunSwap 路由器授权 USDT 额度」 | `tron-token token-info` / `contract-info`——纯元数据查询，没发送 approve。 | 使用 `tronlink trigger --contract <USDT_CONTRACT> --method 'approve(address,uint256)' --args '["<ROUTER_ADDRESS>","1000000"]'`。代币合约和路由器地址须对应所选网络。路由器是被授权方；USDT 精度为 6 时，`1000000` 表示授权 1 USDT。 |
-| 「现在把 100 TRX 换成 USDT」 | `tron-swap swap-quote`——只报了价，没执行。 | `tl_chain_swap_v3` （`action="execute"`，`slippage` 填用户确认的滑点百分比） |
-| 「领取我的投票奖励」 | `tron-staking staking-info`——只看了待领数量。 | `tronlink reward` |
+| 「冻 1000 TRX 换能量」 | `tron-resource optimize-cost`——只算了建议，没冻。 | [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_stake`（`action="freeze"`，`amount_trx=1000`，`resource="ENERGY"`） |
+| 「给 SR `T…` 投 5000 票」 | `tron-staking sr-list`——只读了 SR 列表，没投票。 | [TronLink CLI](tronlink-cli.zh.md) 的 `tronlink vote --votes <SR_ADDRESS>:5000` |
+| 「给 SunSwap 路由器授权 USDT 额度」 | `tron-token token-info` / `contract-info`——纯元数据查询，没发送 approve。 | [TronLink CLI](tronlink-cli.zh.md) 的 `tronlink trigger --contract <USDT_CONTRACT> --method 'approve(address,uint256)' --args '["<ROUTER_ADDRESS>","1000000"]'`。代币合约和路由器地址须对应所选网络。路由器是被授权方；USDT 精度为 6 时，`1000000` 表示授权 1 USDT。 |
+| 「现在把 100 TRX 换成 USDT」 | `tron-swap swap-quote`——只报了价，没执行。 | [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_swap_v3`（`action="execute"`，`slippage` 填用户确认的滑点百分比） |
+| 「领取我的投票奖励」 | `tron-staking staking-info`——只看了待领数量。 | [TronLink CLI](tronlink-cli.zh.md) 的 `tronlink reward` |
 
 **判断口诀。** 用户动词只要出现 *send / freeze / unfreeze / vote / unvote / approve / swap（执行）/ claim / sign / broadcast*，答案就**不在**这个 Skills 集里起步。Skills 仍然可以做**前置**（报价、估算成本、校验地址、查余额）——只是别声称"Skills 调用完成了用户的请求"。
 
@@ -4050,7 +4054,7 @@ tronlink-skills/
 | 副作用 | 每个命令都是 **Network Read**：调用公共 API,但不改变任何状态。所有命令均可安全重试,无需人工确认（HITL） |
 | 无需密钥 | 仅可选 TRONGRID_API_KEY 用于提高请求频率 |
 | 频率限制 | 公共 TronGrid API；使用 TRONGRID_API_KEY 获取更高限额 |
-| 错误处理 | 失败均为查询类错误：限流（可重试,需退避）、网络错误（可重试）、地址/参数非法（不可重试——修正输入）。如需执行交易（转账、兑换、质押）,请使用 [signer SDK](tronlink-signer.md) 或 [MCP Server TronLink](mcp-server-tronlink.md)——这些技能本身从不签名或广播 |
+| 错误处理 | 失败均为查询类错误：限流（可重试,需退避）、网络错误（可重试）、地址/参数非法（不可重试——修正输入）。 |
 
 ---
 
@@ -4336,7 +4340,7 @@ v0.1.4 中，错误以 MCP 工具结果返回：`isError: true`，内容是一�
 ### 兼容性与迁移策略
 
 - **语义化版本。** 1.0 之前：**minor** 升级（0.x → 0.y）允许破坏性变更；**patch** 升级（0.1.x → 0.1.y）不变更 MCP 工具名或输入 schema。1.0 之后：标准 semver，仅 major 允许破坏。
-- **废弃窗口。** 当某工具或入参字段被废弃时，下一 minor 至少保留旧形式与新形式并存 **一个 minor 周期**，schema 内置 `meta.deprecated` 标记；移除最早发生在再下一周期。
+- **弃用检查。** [mcp-tronlink-signer 0.1.4](https://www.npmjs.com/package/mcp-tronlink-signer/v/0.1.4) 的已注册工具没有弃用标记。升级前请查阅目标版本的发布说明，并用 `tools/list` 比对依赖的工具名称和输入字段。
 - **稳定契约。** 工具名、`status` 值（`success` / `pending` / `failed`）属于公开面，patch 不会动。
 - **不稳定契约。** 错误 `message` 文本（匹配[错误](#errors)中列出的已知取值，其他按未知处理）、日志行格式、审批页的视觉布局 **不属于** 公开面，随时可能变化。
 - **升级后校验。** 升级后 **必须** 重新 `list_tools` 确认你依赖的名字 + schema 仍存在，再继续工作流。
