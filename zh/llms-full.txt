@@ -2,11 +2,11 @@
 
 > 中文文档全文拼接，适合 LLM 一次性 ingest。由 scripts/gen_llms_full.py 生成。索引见 ../llms.txt 的 Localized 段。
 
-- Generated: 2026-11-26T10:18:47Z
-- Commit: 30cb20521e2c
+- Generated: 2026-11-26T11:16:09Z
+- Commit: 8a8a90a83bcf
 - Language: zh
 - Pages: 27
-- Token estimate: ~46,709 (chars / 4)
+- Token estimate: ~46,679 (chars / 4)
 ---
 
 <!-- source: docs/introduction.zh.md | url: introduction/ -->
@@ -495,8 +495,6 @@ const buildDeepLink = (request) =>
 }
 ```
 
-<a id="result-code"></a>
-
 ## 回传消息码
 
 | 消息码 | 消息 | 备注 |
@@ -805,8 +803,6 @@ dependencies {
 }
 ```
 
-本页内容基于上游 README 使用的 `1.0.2`。使用更新的版本前，请先阅读[版本与许可证](#version-license)。
-
 ## 创建钱包
 
 在应用中创建钱包并读取 TRON 地址。
@@ -819,11 +815,11 @@ Wallet wallet = new Wallet(true);
 String address = wallet.getAddress();
 ```
 
-钱包测试还演示了如何通过助记词或私钥恢复地址。交易签名和消息签名的用法见签名测试。[钱包示例](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/core/src/test/java/org/tron/WalletCoreUnitTest.java) · [签名示例](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/core/src/test/java/org/tron/TransactionCoreUnitTest.java)
+钱包测试还演示了如何通过助记词或私钥恢复地址。交易签名的用法见交易测试。测试中没有消息签名示例，库中的实现位于 `org.tron.common.bip32.Sign`（`signPrefixedMessage`、`signPrefixedMessageV2`）。[钱包示例](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/core/src/test/java/org/tron/WalletCoreUnitTest.java) · [交易签名示例](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/core/src/test/java/org/tron/TransactionCoreUnitTest.java) · [`Sign.java`](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/core/src/main/java/org/tron/common/bip32/Sign.java)
 
 ## 验证 AAR 签名
 
-验签需要 TronLink 签署的 AAR 原件及配套的独立签名文件 `.asc`。[1.0.2](https://github.com/TronLink/tronlink-android-core/releases/tag/1.0.2) 和 [1.0.16](https://github.com/TronLink/tronlink-android-core/releases/tag/1.0.16) 的 GitHub 发布页提供源码归档。需要可验签的构建时，请向维护者索取签署的 AAR 和配套签名。[上游验签说明](https://github.com/TronLink/tronlink-android-core/blob/1.0.3/README.md#integrity-check) 自 1.0.3 起提供。
+验签需要 TronLink 签署的 AAR 原件及配套的独立签名文件 `.asc`。JitPack 和 GitHub 发布页不提供签名文件，如需验签，请向维护者索取签署的 AAR 和配套签名。参见[上游验签说明](https://github.com/TronLink/tronlink-android-core#integrity-check)。
 
 下载[发布公钥](https://keys.openpgp.org/vks/v1/by-fingerprint/7B910EA80207596075E6D7BA5D34F7A6550473BA)，保存为 `tronlink-build.asc`。先查看签名子密钥的指纹，与上游公布的 `7B910EA80207596075E6D7BA5D34F7A6550473BA` 核对。一致后导入公钥，再用维护者提供的两个文件验签；请替换下例中的文件名。
 
@@ -835,13 +831,11 @@ gpg --verify release.aar.asc release.aar
 
 ## 隐私
 
-集成 Android Core 1.0.2 不会启动使用统计上报。此版本还没有 `UserStatistics` 模块；该模块在 [1.0.8](https://github.com/TronLink/tronlink-android-core/releases/tag/1.0.8) 中引入。
-
-<a id="version-license"></a>
+本页示例使用的版本不包含使用统计上报代码。较新的版本加入了上报模块（`org.tron.metrics`），升级前请参阅上游的[隐私说明](https://github.com/TronLink/tronlink-android-core/blob/main/PRIVACY-POLICY.md)。
 
 ## 版本与许可证
 
-本页内容基于上游 README 安装示例中的 `1.0.2`。之后的标签（截至 `1.0.16`）未经本页核对。自 `1.0.8` 起库中包含 `UserStatistics` 模块，升级前请核实其上报行为，并相应更新上方的隐私说明。[Apache License 2.0](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/LICENSE)
+本页内容基于上游 README 的安装示例。升级到更新的版本前，请核实接口变化和上报行为。[Apache License 2.0](https://github.com/TronLink/tronlink-android-core/blob/1.0.2/LICENSE)
 
 ---
 
@@ -935,8 +929,6 @@ try {
 
 > **旧版用法（不推荐）：** [兼容用法：tron_requestAccounts](#tron_requestaccounts)
 
-
-<a id="get-tronlink-provider-via-tip-6963"></a>
 
 ## 获取TronLink的provider TIP-6963
 
@@ -2665,8 +2657,6 @@ mcp-server-tronlink/
 - **人工确认（HITL）：** 写操作工具使用加密的本地 `agent-wallet` 签名；浏览器模式下由用户在 TronLink UI 审批。生产环境应将每个「远程写」工具视为需要确认。
 - **重试：** 只读工具可安全重试；「远程写」工具除非证明幂等，否则不得自动重试。
 
-<a id="selected-tool-schemas-inline-mirror"></a>
-
 ### 精选工具 schema（文档侧镜像）
 
 下表摘录了部分工具的输入参数。对实际安装的服务调用 `tools/list`，从各工具的 `inputSchema` 读取参数说明和默认值。以下示例使用 JSON Schema Draft 7。
@@ -2808,7 +2798,7 @@ mcp-server-tronlink/
 
 兑换属于 **远程写**，且对接公开 DEX 路由器，因此暴露在 **价格滑点** 与 **三明治攻击 / MEV** 之下：在报价和执行之间池子价格变动时，实际成交可能比报价更差。
 
-- **必须设置最小输出 / 滑点上限。** 通过 `list_tools` 查看 `tl_chain_swap_v3` 的输入 schema（`SwapV3Params`），核对实际的 minimum-output / 滑点字段名；**不要**依赖未声明的默认值，缺省或为 0 的最小输出一律视为不安全。
+- **必须显式设置 `slippage`。** `tl_chain_swap_v3` 没有最小输出参数，服务端根据 `slippage`（百分比，默认 0.5）计算最小输出。**不要**依赖默认值；请与用户确认滑点，并在 `list_tools` 的 schema 中核对该字段。
 - **执行前现取报价。** 通过 Skills `tron-swap` 的 `swap-quote` / `swap-route`（或同等接口）取最新报价/路径，选定可接受的滑点容忍度并显式传入。
 - **核对 router。** 请将 `TL_SUNSWAP_ROUTER` / `TL_SUNSWAP_V3_ROUTER` 设置为 SunSwap 官方合约地址中对应网络的 Router（见环境变量）；过期或错误的 router 会把资金路由到非预期目标。
 - **不可自动重试。** swap 失败或结果未知都属于远程写——先在链上确认再决定是否重发（`TL_CHAIN_SWAP_FAILED` 不可重试）。
@@ -3340,7 +3330,7 @@ interface GasFreeCapability {
   result: { /* 工具特定数据 */ },
   meta: {
     timestamp: "2026-03-09T10:15:23.456Z",
-    sessionId: "tl-1741504523",
+    sessionId: "tl-1773051323",
     durationMs: 234
   }
 }
@@ -3353,11 +3343,9 @@ interface GasFreeCapability {
     message: "Element not found",
     details: { /* 可选 */ }
   },
-  meta: { timestamp: "2026-03-09T10:15:23.456Z", sessionId: "tl-1741504523", durationMs: 234 }
+  meta: { timestamp: "2026-03-09T10:15:23.456Z", sessionId: "tl-1773051323", durationMs: 234 }
 }
 ```
-
-<a id="error-codes"></a>
 
 ### 错误码
 
@@ -3377,8 +3365,8 @@ interface GasFreeCapability {
 | `TL_WAIT_TIMEOUT` | true | 提高超时或换一个 selector。 | `tl_wait_for`、`tl_wait_for_notification` |
 | `TL_SCREENSHOT_FAILED` | true | 偶发故障；可重试。 | `tl_screenshot`、`tl_describe_screen` |
 | `TL_CAPABILITY_NOT_AVAILABLE` | false | 当前 session 未注入该 capability；重配后重启。 | 依赖可选 capability 的工具 |
-| `TL_CHAIN_QUERY_FAILED` | true | TronGrid 暂时不可用或限流；退避后重试。 | `tl_chain_get_*` |
-| `TL_CHAIN_SEND_FAILED` | false | **禁止**自动重试。先用 `tl_chain_get_tx` 确认上一笔是否落账。 | `tl_chain_send`、`tl_chain_stake`、`tl_chain_resource` |
+| `TL_CHAIN_QUERY_FAILED` | true | TronGrid 暂时不可用或限流；退避后重试。**例外：** `tl_chain_resource` 的代理／取消代理写操作失败时也返回此码，应按 `TL_CHAIN_SEND_FAILED` 处理，先核对交易再决定是否重新发起。 | `tl_chain_get_*`、`tl_chain_resource` |
+| `TL_CHAIN_SEND_FAILED` | false | **禁止**自动重试。先用 `tl_chain_get_tx` 确认上一笔是否落账。 | `tl_chain_send`、`tl_chain_stake` |
 | `TL_CHAIN_SWAP_FAILED` | false | 同上——重试前必须确认前一笔未落账。 | `tl_chain_swap`、`tl_chain_swap_v3` |
 | `TL_GASFREE_QUERY_FAILED` | true | 偶发故障；可重试。 | `tl_gasfree_get_account`、`tl_gasfree_get_transactions` |
 | `TL_GASFREE_SEND_FAILED` | false | **禁止**自动重试；先向 GasFree 查询最新状态。 | `tl_gasfree_send` |
@@ -3390,7 +3378,7 @@ interface GasFreeCapability {
 下游 server 扩展自定义错误码必须满足：
 
 - 不复用上表错误码表达不同含义。
-- 在错误码表中为每个新增错误码写明重试条件和恢复步骤。
+- 为每个新增错误码写明重试条件和恢复步骤。
 - major 版本内含义稳定。
 - 新错误码在使用方文档说明，禁止悄悄引入。
 
@@ -3585,7 +3573,7 @@ npm run clean      # 删除 dist/
 
 - **语义化版本。** 1.0 之前：**minor** 升级可能改 `ISessionManager` 接口、能力 shape、`Tool[]` 注册顺序；**patch** 不会。1.0 之后：标准 semver，仅 major 允许破坏。
 - **稳定契约**（patch 不会动）：
-    - `error.code` 枚举（导出为 `ERROR_CODES`，SSOT）——新增 code 非破坏；改名或删除是破坏。
+    - `error.code` 枚举（导出为 `ErrorCodes`，SSOT）——新增 code 非破坏；改名或删除是破坏。
     - `{ ok, result/error, meta }` 响应结构。
     - 工具名与各工具 `inputSchema` 的**结构**——新增可选字段非破坏；改名或将字段改必填是破坏。
     - 9 个能力接口（`OnChainCapability`、`MultiSigCapability`…）——新增可选方法非破坏。
@@ -3756,11 +3744,9 @@ Stake 2.0 查询与 SR 信息。
 
 ---
 
-<a id="skill-mcp-tool-map"></a>
-
 ## Skill ↔ MCP 工具映射
 
-在 v1.0.x 命令集中，`scripts/mcp_server.mjs` 将 **33 个 CLI 命令中的 25 个** 暴露为 MCP 工具。包装层运行对应的 CLI 命令，以文本形式返回 MCP 工具结果。其余 8 个命令可通过 Skills 或 CLI 使用。
+在 v1.0.x 命令集中，`scripts/mcp_server.mjs` 将 **33 个 CLI 命令中的 25 个** 暴露为 MCP 工具。在默认分支提交 `b12b5868` 中，40 个命令里有 39 个暴露为 MCP 工具，只有 `swap-route` 仅限 CLI；下表中的“仅 CLI”标记针对 v1.0.x。包装层运行对应的 CLI 命令，以文本形式返回 MCP 工具结果。其余 8 个命令可通过 Skills 或 CLI 使用。
 
 | Skill | CLI 命令 | MCP 工具名 | 副作用 | 可重试 |
 |---|---|---|---|:---:|
@@ -3838,7 +3824,7 @@ Skills 提供查询和估算。涉及签名或广播时，按下表选择工具�
 |---|---|---|
 | 「给 `T…` 转 100 TRX」 | `tron-wallet wallet-balance` 就停下——只查了余额，没转。 | [signer SDK](tronlink-signer.zh.md) `sendTrx`（HITL）或 [`mcp-server-tronlink`](mcp-server-tronlink.zh.md) `tl_chain_send` |
 | 「冻 1000 TRX 换能量」 | `tron-resource optimize-cost`——只算了建议，没冻。 | [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_stake`（`action="freeze"`，`amount_trx=1000`，`resource="ENERGY"`） |
-| 「给 SR `T…` 投 5000 票」 | `tron-staking sr-list`——只读了 SR 列表，没投票。 | [TronLink CLI](tronlink-cli.zh.md) 的 `tronlink vote --votes <SR_ADDRESS>:5000` |
+| 「给 SR `T…` 投 5000 票」 | `tron-staking sr-list`——只读了 SR 列表，没投票。 | [TronLink CLI](tronlink-cli.zh.md) 的 `tronlink vote --votes <SR_ADDRESS>:5000`。投票会替换该账户当前的全部投票；如需保留对其他 SR 的投票，请在同一条命令中一并列出。 |
 | 「给 SunSwap 路由器授权 USDT 额度」 | `tron-token token-info` / `contract-info`——纯元数据查询，没发送 approve。 | [TronLink CLI](tronlink-cli.zh.md) 的 `tronlink trigger --contract <USDT_CONTRACT> --method 'approve(address,uint256)' --args '["<ROUTER_ADDRESS>","1000000"]'`。代币合约和路由器地址须对应所选网络。路由器是被授权方；USDT 精度为 6 时，`1000000` 表示授权 1 USDT。 |
 | 「现在把 100 TRX 换成 USDT」 | `tron-swap swap-quote`——只报了价，没执行。 | [mcp-server-tronlink](mcp-server-tronlink.zh.md) 的 `tl_chain_swap_v3`（`action="execute"`，`slippage` 填用户确认的滑点百分比） |
 | 「领取我的投票奖励」 | `tron-staking staking-info`——只看了待领数量。 | [TronLink CLI](tronlink-cli.zh.md) 的 `tronlink reward` |
@@ -3896,7 +3882,7 @@ tron-resource（检查状态）→ tron-resource（估算成本）→ tron-resou
 - 解冻需 **14 天等待期** 才能提取
 - 解冻后投票重置；重新冻结后需重新投票
 - 质押所得能量取决于目标网络当前的质押总量。用该网络的 `TotalEnergyLimit / TotalEnergyWeight` 估算每质押 1 TRX 可获得的额度。`estimate-energy` 用于估算合约调用消耗。[GetAccountResource](https://developers.tron.network/reference/getaccountresource)
-- 投票奖励每 6 小时可领取一次
+- 投票奖励每 24 小时可领取一次
 
 ---
 
@@ -3922,8 +3908,8 @@ claude   # 自动发现 SKILL.md 文件
 # 注册为 MCP 服务器
 claude mcp add tronlink -- node ~/.tronlink-skills/scripts/mcp_server.mjs
 
-# 提供 25 个 MCP 工具，可被 Claude Desktop / Claude Code 直接调用
-# （逐项对照见上文 "Skill ↔ MCP 工具映射"；剩余 8 个命令仅 CLI 可用）
+# b12b5868 提供 39 个 MCP 工具（v1.0.x 为 25 个），可被 Claude Desktop / Claude Code 直接调用
+# （b12b5868 中只有 swap-route 仅限 CLI；v1.0.x 的逐项对照见上文 "Skill ↔ MCP 工具映射"）
 ```
 
 ### 方式三：命令行直接使用
@@ -3931,8 +3917,8 @@ claude mcp add tronlink -- node ~/.tronlink-skills/scripts/mcp_server.mjs
 ```bash
 # 直接执行命令
 node scripts/tron_api.mjs wallet-balance --address T地址...
-node scripts/tron_api.mjs token-price --token USDT
-node scripts/tron_api.mjs swap-quote --from TRX --to USDT --amount 100
+node scripts/tron_api.mjs token-price --contract USDT
+node scripts/tron_api.mjs swap-quote --from-token TRX --to-token USDT --amount 100
 ```
 
 #### 处理 Skills CLI 和 MCP 错误
@@ -4157,7 +4143,7 @@ claude
 
 # 3. 也可在 shell 中直接执行。将 ACCOUNT 设为待查询地址。
 node scripts/tron_api.mjs wallet-balance --address "${ACCOUNT:?set ACCOUNT}"
-node scripts/tron_api.mjs token-price --token USDT
+node scripts/tron_api.mjs token-price --contract USDT
 node scripts/tron_api.mjs optimize-cost --address "${ACCOUNT:?set ACCOUNT}"
 ```
 
@@ -4165,7 +4151,7 @@ node scripts/tron_api.mjs optimize-cost --address "${ACCOUNT:?set ACCOUNT}"
 
 - **包：** `tronlink-skills` v1.0.1——本页命令表所描述的版本。
 - **默认分支：** v1.1.0（commit `b12b5868`，`package.json` 中 `version: 1.1.0`），`git clone` / `install.sh` 安装的就是该版本。与 v1.0.1 相比，影响 agent 的差异：
-    - 新增 7 个只读命令（同时以 `tron_<command>` 形式暴露为 MCP 工具）：`wallet-approvals`, `wallet-overview`, `token-overview`, `bandwidth-price`, `tx-cost`, `chain-params`, `health-check`。共 40 个命令，仍全部为 Network Read。
+    - 新增 7 个只读命令（同时以 `tron_<command>` 形式暴露为 MCP 工具）。该提交中 `mcp_server.mjs` 将 40 个命令中的 39 个暴露为 MCP 工具，只有 `swap-route` 仅限 CLI。新增命令：`wallet-approvals`, `wallet-overview`, `token-overview`, `bandwidth-price`, `tx-cost`, `chain-params`, `health-check`。共 40 个命令，仍全部为 Network Read。
     - 此提交的 [`.nvmrc`](https://github.com/TronLink/tronlink-skills/blob/b12b58685ec38febc21843d2173dd43d969b8eb0/.nvmrc) 指定 Node.js 24.22.3。复现[旧提交 `7d2d58cb`](https://github.com/TronLink/tronlink-skills/blob/7d2d58cb/.nvmrc) 时使用 Node.js 24.22.1。在检出的仓库根目录运行 `nvm install && nvm use`，即可按该提交的配置选择版本。
 - **许可证：** MIT —— `SPDX-License-Identifier: MIT`
 - **变更记录 / 发布：** [https://github.com/TronLink/tronlink-skills/releases](https://github.com/TronLink/tronlink-skills/releases) —— 截至当前 v1.0.x 尚无 GitHub tag 发布；打 tag 之前请直接看 commit 历史。
@@ -4182,7 +4168,7 @@ Skills 已进入 **v1.0.x**，适用标准 semver——只有 **major** 升级�
     - JSON `stdout` 输出的具体字段——新增字段任意 minor 都允许；改名或删除属于 major。请用宽容解析。
     - 内置代币 symbol 快捷表（`USDT`、`USDC`、`WTRX`…）——minor 允许新增 symbol；已存在的映射 minor 不会重指。
     - 启发式与阈值（`whale-transfers` 默认阈值、`optimize-cost` 决策树权重等）。
-- **子集关系。** MCP 工具子集（目前 25 / 33）可能在 minor 中 **扩大**（CLI-only 命令被新增为 MCP 工具）；不会在 minor 中 **缩小**。
+- **子集关系。** MCP 工具子集（v1.0.x 为 25 / 33；`b12b5868` 为 39 / 40）可能在 minor 中 **扩大**（CLI-only 命令被新增为 MCP 工具）；不会在 minor 中 **缩小**。
 - **废弃窗口。** 被标 deprecated 的命令 / 工具至少在 **一个 minor 周期** 内继续可用；移除最早发生在下一个 major。
 - **升级后校验。** 重新 `tron_api.mjs --help`，使用 MCP 时再跑 `tools/list`，确认依赖的名字仍在。MCP `initialize` 阶段返回的 `serverInfo.version` 应与升级后的 `package.json` 版本一致。
 
@@ -4317,8 +4303,6 @@ claude mcp add -s user tronlink-signer -- node /path/to/packages/mcp-tronlink-si
 
 当调用 `sign_transaction` 且 `broadcast: true` 时，服务器会在广播后自动轮询链上确认状态，并返回执行结果（`success`、`pending` 或 `failed`）。如果交易在链上失败（如 `OUT_OF_ENERGY`、Solidity revert），结果为 `status: "failed"`，`error` 中带解码后的原因，并标记 `isError: true`。
 
-<a id="errors"></a>
-
 ## 错误
 
 v0.1.4 中，错误以 MCP 工具结果返回：`isError: true`，内容是一段文本 `Error: <message>`，没有结构化的 `code` 或 `retryable` 字段。已知的消息如下：
@@ -4347,8 +4331,6 @@ v0.1.4 中，错误以 MCP 工具结果返回：`isError: true`，内容是一�
 | **浏览器标签劫持** | 审批页基于 server session ID 验证每次请求，过期的标签会被忽略；心跳检测会在断连时关闭 session。 | 同一用户跑多个 agent 时，请让每个 agent 启动自己的 signer 实例；跨实例的请求串扰由 session ID 屏蔽，但 UI 层混淆不防。 |
 | **Confused deputy** | signer 以已连接的 TronLink 账户身份执行，没有来自 MCP 客户端的逐次授权 scope。 | 一个 signer 实例 = 一个 TronLink 账户，不要把多个终端用户复用到同一个实例。 |
 
-<a id="environment-variables"></a>
-
 ## 环境变量
 
 | 变量名 | 说明 | 默认值 |
@@ -4362,8 +4344,6 @@ v0.1.4 中，错误以 MCP 工具结果返回：`isError: true`，内容是一�
 - **包：** `mcp-tronlink-signer` v0.1.4
 - **许可证：** MIT —— `SPDX-License-Identifier: MIT`
 - **变更记录 / 发布：** [https://github.com/TronLink/mcp-tronlink-signer/releases](https://github.com/TronLink/mcp-tronlink-signer/releases)
-
-<a id="inline-changelog"></a>
 
 ### 内联 changelog
 
@@ -4564,8 +4544,6 @@ const result = await signer.signTransaction(tx, "nile", true, {
 ```
 
 参照快速开始，用 `try / finally` 包住连接、构建及所选调用，在 `finally` 中执行 `await signer.stop()`。广播结果未知时先按交易 ID 查询状态。
-
-<a id="broadcast-result"></a>
 
 ### 广播结果
 
@@ -5593,8 +5571,6 @@ estimatedEnergy estimatedBandwidth 的具体计算逻辑见![Stake 2.0 资源份
 
 汇总本文档各处用到的网络参数与常用地址。
 
-<a id="networks"></a>
-
 ## 网络
 
 | 网络 | `chainId`（十六进制） | EVM chainId（十进制） | RPC 端点 | 浏览器 |
@@ -5711,8 +5687,6 @@ TronLink 智能体在一次用户请求里跨 DApp provider → DeepLink → MCP
 [deeplink]: ../mobile/deeplink.md
 [mcp]: ../ai-support/tronlink-mcp-core.md
 [cli]: ../ai-support/tronlink-cli.md
-
-<a id="handling-rejections"></a>
 
 ## 处理拒签
 
